@@ -5,6 +5,6 @@
                        ne jamais mettre ici la clé « service_role » / « secret ».
    Laissé vide, le site fonctionne sans compte, avec les zones enregistrées sur l'appareil. */
 window.HEDEN_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: ""
+  supabaseUrl: "https://qrorhjypoppeplndpmyj.supabase.co",
+  supabaseAnonKey: "sb_publishable_-3v-JqBfx38pvpdInzfaYg_dZE-8Zh5"
 };
