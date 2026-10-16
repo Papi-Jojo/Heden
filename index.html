@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Heden</title>
 <meta name="description" content="Notez les coins de Paris que vous visitez et repérez ceux qui vous correspondent.">
 <meta name="theme-color" content="#F8F5F0" media="(prefers-color-scheme: light)">
@@ -61,7 +61,9 @@ button{cursor:pointer}
 .tab:hover{background:var(--enduit)}
 .tab[aria-selected="true"]{background:var(--email);color:var(--on-email)}
 .tabbar{display:none}
-main{position:relative;min-height:0}
+main{position:relative;min-height:0;grid-row:2}
+.topbar{grid-row:1}
+.tabbar{grid-row:3}
 .view{position:absolute;inset:0}
 
 /* ---------- Carte ---------- */
@@ -285,6 +287,25 @@ main{position:relative;min-height:0}
   #view-profile{padding-block:28px 48px}
   .prof h1{font-size:28px;line-height:32px}
 }
+/* ---------- Économie d'espace sur mobile ----------
+   Carte : pas d'en-tête (la carte occupe tout l'écran, le logo reste dans Profil).
+   Tracé : pas de barre d'onglets ni de recherche, la consigne prend leur place.
+   Notation : pas de barre d'onglets ni de contrôles de carte.
+   Clavier ouvert : seule la saisie reste, le panneau prend toute la hauteur. */
+@media (max-width: 899px){
+  body[data-tab="map"] .topbar{display:none}
+  body[data-tab="map"][data-mode="placing"] .tabbar,
+  body[data-tab="map"][data-mode="rating"] .tabbar,
+  body.kbd .tabbar{display:none}
+  body[data-mode="placing"] .search{display:none}
+  body[data-mode="placing"] .hint{top:66px}
+  body[data-mode="rating"] .map-top,body[data-mode="rating"] .fab-col{display:none}
+  body.kbd-panel .map-top,body.kbd-panel .fab-col,body.kbd-panel .hint{display:none}
+  body.kbd-panel .panel{max-height:100%!important;border-radius:0;box-shadow:none}
+  body.kbd-panel .panel .grip{display:none}
+  body.kbd-panel .panel__head{padding-top:14px}
+  body[data-tab="map"] .toast{top:calc(70px + env(safe-area-inset-top,0px))}
+}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -496,6 +517,7 @@ const overBudget = z => state.profile.budget > 0 && z.price > 0 && z.price > sta
 let currentTab = "map";
 function setTab(t) {
   currentTab = t;
+  document.body.dataset.tab = t;
   $$("[data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
   $("#view-map").hidden = t !== "map";
   $("#view-profile").hidden = t !== "profile";
@@ -706,6 +728,7 @@ function placeLabel(z) { return [z.place, z.area ? fmtArea(z.area) : ""].filter(
 let lastMode = null;
 function renderPanel() {
   panel.dataset.mode = ui.mode;
+  document.body.dataset.mode = ui.mode;
   /* chaque nouveau mode ouvre la feuille ; la liste démarre repliée sur mobile */
   if (ui.mode !== lastMode) { ui.sheet = ui.mode === "list" ? "peek" : "open"; lastMode = ui.mode; }
   if (ui.mode === "list") renderList();
@@ -1328,6 +1351,28 @@ window.addEventListener("resize", () => { if (!sheetDrag) applySheet(); });
 try {
   new ResizeObserver(() => { if (!sheetDrag) applySheet(); }).observe(panel);
 } catch (e) {}
+
+/* Clavier ouvert (mobile) : on masque tout ce qui ne sert pas à la saisie */
+const isTextField = el => !!el && (el.tagName === "TEXTAREA" || el.tagName === "SELECT" ||
+  (el.tagName === "INPUT" && !/^(range|checkbox|radio|button|submit|file|color|hidden)$/.test(el.type)));
+document.addEventListener("focusin", e => {
+  if (isDesktop() || !isTextField(e.target)) return;
+  document.body.classList.add("kbd");
+  const inPanel = !!e.target.closest("#panel");
+  document.body.classList.toggle("kbd-panel", inPanel);
+  if (inPanel) { ui.sheet = "open"; applySheet(); }
+  setTimeout(() => { try { e.target.scrollIntoView({block: "center", behavior: "smooth"}); } catch (err) {} }, 280);
+});
+document.addEventListener("focusout", () => {
+  setTimeout(() => {
+    if (isTextField(document.activeElement)) return;
+    document.body.classList.remove("kbd", "kbd-panel");
+    if (!sheetDrag) applySheet();
+  }, 150);
+});
+
+/* La carte change de taille quand les barres apparaissent ou disparaissent */
+try { new ResizeObserver(() => map.invalidateSize({pan: false})).observe(document.getElementById("map")); } catch (e) {}
 
 /* Démarrage */
 renderZones();
