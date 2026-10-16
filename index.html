@@ -276,6 +276,7 @@ main{position:relative;min-height:0;grid-row:2}
 .wctl output{text-align:right;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
 .wctl output small{display:block;color:var(--zinc);font-size:12px;font-weight:500}
 .x{width:36px;height:36px;border-radius:50%;border:0;background:none;color:var(--zinc);display:grid;place-items:center}
+.x.armed{color:var(--alerte);background:var(--enduit)}
 .x:hover{background:var(--enduit);color:var(--ardoise)}
 .totals{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13.5px;color:var(--zinc)}
 .addrow{display:flex;gap:8px;flex-wrap:wrap}
@@ -1160,6 +1161,7 @@ function renderRating() {
         <h2>Noter la zone</h2>
         <div class="sub">${draft.area ? fmtArea(draft.area) + ", " : ""}${cs.length} critères de votre profil</div>
       </div>
+      <button class="x" id="cancelR" type="button" aria-label="${draft.id ? "Annuler les modifications" : "Annuler la zone"}" title="${draft.id ? "Annuler les modifications" : "Annuler la zone"}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="panel__body">
       <div class="scorebox" id="sbox"></div>
@@ -1236,6 +1238,21 @@ function renderRating() {
   ensureEstimate(draft, () => { if (ui.mode === "rating") { paintCrits(); updateScoreBox(); } });
   $("#back").onclick = () => { ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); drawDraft(); renderPanel(); };
   $("#saveZ").onclick = commitDraft;
+  const cx = $("#cancelR");
+  cx.onclick = () => {
+    const pick = z => JSON.stringify([z.ratings || {}, z.comment || "", z.name || "", !!z.fav, z.price || null, z.moment || "", z.date || ""]);
+    const orig = draft.id && state.zones.find(x => x.id === draft.id);
+    const dirty = orig ? pick(orig) !== pick(draft) : (Object.keys(draft.ratings || {}).length || draft.comment || draft.nameTouched || draft.fav || draft.price || draft.moment);
+    if (dirty && !cx.classList.contains("armed")) {
+      cx.classList.add("armed");
+      toast(draft.id ? "Touchez encore la croix pour annuler vos modifications" : "Touchez encore la croix pour abandonner cette zone");
+      setTimeout(() => cx.isConnected && cx.classList.remove("armed"), 3500);
+      return;
+    }
+    const wasNew = !draft.id;
+    cancelDraft();
+    toast(wasNew ? "Zone abandonnée" : "Modifications annulées");
+  };
 }
 
 /* État des échelles : note donnée, ou estimation proposée (modifiable) */
