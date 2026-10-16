@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@500&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <style>
 /* Concept : une interface encre sur papier, sans couleur. La seule couleur de l'app est celle des notes, du rouge au vert. */
 :root{
@@ -288,7 +289,9 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 <div class="toast" id="toast" hidden></div>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
 <script>
 (() => {
 "use strict";
@@ -423,24 +426,40 @@ const map = L.map("map", {
 L.control.zoom({position: "bottomright"}).addTo(map);
 map.attributionControl.setPrefix(false);
 
-const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-const CARTO = '&copy; <a href="https://carto.com/attributions">CARTO</a>';
+const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+const OFM = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> ' + OSM;
+const STYLE_PLAN = "https://tiles.openfreemap.org/styles/positron";
+function supportsGL() {
+  try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) { return false; }
+}
 const tiles = {
-  light: L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {subdomains: "abcd", maxZoom: 20, attribution: OSM + " " + CARTO}),
-  dark:  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {subdomains: "abcd", maxZoom: 20, attribution: OSM + " " + CARTO}),
-  sat:   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom: 19, attribution: "Imagerie &copy; Esri, Maxar, Earthstar Geographics"}),
-  satLabels: L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", {subdomains: "abcd", maxZoom: 20, attribution: CARTO, pane: "shadowPane"})
+  osm: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: OSM}),
+  sat: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom: 19, attribution: "Imagerie &copy; Esri, Maxar, Earthstar Geographics"}),
+  satLabels: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {maxZoom: 19, pane: "shadowPane", attribution: "&copy; Esri"})
 };
+/* Fond « Plan » : tuiles vectorielles OpenFreeMap (gratuites, sans clé). Repli sur OpenStreetMap si WebGL est indisponible. */
+let planLayer = null;
+function getPlan() {
+  if (planLayer) return planLayer;
+  try {
+    if (L.maplibreGL && window.maplibregl && supportsGL()) {
+      planLayer = L.maplibreGL({style: STYLE_PLAN, attribution: OFM, maxZoom: 19});
+      return planLayer;
+    }
+  } catch (e) {}
+  planLayer = tiles.osm;
+  return planLayer;
+}
 let base = "plan";
 function applyBase() {
-  Object.values(tiles).forEach(t => map.removeLayer(t));
+  [tiles.osm, tiles.sat, tiles.satLabels, planLayer].forEach(t => { if (t && map.hasLayer(t)) map.removeLayer(t); });
   if (base === "sat") { tiles.sat.addTo(map); tiles.satLabels.addTo(map); }
-  else (dark.matches ? tiles.dark : tiles.light).addTo(map);
+  else getPlan().addTo(map);
   $$("#basemap button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.base === base)));
   if (draft) drawDraft();
 }
 $$("#basemap button").forEach(b => b.addEventListener("click", () => { base = b.dataset.base; applyBase(); }));
-dark.addEventListener?.("change", applyBase);
+dark.addEventListener?.("change", () => { if (draft) drawDraft(); });
 applyBase();
 
 function updateFar() { map.getContainer().classList.toggle("map--far", map.getZoom() < 13); }
