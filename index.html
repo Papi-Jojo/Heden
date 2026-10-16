@@ -1218,12 +1218,13 @@ function accountHTML() {
   if (cloud.step === "code") return `
     <section class="sec compte">
       <h2>Votre compte</h2>
-      <p class="hint2">Un e-mail vient d’être envoyé à <b>${esc(cloud.pendingEmail)}</b>. Ouvrez le lien qu’il contient sur cet appareil, ou saisissez le code à 6 chiffres.</p>
-      <form class="compte__form" id="codeForm">
-        <div class="field"><label class="label" for="loginCode">Code reçu par e-mail</label>
+      <p class="hint2">Un e-mail vient d’être envoyé à <b>${esc(cloud.pendingEmail)}</b>. Ouvrez le lien qu’il contient <b>sur cet appareil</b> : vous serez connecté automatiquement. Pensez à regarder dans les indésirables.</p>
+      ${CFG.codeParEmail ? `<form class="compte__form" id="codeForm">
+        <div class="field"><label class="label" for="loginCode">Ou saisissez le code reçu</label>
           <input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456"></div>
-        <div class="datarow"><button class="btn btn--primary" type="submit">Se connecter</button><button class="btn btn--ghost" id="changeMail" type="button">Changer d’adresse</button></div>
-      </form>
+        <div class="datarow"><button class="btn btn--primary" type="submit">Se connecter</button></div>
+      </form>` : ""}
+      <div class="datarow"><button class="btn btn--ghost" id="changeMail" type="button">Changer d’adresse ou renvoyer</button></div>
     </section>`;
   return `
     <section class="sec compte">
