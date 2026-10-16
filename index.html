@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Îlot</title>
+<meta name="description" content="Notez les coins de Paris que vous visitez et repérez ceux qui vous correspondent.">
+<meta name="theme-color" content="#f3f4f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131517" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Îlot">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2315171a'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%237cb342' stroke-width='5'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Concept : une interface encre sur papier, sans couleur. La seule couleur de l'app est celle des notes, du rouge au vert. */
+:root{
+  --bg:#f3f4f5; --surface:#ffffff; --ink:#15171a; --ink-2:#3b4046; --muted:#6c727a; --line:#dcdfe2; --soft:#eceef0;
+  --on-ink:#ffffff; --shadow:0 1px 2px rgba(20,22,26,.06),0 8px 24px rgba(20,22,26,.10);
+  --font:"Archivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px; --panel-w:384px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#131517; --surface:#1b1e21; --ink:#eceef0; --ink-2:#c6cbd0; --muted:#959ca4; --line:#2d3135; --soft:#24282c;
+    --on-ink:#131517; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.45); color-scheme:dark; }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.45 var(--font);-webkit-font-smoothing:antialiased;overflow:hidden}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-stretch:85%}
+
+/* ---------- Structure ---------- */
+#app{height:100%;display:grid;grid-template-rows:auto 1fr auto;padding-top:env(safe-area-inset-top,0px)}
+.topbar{display:flex;align-items:center;gap:24px;height:56px;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--surface);position:relative;z-index:1000}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand b{font-size:22px;font-weight:800;font-stretch:125%;letter-spacing:-.01em;line-height:1}
+.brand span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab{border:0;background:none;padding:8px 14px;border-radius:999px;font-weight:600;font-size:14px;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
+.tabbar{display:none}
+main{position:relative;min-height:0}
+.view{position:absolute;inset:0}
+
+/* ---------- Vue carte ---------- */
+#view-map{display:grid;grid-template-columns:var(--panel-w) 1fr}
+#map{position:relative;height:100%;min-width:0;background:var(--soft)}
+.leaflet-container{font-family:var(--font);background:var(--soft)}
+.leaflet-control-attribution{font-size:10px}
+.map-top{position:absolute;z-index:600;top:12px;left:12px;right:12px;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
+.map-top>*{pointer-events:auto}
+.search{position:relative;flex:1;max-width:380px}
+.search input{width:100%;height:42px;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:0 16px 0 40px;box-shadow:var(--shadow);outline:none}
+.search input:focus{border-color:var(--ink)}
+.search svg{position:absolute;left:14px;top:13px;color:var(--muted)}
+.results{position:absolute;top:48px;left:0;right:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.results button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 14px;border-top:1px solid var(--line);font-size:14px}
+.results button:first-child{border-top:0}
+.results button:hover{background:var(--soft)}
+.results small{display:block;color:var(--muted);font-size:12px}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;box-shadow:var(--shadow);margin-left:auto}
+.seg button{border:0;background:none;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+.fab-col{position:absolute;z-index:600;right:12px;bottom:96px;display:flex;flex-direction:column;gap:8px}
+.icon-btn{width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);border-radius:50%;box-shadow:var(--shadow);color:var(--ink)}
+.leaflet-bottom.leaflet-right .leaflet-control-zoom{margin-bottom:24px}
+.leaflet-bar a{background:var(--surface);color:var(--ink);border-color:var(--line)!important}
+.leaflet-bar{border:1px solid var(--line)!important;box-shadow:var(--shadow)!important}
+.hint{position:absolute;z-index:600;left:50%;top:64px;transform:translateX(-50%);background:var(--ink);color:var(--on-ink);padding:8px 14px;border-radius:999px;font-size:13px;font-weight:500;box-shadow:var(--shadow);white-space:nowrap}
+
+/* Marqueurs */
+.handle{border-radius:50%;background:#fff;border:2px solid #15171a;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.handle--center{width:18px!important;height:18px!important;margin:-9px 0 0 -9px!important;background:#15171a;border-color:#fff}
+.handle--edge{width:24px!important;height:24px!important;margin:-12px 0 0 -12px!important;cursor:ew-resize;display:grid;place-items:center}
+.handle--edge::after{content:"";width:8px;height:8px;border-radius:50%;background:#15171a}
+.zone-badge{display:inline-flex;align-items:center;gap:3px;transform:translate(-50%,-50%);padding:3px 7px 3px 6px;border-radius:999px;background:#fff;color:#15171a;font:600 12px/1 var(--font);font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.3);white-space:nowrap;border:1px solid rgba(0,0,0,.08)}
+.zone-badge i{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+.zone-badge svg{color:#c62828}
+.map--far .zone-badge{display:none}
+
+/* ---------- Panneau ---------- */
+.panel{display:flex;flex-direction:column;min-height:0;background:var(--surface);border-right:1px solid var(--line);z-index:700}
+.panel__head{display:flex;align-items:center;gap:12px;padding:16px 18px 14px;border-bottom:1px solid var(--line)}
+.panel__head h2{margin:0;font-size:17px;font-weight:700;text-wrap:balance;line-height:1.25}
+.panel__head .sub{font-size:13px;color:var(--muted);margin-top:2px}
+.panel__head .grow{flex:1;min-width:0}
+.panel__body{flex:1;overflow:auto;padding:16px 18px 20px;display:flex;flex-direction:column;gap:18px;overscroll-behavior:contain}
+.panel__foot{display:flex;gap:8px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--surface)}
+.grip{display:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14px;white-space:nowrap}
+.btn--primary{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.btn--block{flex:1}
+.btn--ghost{border-color:transparent;background:none;color:var(--muted)}
+.btn--danger{color:#c62828}
+.btn--danger.armed{background:#c62828;border-color:#c62828;color:#fff}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn--sm{height:34px;padding:0 12px;font-size:13px}
+.link{border:0;background:none;padding:0;color:var(--ink);text-decoration:underline;text-underline-offset:3px;font-size:13px;font-weight:500}
+
+.legend{display:flex;flex-direction:column;gap:6px}
+.legend__bar{height:8px;border-radius:999px;background:linear-gradient(90deg,var(--g))}
+.legend__ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+
+.zlist{display:flex;flex-direction:column;margin:0 -18px}
+.zrow{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:12px;padding:11px 18px;border:0;border-top:1px solid var(--line);background:none;text-align:left;width:100%}
+.zrow:hover{background:var(--soft)}
+.zrow:last-child{border-bottom:1px solid var(--line)}
+.score-chip{width:44px;height:30px;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:14px;color:#fff;background:var(--c);font-variant-numeric:tabular-nums}
+.score-chip.none{background:var(--soft);color:var(--muted)}
+.zrow .t{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zrow .m{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zrow>div{min-width:0}
+.tags{display:flex;gap:4px;align-items:center}
+.tag{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:2px 5px;font-stretch:85%;white-space:nowrap}
+.heart{color:#c62828;display:inline-flex}
+
+.empty{display:flex;flex-direction:column;gap:14px}
+.empty ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;counter-reset:s}
+.empty li{display:grid;grid-template-columns:26px 1fr;gap:10px;font-size:14px;color:var(--ink-2)}
+.empty li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field input[type=text],.field input[type=number],.field input[type=date],.field textarea,.field select{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;outline:none}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--ink)}
+.field textarea{min-height:72px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:none;border-radius:999px;padding:6px 11px;font-size:13px;font-weight:500;color:var(--ink-2)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+
+.radius{display:flex;flex-direction:column;gap:10px}
+.radius__val{display:flex;align-items:baseline;gap:10px}
+.radius__val b{font-size:28px;font-weight:700;font-stretch:90%;letter-spacing:-.01em}
+.radius__val span{color:var(--muted);font-size:13px}
+input[type=range]{width:100%;accent-color:var(--ink)}
+
+.crit{display:flex;flex-direction:column;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.crit:last-child{border-bottom:0;padding-bottom:0}
+.crit__top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.crit__name{font-weight:600;font-size:14px}
+.crit__w{font-size:12px;color:var(--muted);white-space:nowrap}
+.crit__desc{font-size:12.5px;color:var(--muted);margin-top:-4px}
+.scale{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.scale button{height:38px;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.scale button[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:#fff}
+
+.scorebox{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:var(--r)}
+.scorebox .big{width:64px;height:64px;border-radius:12px;display:grid;place-items:center;font-size:26px;font-weight:800;color:#fff;background:var(--c);font-variant-numeric:tabular-nums;flex:none}
+.scorebox .big.none{background:var(--soft);color:var(--muted)}
+.scorebox p{margin:0;font-size:13px;color:var(--muted)}
+.scorebox strong{display:block;font-size:15px;color:var(--ink);margin-bottom:2px}
+
+.breakdown{display:flex;flex-direction:column;gap:9px}
+.bd{display:grid;grid-template-columns:1fr 92px 22px;gap:10px;align-items:center;font-size:13px}
+.bd .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd .n small{color:var(--muted);margin-left:4px}
+.bd .bar{height:6px;border-radius:999px;background:var(--soft);overflow:hidden}
+.bd .bar i{display:block;height:100%;background:var(--c)}
+.bd .v{text-align:right;font-weight:600}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+.meta dt{color:var(--muted)}
+.meta dd{margin:0}
+.note{font-size:13px;color:var(--ink-2);white-space:pre-wrap;border-left:2px solid var(--line);padding-left:10px}
+.banner{font-size:13px;padding:10px 12px;border-radius:8px;background:var(--soft);color:var(--ink-2)}
+
+/* ---------- Vue profil ---------- */
+#view-profile{overflow:auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.prof{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+.prof h1{margin:0;font-size:30px;font-weight:800;font-stretch:115%;letter-spacing:-.015em;text-wrap:balance}
+.prof .lead{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.sec{display:flex;flex-direction:column;gap:14px}
+.sec h2{margin:0;font-size:18px;font-weight:700}
+.sec .hint2{margin:-8px 0 0;font-size:13px;color:var(--muted);max-width:62ch}
+.presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.preset{display:flex;flex-direction:column;gap:10px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:14px;position:relative}
+.preset:hover{border-color:var(--ink-2)}
+.preset[aria-pressed="true"]{border:2px solid var(--ink);padding:13px}
+.preset b{font-size:15px}
+.preset p{margin:0;font-size:12.5px;color:var(--muted)}
+.preset .mini{display:flex;flex-direction:column;gap:4px}
+.preset .mini div{display:grid;grid-template-columns:1fr 34px;gap:8px;font-size:12px;color:var(--ink-2);align-items:center}
+.preset .mini span{position:relative;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.preset .cur{position:absolute;top:12px;right:12px}
+.cards{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.crow{display:grid;grid-template-columns:minmax(0,1fr) 210px 36px;gap:16px;align-items:center;padding:14px 16px;border-top:1px solid var(--line)}
+.crow:first-child{border-top:0}
+.crow input.nm{width:100%;border:0;background:none;padding:2px 0;font-weight:600;font-size:14px;outline:none;border-bottom:1px dashed transparent}
+.crow input.nm:focus{border-bottom-color:var(--ink)}
+.crow input.ds{width:100%;border:0;background:none;padding:2px 0;font-size:12.5px;color:var(--muted);outline:none;border-bottom:1px dashed transparent}
+.crow input.ds:focus{border-bottom-color:var(--ink)}
+.wctl{display:grid;grid-template-columns:1fr 64px;gap:10px;align-items:center}
+.wctl output{font-size:13px;text-align:right;white-space:nowrap}
+.wctl output small{display:block;color:var(--muted);font-size:11px}
+.x{width:32px;height:32px;border-radius:50%;border:0;background:none;color:var(--muted);display:grid;place-items:center}
+.x:hover{background:var(--soft);color:var(--ink)}
+.totals{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.addrow{display:flex;gap:8px;flex-wrap:wrap}
+.addrow select{border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:0 14px;height:42px;max-width:100%}
+.datarow{display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;top:calc(68px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--ink);color:var(--on-ink);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:500;z-index:3000;box-shadow:var(--shadow);transition:opacity .2s;white-space:nowrap}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 899px){
+  .tabs{display:none}
+  .tabbar{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);background:var(--surface);padding-bottom:env(safe-area-inset-bottom,0px);z-index:1000;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  .tabbar button{border:0;background:none;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--muted)}
+  .tabbar button[aria-selected="true"]{color:var(--ink)}
+  .tabbar svg{width:22px;height:22px}
+  #view-map{display:block}
+  #map{position:absolute;inset:0}
+  .panel{position:absolute;left:0;right:0;bottom:0;max-height:70%;border-right:0;border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.14)}
+  .panel[data-mode="rating"],.panel[data-mode="detail"]{max-height:82%}
+  .panel__head{padding-top:20px;cursor:default}
+  .grip{display:block;position:absolute;top:7px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:999px;background:var(--line)}
+  .panel[data-collapsed="true"] .panel__body,.panel[data-collapsed="true"] .panel__foot{display:none}
+  .panel__foot{padding-bottom:12px}
+  .fab-col{bottom:auto;top:62px}
+  .leaflet-bottom{display:none}
+  .map-top .seg{margin-left:0}
+  .search{max-width:none}
+  .hint{top:62px;max-width:calc(100% - 32px);white-space:normal;text-align:center}
+  .toast{top:calc(112px + env(safe-area-inset-top,0px))}
+  .crow{grid-template-columns:minmax(0,1fr) 32px;gap:10px}
+  .crow .wctl{grid-column:1 / -1;grid-row:2}
+  .brand span{display:none}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><b>Îlot</b><span>Les coins de Paris qui vous ressemblent</span></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="map" aria-selected="true">Carte</button>
+      <button class="tab" role="tab" data-tab="profile" aria-selected="false">Profil</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="view" id="view-map">
+      <aside class="panel" id="panel" data-mode="list"></aside>
+      <div id="map">
+        <div class="map-top">
+          <form class="search" id="search" autocomplete="off">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="q" type="search" placeholder="Adresse, rue, station…" aria-label="Rechercher une adresse">
+            <div class="results" id="results" hidden></div>
+          </form>
+          <div class="seg" id="basemap" role="group" aria-label="Fond de carte">
+            <button type="button" data-base="plan" aria-pressed="true">Plan</button>
+            <button type="button" data-base="sat" aria-pressed="false">Satellite</button>
+          </div>
+        </div>
+        <div class="fab-col">
+          <button class="icon-btn" id="locate" type="button" title="Ma position" aria-label="Ma position">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          </button>
+        </div>
+        <div class="hint" id="hint" hidden></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-profile" hidden>
+      <div class="prof" id="prof"></div>
+    </section>
+  </main>
+
+  <nav class="tabbar" role="tablist">
+    <button role="tab" data-tab="map" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>Carte
+    </button>
+    <button role="tab" data-tab="profile" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profil
+    </button>
+  </nav>
+</div>
+<div class="toast" id="toast" hidden></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(() => {
+"use strict";
+
+/* =========================================================
+   Données de référence
+   ========================================================= */
+const LIB = {
+  transports:  {name:"Transports", desc:"Métro, RER, bus à pied ; temps de trajet vers les lieux clés"},
+  prix:        {name:"Prix au m² / budget", desc:"5 = nettement sous le budget, 0 = hors budget"},
+  vie_sociale: {name:"Vie sociale", desc:"Bars, restaurants, culture à quelques minutes à pied"},
+  securite:    {name:"Sécurité et ambiance", desc:"Ressenti de jour comme de soir, rue fréquentée et éclairée"},
+  commerces:   {name:"Commerces du quotidien", desc:"Supermarché, boulangerie, pharmacie, marché à moins de 5 min"},
+  nuisances:   {name:"Nuisances", desc:"5 = calme le soir, rue propre, peu de circulation"},
+  verts:       {name:"Espaces verts et sport", desc:"Parc ou square proche, salle de sport, parcours de running"},
+  bati:        {name:"Bâti et qualité de la rue", desc:"Immeubles entretenus, trottoirs larges, rue agréable"},
+  ecoles:      {name:"Écoles et crèches", desc:"Crèche, maternelle, élémentaire et collège à distance de marche"},
+  sante:       {name:"Santé", desc:"Médecins, laboratoires, hôpital accessibles"},
+  revente:     {name:"Potentiel de revente", desc:"Dynamique des prix, projets de transport, demande"},
+  velo:        {name:"Vélo", desc:"Pistes cyclables, stations Vélib’, stationnement vélo"},
+  nuit:        {name:"Vie nocturne", desc:"Bars et sorties ouverts tard"},
+  culture:     {name:"Culture", desc:"Cinémas, théâtres, musées, librairies"}
+};
+const PRESETS = [
+  {id:"jeunes", name:"Jeunes actifs", tagline:"Premier achat à deux : vie de quartier, trajets courts, rue agréable",
+   w:{transports:10,prix:15,vie_sociale:15,securite:15,commerces:10,nuisances:15,verts:5,bati:15}},
+  {id:"famille", name:"Famille", tagline:"Écoles à pied, calme et espaces verts",
+   w:{ecoles:20,securite:15,verts:15,nuisances:15,commerces:10,transports:10,prix:10,sante:5}},
+  {id:"budget", name:"Budget serré", tagline:"Le meilleur rapport prix, accessibilité et revente",
+   w:{prix:25,transports:20,revente:15,commerces:10,securite:10,vie_sociale:10,nuisances:10}},
+  {id:"teletravail", name:"Télétravail", tagline:"On vit le quartier en journée : calme, cafés, verdure",
+   w:{nuisances:20,verts:15,bati:15,commerces:15,securite:15,vie_sociale:10,prix:10}},
+  {id:"invest", name:"Investissement locatif", tagline:"Demande locative et valeur à la revente",
+   w:{prix:25,revente:25,transports:20,securite:10,commerces:10,vie_sociale:10}}
+];
+const MOMENTS = ["Semaine, journée","Semaine, soir","Week-end"];
+const STOPS = [[0,[198,40,40]],[30,[226,92,26]],[50,[232,160,32]],[70,[138,176,58]],[100,[37,122,64]]];
+const BOUNDS = [[48.72,2.13],[48.99,2.57]];
+const KEY = "ilot.v1";
+
+/* =========================================================
+   Utilitaires
+   ========================================================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmtInt = n => Math.round(n).toLocaleString("fr-FR");
+const today = () => new Date().toISOString().slice(0, 10);
+const fmtDate = d => { try { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", {day:"numeric", month:"short", year:"numeric"}); } catch(e) { return d; } };
+const HEART = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.8 4.5c2.1 0 3.6 1.1 5.2 3 1.6-1.9 3.1-3 5.2-3 3.8 0 5.9 3.9 4.4 7.3C19.5 16.4 12 21 12 21z"/></svg>';
+
+function colorFor(score) {
+  if (score == null) return "#9aa0a6";
+  const s = Math.max(0, Math.min(100, score));
+  for (let i = 1; i < STOPS.length; i++) {
+    const [p1, c1] = STOPS[i - 1], [p2, c2] = STOPS[i];
+    if (s <= p2) {
+      const t = (s - p1) / (p2 - p1);
+      const c = c1.map((v, k) => Math.round(v + (c2[k] - v) * t));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+  }
+  return "rgb(37,122,64)";
+}
+const GRADIENT = STOPS.map(([p, c]) => `rgb(${c.join(",")}) ${p}%`).join(",");
+document.documentElement.style.setProperty("--g", GRADIENT);
+
+/* =========================================================
+   État et stockage local
+   ========================================================= */
+function presetCriteria(p) {
+  return Object.entries(p.w).map(([id, w]) => ({id, name: LIB[id].name, desc: LIB[id].desc, weight: w}));
+}
+function defaultState() {
+  return {version: 1, profile: {name: "", presetId: "jeunes", modified: false, budget: null, criteria: presetCriteria(PRESETS[0])}, zones: []};
+}
+let storageOk = true;
+function load() {
+  try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
+  catch (e) { storageOk = false; return null; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); storageOk = true; }
+  catch (e) { storageOk = false; }
+}
+let state = load() || defaultState();
+if (!state.profile || !Array.isArray(state.zones)) state = defaultState();
+
+const crit = () => state.profile.criteria;
+let draft = null, draftLayers = null;
+let ui = {mode: "list", collapsed: true};
+let selectedId = null;
+
+function scoreOf(z) {
+  let wsum = 0, acc = 0, rated = 0, total = 0;
+  for (const c of crit()) {
+    if (!(c.weight > 0)) continue;
+    total++;
+    const v = z.ratings ? z.ratings[c.id] : undefined;
+    if (typeof v === "number") { wsum += c.weight; acc += c.weight * v / 5; rated++; }
+  }
+  return {score: wsum ? Math.round(acc / wsum * 100) : null, rated, total, complete: total > 0 && rated === total};
+}
+const overBudget = z => state.profile.budget > 0 && z.price > 0 && z.price > state.profile.budget;
+
+/* =========================================================
+   Onglets
+   ========================================================= */
+let currentTab = "map";
+function setTab(t) {
+  currentTab = t;
+  $$("[data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+  $("#view-map").hidden = t !== "map";
+  $("#view-profile").hidden = t !== "profile";
+  if (t === "map") { setTimeout(() => map.invalidateSize(), 0); renderZones(); renderPanel(); }
+  else renderProfile();
+  try { history.replaceState(null, "", t === "profile" ? "#profil" : "#carte"); } catch (e) {}
+}
+$$("[data-tab]").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+
+/* =========================================================
+   Carte
+   ========================================================= */
+const dark = window.matchMedia("(prefers-color-scheme: dark)");
+const isDesktop = () => window.matchMedia("(min-width: 900px)").matches;
+const map = L.map("map", {
+  zoomControl: false, minZoom: 11, maxZoom: 19,
+  maxBounds: L.latLngBounds(BOUNDS).pad(0.25), maxBoundsViscosity: 0.9
+}).setView([48.8575, 2.3450], isDesktop() ? 13 : 12);
+L.control.zoom({position: "bottomright"}).addTo(map);
+map.attributionControl.setPrefix(false);
+
+const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+const CARTO = '&copy; <a href="https://carto.com/attributions">CARTO</a>';
+const tiles = {
+  light: L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {subdomains: "abcd", maxZoom: 20, attribution: OSM + " " + CARTO}),
+  dark:  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {subdomains: "abcd", maxZoom: 20, attribution: OSM + " " + CARTO}),
+  sat:   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom: 19, attribution: "Imagerie &copy; Esri, Maxar, Earthstar Geographics"}),
+  satLabels: L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", {subdomains: "abcd", maxZoom: 20, attribution: CARTO, pane: "shadowPane"})
+};
+let base = "plan";
+function applyBase() {
+  Object.values(tiles).forEach(t => map.removeLayer(t));
+  if (base === "sat") { tiles.sat.addTo(map); tiles.satLabels.addTo(map); }
+  else (dark.matches ? tiles.dark : tiles.light).addTo(map);
+  $$("#basemap button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.base === base)));
+  if (draft) drawDraft();
+}
+$$("#basemap button").forEach(b => b.addEventListener("click", () => { base = b.dataset.base; applyBase(); }));
+dark.addEventListener?.("change", applyBase);
+applyBase();
+
+function updateFar() { map.getContainer().classList.toggle("map--far", map.getZoom() < 13); }
+map.on("zoomend", updateFar); updateFar();
+
+/* Zones enregistrées */
+const zoneLayer = L.layerGroup().addTo(map);
+function renderZones() {
+  zoneLayer.clearLayers();
+  for (const z of state.zones) {
+    if (draft && draft.id === z.id) continue;
+    const {score} = scoreOf(z);
+    const col = colorFor(score);
+    const out = overBudget(z);
+    const circle = L.circle([z.lat, z.lng], {
+      radius: z.radius, color: col, weight: selectedId === z.id ? 3.5 : 2, opacity: .95,
+      fillColor: col, fillOpacity: out ? .1 : (selectedId === z.id ? .42 : .3),
+      dashArray: out ? "5 6" : null, bubblingMouseEvents: false
+    });
+    const badge = L.marker([z.lat, z.lng], {
+      icon: L.divIcon({className: "", iconSize: null,
+        html: `<span class="zone-badge" style="--c:${col}"><i></i>${score == null ? "–" : score}${z.fav ? HEART : ""}</span>`}),
+      keyboard: false
+    });
+    const onClick = e => { if (ui.mode === "placing") { placeAt(e.latlng); return; } openDetail(z.id); };
+    circle.on("click", onClick); badge.on("click", onClick);
+    circle.addTo(zoneLayer); badge.addTo(zoneLayer);
+  }
+}
+
+/* Zone en cours (brouillon) : centre + poignée de rayon */
+const draftColor = () => base === "sat" ? "#ffffff" : (dark.matches ? "#eceef0" : "#15171a");
+function edgePoint(lat, lng, r) { return L.latLng(lat, lng + r / (111320 * Math.cos(lat * Math.PI / 180))); }
+function clearDraftLayers() { if (draftLayers) { Object.values(draftLayers).forEach(l => map.removeLayer(l)); draftLayers = null; } }
+function drawDraft() {
+  clearDraftLayers();
+  if (!draft || draft.lat == null) return;
+  const c = draftColor();
+  const circle = L.circle([draft.lat, draft.lng], {radius: draft.radius, color: c, weight: 2, dashArray: "6 6", fillColor: c, fillOpacity: .08, interactive: false}).addTo(map);
+  const center = L.marker([draft.lat, draft.lng], {draggable: true, icon: L.divIcon({className: "handle handle--center", iconSize: [18, 18]}), title: "Déplacer la zone"}).addTo(map);
+  const edge = L.marker(edgePoint(draft.lat, draft.lng, draft.radius), {draggable: true, icon: L.divIcon({className: "handle handle--edge", iconSize: [24, 24]}), title: "Étirer la zone"}).addTo(map);
+  center.on("drag", e => {
+    const p = e.target.getLatLng(); draft.lat = p.lat; draft.lng = p.lng;
+    circle.setLatLng(p); edge.setLatLng(edgePoint(p.lat, p.lng, draft.radius));
+  });
+  edge.on("drag", e => {
+    const r = Math.max(50, Math.min(2000, map.distance([draft.lat, draft.lng], e.target.getLatLng())));
+    draft.radius = Math.round(r); circle.setRadius(draft.radius); syncRadiusUI();
+  });
+  edge.on("dragend", () => edge.setLatLng(edgePoint(draft.lat, draft.lng, draft.radius)));
+  draftLayers = {circle, center, edge};
+}
+function setDraftRadius(r) {
+  draft.radius = r;
+  if (draftLayers) { draftLayers.circle.setRadius(r); draftLayers.edge.setLatLng(edgePoint(draft.lat, draft.lng, r)); }
+  syncRadiusUI();
+}
+function placeAt(latlng) {
+  if (!draft) return;
+  const first = draft.lat == null;
+  draft.lat = latlng.lat; draft.lng = latlng.lng;
+  if (first && map.getZoom() < 15) map.setView(latlng, 15, {animate: true});
+  drawDraft();
+  if (first) { setHint(null); renderPanel(); }
+}
+map.on("click", e => {
+  if (ui.mode === "placing") placeAt(e.latlng);
+  else if (ui.mode === "detail") { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); }
+});
+
+/* =========================================================
+   Panneau latéral / feuille mobile
+   ========================================================= */
+const panel = $("#panel");
+
+function setHint(t) { const h = $("#hint"); h.hidden = !t; if (t) h.textContent = t; }
+function walkMin(r) { return Math.max(1, Math.round(r / 80)); }
+function areaHa(r) { return (Math.PI * r * r / 10000); }
+function syncRadiusUI() {
+  const b = $("#rv"), s = $("#rs"), sub = $("#rsub");
+  if (b) b.textContent = fmtInt(draft.radius) + " m";
+  if (s && +s.value !== draft.radius) s.value = draft.radius;
+  if (sub) sub.textContent = `≈ ${walkMin(draft.radius)} min à pied du centre · ${areaHa(draft.radius).toLocaleString("fr-FR", {maximumFractionDigits: 1})} ha`;
+}
+function placeLabel(z) { return [z.place, z.radius ? `rayon ${fmtInt(z.radius)} m` : ""].filter(Boolean).join(" · "); }
+
+function renderPanel() {
+  panel.dataset.mode = ui.mode;
+  panel.dataset.collapsed = String(ui.mode === "list" && ui.collapsed && !isDesktop());
+  if (ui.mode === "list") return renderList();
+  if (ui.mode === "placing") return renderPlacing();
+  if (ui.mode === "rating") return renderRating();
+  if (ui.mode === "detail") return renderDetail();
+}
+
+function sortedZones() {
+  return state.zones.map(z => ({z, s: scoreOf(z)})).sort((a, b) => {
+    const oa = overBudget(a.z), ob = overBudget(b.z);
+    if (oa !== ob) return oa ? 1 : -1;
+    return (b.s.score ?? -1) - (a.s.score ?? -1);
+  });
+}
+
+function renderList() {
+  const items = sortedZones();
+  const n = items.length;
+  const best = items.find(i => i.s.score != null && !overBudget(i.z));
+  const p = state.profile;
+  const presetName = (PRESETS.find(x => x.id === p.presetId) || {}).name;
+  const profileLine = p.modified || !presetName ? "Profil personnalisé" : `Profil ${presetName}`;
+  panel.innerHTML = `
+    <div class="grip"></div>
+    <div class="panel__head" id="phead">
+      <div class="grow">
+        <h2>${n ? `${n} zone${n > 1 ? "s" : ""} notée${n > 1 ? "s" : ""}` : "Aucune zone pour l’instant"}</h2>
+        <div class="sub">${best ? `En tête : ${esc(best.z.name || "Sans nom")} · ${best.s.score}/100` : esc(profileLine) + ` · ${crit().filter(c => c.weight > 0).length} critères`}</div>
+      </div>
+      <button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button>
+    </div>
+    <div class="panel__body">
+      ${!storageOk ? `<div class="banner">Ce navigateur bloque le stockage local : vos zones seront perdues à la fermeture. Exportez-les depuis l’onglet Profil.</div>` : ""}
+      ${n ? `
+        <div class="legend">
+          <div class="legend__bar"></div>
+          <div class="legend__ticks num"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+        </div>
+        <div class="zlist">
+          ${items.map(({z, s}) => `
+            <button class="zrow" type="button" data-id="${z.id}">
+              <span class="score-chip ${s.score == null ? "none" : ""}" style="--c:${colorFor(s.score)}">${s.score == null ? "–" : s.score}</span>
+              <div>
+                <div class="t">${esc(z.name || "Sans nom")}</div>
+                <div class="m">${esc(placeLabel(z))}${z.author ? " · " + esc(z.author) : ""}</div>
+              </div>
+              <span class="tags">
+                ${z.fav ? `<span class="heart" title="Coup de cœur">${HEART}</span>` : ""}
+                ${overBudget(z) ? `<span class="tag">Hors budget</span>` : ""}
+                ${!s.complete && s.score != null ? `<span class="tag">Partielle</span>` : ""}
+                ${z.example ? `<span class="tag">Exemple</span>` : ""}
+              </span>
+            </button>`).join("")}
+        </div>
+        ${state.zones.some(z => z.example) ? `<div><button class="link" id="dropEx" type="button">Retirer les zones d’exemple</button></div>` : ""}
+      ` : `
+        <div class="empty">
+          <ol>
+            <li><span>Choisissez vos critères et leur poids dans l’onglet <b>Profil</b>.</span></li>
+            <li><span>Appuyez sur <b>+ Zone</b>, touchez la carte, puis étirez le cercle sur le morceau de quartier visité.</span></li>
+            <li><span>Notez chaque critère de 0 à 5 : la zone prend sa couleur, du rouge au vert.</span></li>
+          </ol>
+          <div><button class="link" id="loadEx" type="button">Voir 3 zones d’exemple</button></div>
+        </div>
+      `}
+    </div>`;
+  $("#newZone").onclick = e => { e.stopPropagation(); startNew(); };
+  $("#phead").onclick = () => { if (!isDesktop()) { ui.collapsed = !ui.collapsed; renderPanel(); } };
+  $$(".zrow", panel).forEach(r => r.onclick = () => openDetail(r.dataset.id, true));
+  const ex = $("#loadEx"); if (ex) ex.onclick = loadExamples;
+  const dx = $("#dropEx"); if (dx) dx.onclick = () => { state.zones = state.zones.filter(z => !z.example); save(); renderZones(); renderPanel(); };
+}
+
+function startNew() {
+  selectedId = null;
+  draft = {id: null, lat: null, lng: null, radius: 250, name: "", place: "", date: today(), moment: "", ratings: {}, price: null, fav: false, comment: ""};
+  ui.mode = "placing";
+  setHint("Touchez la carte au centre du coin visité");
+  renderZones(); renderPanel();
+}
+
+function renderPlacing() {
+  const placed = draft.lat != null;
+  panel.innerHTML = `
+    <div class="grip"></div>
+    <div class="panel__head">
+      <div class="grow">
+        <h2>${draft.id ? "Ajuster la zone" : "Nouvelle zone"}</h2>
+        <div class="sub">${placed ? "Glissez le point noir pour déplacer, le point blanc pour étirer." : "Touchez la carte pour poser le centre."}</div>
+      </div>
+    </div>
+    <div class="panel__body">
+      ${placed ? `
+      <div class="radius">
+        <span class="label">Rayon</span>
+        <div class="radius__val"><b class="num" id="rv"></b><span id="rsub" class="num"></span></div>
+        <input type="range" id="rs" min="50" max="1500" step="10" value="${draft.radius}" aria-label="Rayon de la zone">
+        <div class="chips">${[150, 250, 400, 700].map(r => `<button class="chip" type="button" data-r="${r}">${r} m</button>`).join("")}</div>
+      </div>` : `<p class="label" style="margin:0">En attente d’un point sur la carte</p>`}
+    </div>
+    <div class="panel__foot">
+      <button class="btn" id="cancel" type="button">Annuler</button>
+      <button class="btn btn--primary btn--block" id="confirm" type="button" ${placed ? "" : "disabled"}>Valider la zone</button>
+    </div>`;
+  if (placed) {
+    syncRadiusUI();
+    $("#rs").oninput = e => setDraftRadius(+e.target.value);
+    $$("[data-r]", panel).forEach(b => b.onclick = () => setDraftRadius(+b.dataset.r));
+  }
+  $("#cancel").onclick = cancelDraft;
+  $("#confirm").onclick = () => {
+    setHint(null);
+    ui.mode = "rating";
+    fitDraft();
+    if (!draft.place || !draft.name) reverseGeocode(draft);
+    renderPanel();
+  };
+}
+
+function cancelDraft() {
+  const back = draft && draft.id;
+  draft = null; clearDraftLayers(); setHint(null);
+  if (back) { ui.mode = "detail"; selectedId = back; } else ui.mode = "list";
+  renderZones(); renderPanel();
+}
+function fitDraft() {
+  const b = L.latLng(draft.lat, draft.lng).toBounds(draft.radius * 2.6);
+  map.fitBounds(b, {paddingBottomRight: [0, isDesktop() ? 0 : Math.round(innerHeight * .5)], maxZoom: 17});
+}
+
+function renderRating() {
+  const s = scoreOf(draft);
+  const cs = crit().filter(c => c.weight > 0);
+  const wsum = cs.reduce((a, c) => a + c.weight, 0) || 1;
+  panel.innerHTML = `
+    <div class="grip"></div>
+    <div class="panel__head">
+      <div class="grow">
+        <h2>Noter la zone</h2>
+        <div class="sub">Rayon ${fmtInt(draft.radius)} m · ${cs.length} critères de votre profil</div>
+      </div>
+    </div>
+    <div class="panel__body">
+      <div class="scorebox" id="sbox"></div>
+      <div class="field">
+        <label class="label" for="zname">Nom de la zone</label>
+        <input type="text" id="zname" value="${esc(draft.name)}" placeholder="Ex. Haut de la rue des Martyrs" maxlength="80">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label class="label" for="zdate">Visite</label>
+          <input type="date" id="zdate" value="${esc(draft.date || "")}">
+        </div>
+        <div class="field">
+          <label class="label" for="zprice">Prix observé €/m²</label>
+          <input type="number" id="zprice" inputmode="numeric" min="0" step="100" value="${draft.price ?? ""}" placeholder="Facultatif">
+        </div>
+      </div>
+      <div class="field">
+        <span class="label">Moment de la visite</span>
+        <div class="chips" id="zmoment">${MOMENTS.map(m => `<button class="chip" type="button" aria-pressed="${draft.moment === m}">${m}</button>`).join("")}</div>
+      </div>
+      <div class="field" style="gap:14px">
+        <span class="label">Critères · 0 = rédhibitoire, 5 = excellent</span>
+        ${cs.map(c => {
+          const v = draft.ratings[c.id];
+          return `<div class="crit" data-c="${esc(c.id)}">
+            <div class="crit__top"><span class="crit__name">${esc(c.name)}</span><span class="crit__w num">poids ${Math.round(c.weight / wsum * 100)} %</span></div>
+            ${c.desc ? `<div class="crit__desc">${esc(c.desc)}</div>` : ""}
+            <div class="scale">${[0, 1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" aria-pressed="${v === n}" style="--c:${colorFor(n * 20)}">${n}</button>`).join("")}</div>
+          </div>`;
+        }).join("")}
+      </div>
+      <div class="field">
+        <span class="label">Coup de cœur</span>
+        <div class="chips"><button class="chip" id="zfav" type="button" aria-pressed="${!!draft.fav}"><span class="heart">${HEART}</span>&nbsp;On adore ce coin</button></div>
+      </div>
+      <div class="field">
+        <label class="label" for="zcom">Commentaires</label>
+        <textarea id="zcom" placeholder="Ambiance, bruit le soir, adresse d’un bien vu…">${esc(draft.comment)}</textarea>
+      </div>
+    </div>
+    <div class="panel__foot">
+      <button class="btn" id="back" type="button">Ajuster le cercle</button>
+      <button class="btn btn--primary btn--block" id="saveZ" type="button">Enregistrer</button>
+    </div>`;
+  updateScoreBox();
+  $("#zname").oninput = e => { draft.name = e.target.value; draft.nameTouched = true; };
+  $("#zdate").oninput = e => draft.date = e.target.value;
+  $("#zprice").oninput = e => { const v = parseFloat(e.target.value); draft.price = isFinite(v) && v > 0 ? v : null; updateScoreBox(); };
+  $("#zcom").oninput = e => draft.comment = e.target.value;
+  $$("#zmoment .chip").forEach(b => b.onclick = () => {
+    draft.moment = draft.moment === b.textContent ? "" : b.textContent;
+    $$("#zmoment .chip").forEach(x => x.setAttribute("aria-pressed", String(x.textContent === draft.moment)));
+  });
+  $("#zfav").onclick = e => { draft.fav = !draft.fav; e.currentTarget.setAttribute("aria-pressed", String(draft.fav)); };
+  $$(".crit", panel).forEach(row => {
+    const id = row.dataset.c;
+    $$("button", row).forEach(b => b.onclick = () => {
+      const n = +b.dataset.v;
+      if (draft.ratings[id] === n) delete draft.ratings[id]; else draft.ratings[id] = n;
+      $$("button", row).forEach(x => x.setAttribute("aria-pressed", String(draft.ratings[id] === +x.dataset.v)));
+      updateScoreBox();
+    });
+  });
+  $("#back").onclick = () => { ui.mode = "placing"; renderPanel(); };
+  $("#saveZ").onclick = commitDraft;
+}
+
+function updateScoreBox() {
+  const box = $("#sbox"); if (!box) return;
+  const s = scoreOf(draft);
+  const col = colorFor(s.score);
+  box.innerHTML = `
+    <div class="big ${s.score == null ? "none" : ""}" style="--c:${col}">${s.score == null ? "–" : s.score}</div>
+    <div><strong>${s.score == null ? "Pas encore de note" : "Note sur 100"}</strong>
+    <p class="num">${s.rated} / ${s.total} critères notés${overBudget(draft) ? " · au-dessus de votre budget" : ""}</p></div>`;
+  if (draftLayers) {
+    const c = s.score == null ? draftColor() : col;
+    draftLayers.circle.setStyle({color: c, fillColor: c, fillOpacity: s.score == null ? .08 : .25});
+  }
+}
+
+function commitDraft() {
+  const z = clone(draft); delete z.nameTouched;
+  z.name = (z.name || "").trim() || z.place || "Zone sans nom";
+  z.updatedAt = Date.now();
+  if (z.id) {
+    const i = state.zones.findIndex(x => x.id === z.id);
+    if (i >= 0) state.zones[i] = Object.assign({}, state.zones[i], z, {example: false});
+  } else {
+    z.id = uid(); z.createdAt = Date.now(); z.author = state.profile.name || "";
+    state.zones.push(z);
+  }
+  save();
+  draft = null; clearDraftLayers();
+  selectedId = z.id; ui.mode = "detail";
+  renderZones(); renderPanel();
+  toast(storageOk ? "Zone enregistrée" : "Zone ajoutée (non sauvegardée : stockage bloqué)");
+}
+
+function openDetail(id, fly) {
+  const z = state.zones.find(x => x.id === id); if (!z) return;
+  selectedId = id; ui.mode = "detail";
+  if (fly) map.flyToBounds(L.latLng(z.lat, z.lng).toBounds(z.radius * 3), {maxZoom: 17, duration: .6, paddingBottomRight: [0, isDesktop() ? 0 : Math.round(innerHeight * .45)]});
+  renderZones(); renderPanel();
+}
+
+function renderDetail() {
+  const z = state.zones.find(x => x.id === selectedId);
+  if (!z) { ui.mode = "list"; return renderPanel(); }
+  const s = scoreOf(z);
+  const cs = crit().filter(c => c.weight > 0);
+  const wsum = cs.reduce((a, c) => a + c.weight, 0) || 1;
+  panel.innerHTML = `
+    <div class="grip"></div>
+    <div class="panel__head">
+      <div class="grow">
+        <h2>${esc(z.name || "Sans nom")}</h2>
+        <div class="sub">${esc(placeLabel(z))}</div>
+      </div>
+      <button class="x" id="close" type="button" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="panel__body">
+      <div class="scorebox">
+        <div class="big ${s.score == null ? "none" : ""}" style="--c:${colorFor(s.score)}">${s.score == null ? "–" : s.score}</div>
+        <div><strong>${s.score == null ? "Pas encore de note" : verdict(s.score)}</strong>
+        <p class="num">${s.rated} / ${s.total} critères notés${z.fav ? " · coup de cœur" : ""}</p></div>
+      </div>
+      ${overBudget(z) ? `<div class="banner">Prix observé de ${fmtInt(z.price)} €/m², au-dessus de votre budget de ${fmtInt(state.profile.budget)} €/m².</div>` : ""}
+      ${!s.complete && s.total ? `<div class="banner">Note partielle : ${s.total - s.rated} critère${s.total - s.rated > 1 ? "s" : ""} de votre profil n’${s.total - s.rated > 1 ? "ont" : "a"} pas encore été noté${s.total - s.rated > 1 ? "s" : ""}.</div>` : ""}
+      <div class="breakdown">
+        ${cs.map(c => {
+          const v = z.ratings[c.id];
+          return `<div class="bd">
+            <span class="n">${esc(c.name)}<small class="num">${Math.round(c.weight / wsum * 100)} %</small></span>
+            <span class="bar"><i style="width:${typeof v === "number" ? v * 20 : 0}%;--c:${colorFor(typeof v === "number" ? v * 20 : null)}"></i></span>
+            <span class="v num">${typeof v === "number" ? v : "–"}</span></div>`;
+        }).join("")}
+      </div>
+      <dl class="meta">
+        ${z.date ? `<dt>Visite</dt><dd>${esc(fmtDate(z.date))}${z.moment ? " · " + esc(z.moment) : ""}</dd>` : ""}
+        ${z.price ? `<dt>Prix observé</dt><dd class="num">${fmtInt(z.price)} €/m²</dd>` : ""}
+        <dt>Surface</dt><dd class="num">rayon ${fmtInt(z.radius)} m · ≈ ${walkMin(z.radius)} min à pied du centre</dd>
+        ${z.author ? `<dt>Notée par</dt><dd>${esc(z.author)}</dd>` : ""}
+      </dl>
+      ${z.comment ? `<div class="note">${esc(z.comment)}</div>` : ""}
+    </div>
+    <div class="panel__foot">
+      <button class="btn btn--danger" id="del" type="button">Supprimer</button>
+      <button class="btn" id="adj" type="button">Ajuster</button>
+      <button class="btn btn--primary btn--block" id="edit" type="button">Modifier les notes</button>
+    </div>`;
+  $("#close").onclick = () => { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); };
+  $("#edit").onclick = () => { draft = clone(z); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
+  $("#adj").onclick = () => { draft = clone(z); ui.mode = "placing"; renderZones(); drawDraft(); renderPanel(); };
+  const del = $("#del");
+  del.onclick = () => {
+    if (!del.classList.contains("armed")) { del.classList.add("armed"); del.textContent = "Confirmer"; setTimeout(() => { if (del.isConnected) { del.classList.remove("armed"); del.textContent = "Supprimer"; } }, 3500); return; }
+    state.zones = state.zones.filter(x => x.id !== z.id); save();
+    selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); toast("Zone supprimée");
+  };
+}
+function verdict(s) {
+  if (s >= 80) return "Excellent coin";
+  if (s >= 65) return "Très bon coin";
+  if (s >= 50) return "Correct, avec des réserves";
+  if (s >= 35) return "Peu convaincant";
+  return "À éviter";
+}
+
+/* =========================================================
+   Géocodage (Nominatim / OpenStreetMap)
+   ========================================================= */
+function arrLabel(pc, city) {
+  if (pc && /^750\d\d$/.test(pc)) { const n = +pc.slice(3); return `Paris ${n === 1 ? "1er" : n + "e"}`; }
+  if (pc === "75116") return "Paris 16e";
+  return city || "";
+}
+async function reverseGeocode(d) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${d.lat}&lon=${d.lng}&zoom=17&addressdetails=1&accept-language=fr`);
+    if (!r.ok) return;
+    const j = await r.json(); const a = j.address || {};
+    const place = arrLabel(a.postcode, a.city || a.town || a.village || a.municipality);
+    const street = a.road || a.pedestrian || a.square || a.neighbourhood || a.quarter || a.suburb || "";
+    if (draft !== d) return;
+    if (place) d.place = place;
+    if (!d.name && !d.nameTouched && street) {
+      d.name = street + (a.quarter && a.quarter !== street ? ` (${a.quarter})` : "");
+      const inp = $("#zname"); if (inp && !inp.value) inp.value = d.name;
+    }
+    const sub = $(".panel__head .sub"); if (sub && ui.mode === "rating" && place) sub.textContent = `${place} · rayon ${fmtInt(d.radius)} m`;
+  } catch (e) { /* hors ligne : on garde la saisie manuelle */ }
+}
+let searchTimer = null;
+$("#q").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  if (q.length < 3) { $("#results").hidden = true; return; }
+  searchTimer = setTimeout(() => doSearch(q), 450);
+});
+$("#search").addEventListener("submit", e => { e.preventDefault(); const q = $("#q").value.trim(); if (q) doSearch(q); });
+async function doSearch(q) {
+  const box = $("#results");
+  try {
+    const vb = `${BOUNDS[0][1]},${BOUNDS[1][0]},${BOUNDS[1][1]},${BOUNDS[0][0]}`;
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&viewbox=${vb}&bounded=1&limit=5&countrycodes=fr&accept-language=fr`);
+    const list = r.ok ? await r.json() : [];
+    if (!list.length) { box.innerHTML = `<button type="button" disabled>Aucun résultat dans Paris et la petite couronne</button>`; box.hidden = false; return; }
+    box.innerHTML = list.map((x, i) => {
+      const parts = x.display_name.split(", ");
+      return `<button type="button" data-i="${i}">${esc(parts.slice(0, 2).join(", "))}<small>${esc(parts.slice(2, 5).join(", "))}</small></button>`;
+    }).join("");
+    box.hidden = false;
+    $$("button", box).forEach(b => b.onclick = () => {
+      const x = list[+b.dataset.i];
+      map.flyTo([+x.lat, +x.lon], 16, {duration: .6});
+      box.hidden = true; $("#q").blur();
+    });
+  } catch (e) {
+    box.innerHTML = `<button type="button" disabled>Recherche indisponible pour le moment</button>`; box.hidden = false;
+  }
+}
+document.addEventListener("click", e => { if (!e.target.closest("#search")) $("#results").hidden = true; });
+
+$("#locate").onclick = () => {
+  if (!navigator.geolocation) return toast("Géolocalisation indisponible");
+  navigator.geolocation.getCurrentPosition(p => {
+    const ll = L.latLng(p.coords.latitude, p.coords.longitude);
+    if (!L.latLngBounds(BOUNDS).pad(0.25).contains(ll)) return toast("Vous êtes hors de la zone couverte");
+    map.flyTo(ll, 16, {duration: .6});
+    if (ui.mode === "placing") placeAt(ll);
+  }, () => toast("Position refusée ou introuvable"), {enableHighAccuracy: true, timeout: 8000});
+};
+
+/* =========================================================
+   Onglet profil
+   ========================================================= */
+function renderProfile() {
+  const p = state.profile;
+  const cs = p.criteria;
+  const wsum = cs.reduce((a, c) => a + (c.weight > 0 ? c.weight : 0), 0);
+  const avail = Object.keys(LIB).filter(id => !cs.some(c => c.id === id));
+  $("#prof").innerHTML = `
+    <div>
+      <h1>Votre profil</h1>
+      <p class="lead">Vos critères et leurs poids déterminent la note de chaque zone. Modifier un poids recalcule toutes les notes, sans retoucher vos évaluations.</p>
+    </div>
+
+    <section class="sec">
+      <h2>Vous</h2>
+      <div class="row2">
+        <div class="field">
+          <label class="label" for="pname">Prénom</label>
+          <input type="text" id="pname" value="${esc(p.name)}" placeholder="Affiché sur les zones que vous notez" maxlength="40">
+        </div>
+        <div class="field">
+          <label class="label" for="pbudget">Budget max €/m²</label>
+          <input type="number" id="pbudget" inputmode="numeric" min="0" step="100" value="${p.budget ?? ""}" placeholder="Facultatif">
+        </div>
+      </div>
+      <p class="hint2">Au-dessus du budget, une zone apparaît en pointillés et passe en bas du classement.</p>
+    </section>
+
+    <section class="sec">
+      <h2>Partir d’un profil type</h2>
+      <p class="hint2">Choisir un profil remplace vos critères actuels. Vos notes déjà saisies sont conservées.</p>
+      <div class="presets">
+        ${PRESETS.map(pr => {
+          const top = Object.entries(pr.w).sort((a, b) => b[1] - a[1]).slice(0, 4);
+          const cur = p.presetId === pr.id && !p.modified;
+          return `<button class="preset" type="button" data-p="${pr.id}" aria-pressed="${cur}">
+            ${cur ? `<span class="tag cur">Actuel</span>` : ""}
+            <b>${esc(pr.name)}</b><p>${esc(pr.tagline)}</p>
+            <div class="mini">${top.map(([id, w]) => `<div><span>${esc(LIB[id].name)}</span><span class="num" style="text-align:right">${w} %</span></div>`).join("")}</div>
+          </button>`;
+        }).join("")}
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>Critères et pondération</h2>
+      <p class="hint2">${p.modified ? `Profil personnalisé${PRESETS.find(x => x.id === p.presetId) ? ", à partir de « " + esc(PRESETS.find(x => x.id === p.presetId).name) + " »" : ""}.` : "Touchez un nom pour le renommer."} Les poids n’ont pas besoin de faire 100 : la part de chaque critère est calculée automatiquement.</p>
+      <div class="cards">
+        ${cs.map((c, i) => `
+          <div class="crow" data-i="${i}">
+            <div style="min-width:0">
+              <input class="nm" value="${esc(c.name)}" aria-label="Nom du critère" maxlength="40">
+              <input class="ds" value="${esc(c.desc || "")}" placeholder="Ce qu’on observe sur place" aria-label="Description" maxlength="120">
+            </div>
+            <div class="wctl">
+              <input type="range" min="0" max="40" step="5" value="${c.weight}" aria-label="Poids de ${esc(c.name)}">
+              <output class="num"><span class="wv">${c.weight}</span><small class="ws">${wsum ? Math.round(Math.max(0, c.weight) / wsum * 100) : 0} %</small></output>
+            </div>
+            <button class="x" type="button" aria-label="Retirer ${esc(c.name)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          </div>`).join("")}
+      </div>
+      <div class="totals"><span class="num" id="wtot">Total des poids : ${wsum}${wsum === 100 ? "" : " (ramené à 100 %)"}</span></div>
+      <div class="addrow">
+        <select id="addSel" aria-label="Ajouter un critère">
+          <option value="">Ajouter un critère…</option>
+          ${avail.map(id => `<option value="${id}">${esc(LIB[id].name)}</option>`).join("")}
+          <option value="__custom">Critère personnalisé</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>Vos données</h2>
+      <p class="hint2">Les zones restent dans ce navigateur. Exportez-les pour les sauvegarder ou les envoyer à votre binôme : à l’import, ses zones s’ajoutent aux vôtres et sont notées selon votre profil.</p>
+      <div class="datarow">
+        <button class="btn" id="exp" type="button">Exporter mes zones</button>
+        <button class="btn" id="imp" type="button">Importer un fichier</button>
+        <button class="btn btn--ghost btn--danger" id="wipe" type="button">Tout effacer</button>
+      </div>
+      <p class="hint2 num">${state.zones.length} zone${state.zones.length > 1 ? "s" : ""} enregistrée${state.zones.length > 1 ? "s" : ""}${storageOk ? "" : " · stockage local bloqué par ce navigateur"}.</p>
+    </section>`;
+
+  $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
+  $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
+  $$(".preset").forEach(b => b.onclick = () => {
+    const pr = PRESETS.find(x => x.id === b.dataset.p);
+    p.criteria = presetCriteria(pr); p.presetId = pr.id; p.modified = false; save(); renderProfile();
+    toast(`Profil « ${pr.name} » appliqué`);
+  });
+  $$(".crow").forEach(row => {
+    const c = cs[+row.dataset.i];
+    $(".nm", row).oninput = e => { c.name = e.target.value; p.modified = true; save(); };
+    $(".ds", row).oninput = e => { c.desc = e.target.value; save(); };
+    const rg = $("input[type=range]", row);
+    rg.oninput = () => {
+      c.weight = +rg.value; p.modified = true; save();
+      $(".wv", row).textContent = c.weight;
+      const tot = cs.reduce((a, x) => a + (x.weight > 0 ? x.weight : 0), 0);
+      $$(".crow").forEach(r2 => { const c2 = cs[+r2.dataset.i]; $(".ws", r2).textContent = (tot ? Math.round(Math.max(0, c2.weight) / tot * 100) : 0) + " %"; });
+      $("#wtot").textContent = `Total des poids : ${tot}${tot === 100 ? "" : " (ramené à 100 %)"}`;
+      $$(".preset").forEach(pb => { pb.setAttribute("aria-pressed", "false"); const t = $(".cur", pb); if (t) t.remove(); });
+    };
+    $(".x", row).onclick = () => { cs.splice(+row.dataset.i, 1); p.modified = true; save(); renderProfile(); };
+  });
+  $("#addSel").onchange = e => {
+    const v = e.target.value; if (!v) return;
+    if (v === "__custom") cs.push({id: "c_" + uid(), name: "Nouveau critère", desc: "", weight: 10});
+    else cs.push({id: v, name: LIB[v].name, desc: LIB[v].desc, weight: 10});
+    p.modified = true; save(); renderProfile();
+    if (v === "__custom") { const rows = $$(".crow"); const nm = $(".nm", rows[rows.length - 1]); nm.focus(); nm.select(); }
+  };
+  $("#exp").onclick = exportData;
+  $("#imp").onclick = () => $("#importFile").click();
+  const wipe = $("#wipe");
+  wipe.onclick = () => {
+    if (!wipe.classList.contains("armed")) { wipe.classList.add("armed"); wipe.textContent = "Confirmer : tout effacer"; setTimeout(() => { if (wipe.isConnected) { wipe.classList.remove("armed"); wipe.textContent = "Tout effacer"; } }, 4000); return; }
+    state.zones = []; save(); renderProfile(); toast("Toutes les zones ont été effacées");
+  };
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({app: "ilot", version: 1, exportedAt: new Date().toISOString(), profile: state.profile, zones: state.zones}, null, 2)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `ilot-${(state.profile.name || "zones").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${today()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$("#importFile").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if (!j || !Array.isArray(j.zones)) throw new Error("format");
+    let added = 0, updated = 0;
+    for (const z of j.zones) {
+      if (typeof z.lat !== "number" || typeof z.lng !== "number" || typeof z.radius !== "number") continue;
+      z.ratings = z.ratings && typeof z.ratings === "object" ? z.ratings : {};
+      const i = state.zones.findIndex(x => x.id === z.id);
+      if (i < 0) { state.zones.push(Object.assign({id: uid()}, z)); added++; }
+      else if ((z.updatedAt || 0) > (state.zones[i].updatedAt || 0)) { state.zones[i] = z; updated++; }
+    }
+    const unknown = new Set();
+    j.zones.forEach(z => Object.keys(z.ratings || {}).forEach(k => { if (!crit().some(c => c.id === k)) unknown.add(k); }));
+    save(); renderProfile();
+    toast(`${added} zone${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}${updated ? `, ${updated} mise${updated > 1 ? "s" : ""} à jour` : ""}`);
+  } catch (err) { toast("Fichier illisible : choisissez un export Îlot (.json)"); }
+});
+
+/* =========================================================
+   Exemples (clairement marqués) et divers
+   ========================================================= */
+function loadExamples() {
+  const mk = (name, place, lat, lng, radius, r, extra) => Object.assign({
+    id: uid(), example: true, name, place, lat, lng, radius, date: today(), moment: "Semaine, soir",
+    ratings: r, price: null, fav: false, comment: "Zone d’exemple, à supprimer.", author: "Exemple", createdAt: Date.now(), updatedAt: 0
+  }, extra || {});
+  state.zones.push(
+    mk("Exemple · Canal Saint-Martin", "Paris 10e", 48.8712, 2.3646, 260, {transports:4,prix:3,vie_sociale:5,securite:4,commerces:5,nuisances:2,verts:3,bati:4}, {fav: true}),
+    mk("Exemple · Batignolles", "Paris 17e", 48.8873, 2.3195, 320, {transports:4,prix:3,vie_sociale:4,securite:5,commerces:4,nuisances:4,verts:5,bati:4}),
+    mk("Exemple · Porte de la Chapelle", "Paris 18e", 48.8975, 2.3593, 300, {transports:3,prix:4,vie_sociale:1,securite:1,commerces:2,nuisances:1,verts:1,bati:1})
+  );
+  save(); ui.collapsed = false;
+  map.flyToBounds(L.latLngBounds(state.zones.filter(z => z.example).map(z => [z.lat, z.lng])).pad(0.4), {duration: .6});
+  renderZones(); renderPanel();
+}
+
+let toastT = null;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false; t.style.opacity = "1";
+  clearTimeout(toastT); toastT = setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.hidden = true, 200); }, 2200);
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape" && ui.mode === "placing") cancelDraft(); });
+window.addEventListener("resize", () => { panel.dataset.collapsed = String(ui.mode === "list" && ui.collapsed && !isDesktop()); });
+
+/* Démarrage */
+renderZones();
+setTab(/profil/.test(location.hash) ? "profile" : "map");
+window.__ilot = {state: () => state, scoreOf, colorFor};
+})();
+</script>
+</body>
+</html>
