@@ -1,0 +1,34 @@
+name: Données objectives (DVF + OpenStreetMap)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 2 1,4,7,10 *"   # tous les trois mois
+
+permissions:
+  contents: write
+
+concurrency:
+  group: donnees
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Préparer les tuiles
+        run: python scripts/donnees/build.py data
+      - name: Publier
+        run: |
+          git config user.name "heden-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data
+          if git diff --cached --quiet; then echo "Rien de nouveau"; exit 0; fi
+          git commit -m "Données : mise à jour DVF et OpenStreetMap"
+          git pull --rebase origin main
+          git push origin HEAD:main
