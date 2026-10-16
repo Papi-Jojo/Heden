@@ -10,7 +10,7 @@ puis écrit dans data/ :
 Usage : python build.py <dossier_sortie>
 Variables facultatives : HEDEN_DVF_DIR (CSV déjà téléchargés), HEDEN_OSM_POI / HEDEN_OSM_PARKS (JSON Overpass déjà téléchargés).
 """
-import csv, gzip, io, json, math, os, random, re, sys, time, urllib.parse, urllib.request
+import csv, gzip, io, json, math, os, random, re, sys, time, urllib.request
 from collections import defaultdict
 from datetime import date
 
@@ -66,9 +66,17 @@ def dvf_sales():
         files = sorted(os.path.join(local, f) for f in os.listdir(local) if f.endswith((".csv", ".csv.gz")))
         sources = [(f, lambda f=f: open(f, "rb").read()) for f in files]
     else:
-        years = sorted(set(int(y) for y in re.findall(r'href="(\d{4})/"', get(base).decode())))
-        years = years[-3:]
+        years = []
+        for y in range(date.today().year, 2017, -1):
+            try:
+                cached(f"dvf-{y}-75.csv.gz", lambda: get(f"{base}{y}/departements/75.csv.gz", tries=1, timeout=300))
+                years.append(y)
+            except Exception:
+                pass
+            if len(years) == 3: break
+        years.sort()
         log("DVF, années :", years)
+        if not years: raise RuntimeError("aucune année DVF trouvée")
         sources = [(f"{y}/{d}", lambda y=y, d=d: cached(f"dvf-{y}-{d}.csv.gz", lambda: get(f"{base}{y}/departements/{d}.csv.gz")))
                    for y in years for d in DEPTS]
     muts = {}
@@ -111,40 +119,61 @@ def dvf_sales():
 # =====================================================================
 # 2. OpenStreetMap
 # =====================================================================
-OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter",
-            "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
-BB = f"({S},{W},{N},{E})"
-Q_POI = f"""[out:json][timeout:900][maxsize:2000000000];
-(
- nwr["shop"~"^(bakery|pastry|supermarket|convenience|greengrocer|butcher|cheese|deli|seafood|organic|books)$"]{BB};
- nwr["amenity"~"^(pharmacy|marketplace|restaurant|cafe|bar|pub|biergarten|nightclub|fast_food|cinema|theatre|arts_centre|music_venue|library|kindergarten|childcare|school|doctors|dentist|clinic|hospital|bicycle_rental)$"]{BB};
- nwr["tourism"~"^(museum|gallery)$"]{BB};
- nwr["healthcare"~"^(laboratory|centre)$"]{BB};
- nwr["leisure"~"^(fitness_centre|sports_centre|swimming_pool)$"]{BB};
- node["railway"~"^(station|halt|tram_stop)$"]{BB};
-);
-out center tags;"""
-Q_PARKS = f"""[out:json][timeout:900][maxsize:2000000000];
-(
- way["leisure"~"^(park|garden|nature_reserve)$"]{BB};
- relation["leisure"~"^(park|garden|nature_reserve)$"]{BB};
- way["landuse"~"^(forest|recreation_ground)$"]["name"]{BB};
- relation["landuse"="forest"]["name"]{BB};
-);
-out geom;"""
+PBF_URL = "https://download.geofabrik.de/europe/france/ile-de-france-latest.osm.pbf"
+FILTERS = [
+    "nwr/shop=bakery,pastry,supermarket,convenience,greengrocer,butcher,cheese,deli,seafood,organic,books",
+    "nwr/amenity=pharmacy,marketplace,restaurant,cafe,bar,pub,biergarten,nightclub,fast_food,cinema,theatre,arts_centre,"
+    "music_venue,library,kindergarten,childcare,school,doctors,dentist,clinic,hospital,bicycle_rental",
+    "nwr/tourism=museum,gallery", "nwr/healthcare=laboratory,centre",
+    "nwr/leisure=fitness_centre,sports_centre,swimming_pool,park,garden,nature_reserve",
+    "nwr/railway=station,halt,tram_stop", "wr/landuse=forest,recreation_ground",
+]
+PARK_TAGS = {("leisure", "park"), ("leisure", "garden"), ("leisure", "nature_reserve"), ("landuse", "forest"), ("landuse", "recreation_ground")}
 
-def overpass(q, env):
-    if os.environ.get(env):
-        return json.load(open(os.environ[env]))
-    last = None
-    for k in range(6):
-        url = OVERPASS[k % len(OVERPASS)]
-        try:
-            log("Overpass :", url)
-            return json.loads(cached(env.lower() + ".json", lambda: get(url, urllib.parse.urlencode({"data": q}).encode(), tries=1)))
-        except Exception as e:
-            last = e; time.sleep(30)
-    raise RuntimeError(f"Overpass indisponible : {last}")
+def osm_elements():
+    """Renvoie (lieux, parcs) au format des réponses Overpass, depuis l'extrait Geofabrik d'Île-de-France."""
+    if os.environ.get("HEDEN_OSM_POI"):
+        return json.load(open(os.environ["HEDEN_OSM_POI"]))["elements"], json.load(open(os.environ["HEDEN_OSM_PARKS"]))["elements"]
+    import subprocess, osmium
+    os.makedirs(CACHE, exist_ok=True)
+    pbf = os.path.join(CACHE, "idf.osm.pbf")
+    if not os.path.exists(pbf):
+        log("OSM : téléchargement de l'extrait Île-de-France")
+        subprocess.run(["curl", "-sSfL", "--retry", "4", "-o", pbf, PBF_URL], check=True)
+    small = os.path.join(CACHE, "heden.osm.pbf")
+    subprocess.run(["osmium", "extract", "-b", f"{W},{S},{E},{N}", pbf, "-o", small + ".bbox.pbf", "--overwrite"], check=True)
+    subprocess.run(["osmium", "tags-filter", small + ".bbox.pbf", *FILTERS, "-o", small, "--overwrite"], check=True)
+    pois, parks = [], []
+
+    def tagdict(o): return {t.k: t.v for t in o.tags}
+
+    class H(osmium.SimpleHandler):
+        def node(self, n):
+            if not n.location.valid(): return
+            tg = tagdict(n)
+            if tg: pois.append({"type": "node", "lat": n.location.lat, "lon": n.location.lon, "tags": tg})
+        def area(self, a):
+            tg = tagdict(a)
+            if not tg: return
+            outers = []
+            for outer in a.outer_rings():
+                ring = [(nd.lat, nd.lon) for nd in outer]
+                inners = [[(nd.lat, nd.lon) for nd in inner] for inner in a.inner_rings(outer)]
+                outers.append((ring, inners))
+            if not outers: return
+            if any((k, tg.get(k)) in PARK_TAGS for k in ("leisure", "landuse")):
+                mem = []
+                for ring, inners in outers:
+                    mem.append({"type": "way", "role": "outer", "geometry": [{"lat": y, "lon": x} for y, x in ring]})
+                    for r in inners: mem.append({"type": "way", "role": "inner", "geometry": [{"lat": y, "lon": x} for y, x in r]})
+                parks.append({"type": "relation", "tags": tg, "members": mem})
+            ring = max((r for r, _ in outers), key=len)
+            lat = sum(p[0] for p in ring) / len(ring); lng = sum(p[1] for p in ring) / len(ring)
+            pois.append({"type": "way", "center": {"lat": lat, "lon": lng}, "tags": tg})
+
+    H().apply_file(small, locations=True, idx="flex_mem")
+    log("OSM : objets lus", len(pois), "parcs", len(parks))
+    return pois, parks
 
 SCHOOL = [(r"coll[eè]ge", 33), (r"lyc[eé]e", 34), (r"maternelle", 31), (r"[eé]l[eé]mentaire|primaire", 32)]
 SHOP = {"bakery": 1, "pastry": 1, "supermarket": 2, "convenience": 2, "greengrocer": 3, "butcher": 3, "cheese": 3,
@@ -183,10 +212,9 @@ def classify(tg):
         if st in ("", "train") or tg.get("train") == "yes": return 61
     return None
 
-def osm_pois():
-    d = overpass(Q_POI, "HEDEN_OSM_POI")
+def osm_pois(elements):
     out, seen = [], {}
-    for el in d["elements"]:
+    for el in elements:
         tg = el.get("tags", {})
         lat = el.get("lat") or (el.get("center") or {}).get("lat")
         lng = el.get("lon") or (el.get("center") or {}).get("lon")
@@ -225,10 +253,9 @@ def assemble(ways):
         if cur[0] == cur[-1] and len(cur) >= 4: rings.append(cur)
     return rings
 
-def osm_parks():
-    d = overpass(Q_PARKS, "HEDEN_OSM_PARKS")
+def osm_parks(elements):
     parks = []
-    for el in d["elements"]:
+    for el in elements:
         tg = el.get("tags", {})
         if tg.get("access") in ("private", "no", "customers"): continue
         if tg.get("leisure") == "garden" and not tg.get("name"): continue
@@ -323,8 +350,9 @@ def quantiles(vals, qs=(0.1, 0.3, 0.5, 0.7, 0.9)):
 # =====================================================================
 def main():
     sales = dvf_sales()
-    pois = osm_pois()
-    parks = osm_parks()
+    poi_el, park_el = osm_elements()
+    pois = osm_pois(poi_el)
+    parks = osm_parks(park_el)
 
     tiles = defaultdict(lambda: {"p": [], "s": [], "g": [], "v": []})
     for lat, lng, c, name in pois:

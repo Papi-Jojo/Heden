@@ -26,6 +26,10 @@ jobs:
           path: .cache-donnees
           key: donnees-${{ github.run_id }}
           restore-keys: donnees-
+      - name: Outils OpenStreetMap
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          pip install -q osmium
       - name: Préparer les tuiles
         run: |
           set -o pipefail
