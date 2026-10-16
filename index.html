@@ -654,6 +654,9 @@ async function estimate(points) {
   m.verts = Object.entries(best).reduce((a, [k, dd]) => a + Math.sqrt(meta.parks[k][1] / 10000) * (1 - dd / 800), 0);
   const s = {};
   for (const k of Object.keys(m)) if (meta.q[k]) s[k] = meta.q[k].filter(t => m[k] > t).length;
+  /* une station toute proche suffit à bien noter les transports, même sur une seule ligne */
+  const dmin = stations.reduce((a, x) => Math.min(a, x.d), Infinity);
+  if (s.transports !== undefined) s.transports = Math.max(s.transports, dmin <= 200 ? 4 : dmin <= 400 ? 3 : dmin <= 600 ? 2 : dmin <= 800 ? 1 : 0);
 
   // Explications
   const why = {};
@@ -664,7 +667,7 @@ async function estimate(points) {
     : "Aucune station de métro, RER ou tram à moins de 800 m";
   const nr = (code, label) => near[code] && near[code].d <= 800 ? `${label} ${fmtDist(near[code].d)}` : null;
   why.commerces = [`${plural(n.commerces, "commerce du quotidien", "commerces du quotidien")} à moins de 300 m`,
-    nr(1, "boulangerie"), nr(2, "supermarché"), nr(4, "pharmacie"), near[5] && near[5].d <= 800 ? `marché${near[5].name ? " " + near[5].name : ""} ${fmtDist(near[5].d)}` : null].filter(Boolean).join(", ");
+    nr(1, "boulangerie"), nr(2, "supermarché"), nr(4, "pharmacie"), near[5] && near[5].d <= 800 ? `${/^march/i.test(near[5].name) ? near[5].name : "marché" + (near[5].name ? " " + near[5].name : "")} ${fmtDist(near[5].d)}` : null].filter(Boolean).join(", ");
   why.vie_sociale = `${plural(n.vie_sociale, "restaurant, café ou bar", "restaurants, cafés et bars")} à moins de 400 m`;
   why.nuit = `${plural(n.nuit, "bar ou boîte de nuit", "bars et boîtes de nuit")} à moins de 400 m`;
   why.culture = `${plural(n.culture, "lieu culturel", "lieux culturels")} à moins de 800 m (cinémas, théâtres, musées, bibliothèques, librairies)`;
@@ -1189,13 +1192,13 @@ function renderRating() {
       </div>
       <div class="field" style="gap:14px">
         <span class="label">Critères, de 0 (rédhibitoire) à 5 (excellent)</span>
+        <p class="est-src" id="estSrc" hidden></p>
         ${cs.map(c => `<div class="crit" data-c="${esc(c.id)}">
             <div class="crit__top"><span class="crit__name">${esc(c.name)}</span><span class="crit__w num">poids ${Math.round(c.weight / wsum * 100)} %</span></div>
             ${c.desc ? `<div class="crit__desc">${esc(c.desc)}</div>` : ""}
             <div class="scale">${[0, 1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" style="--c:${colorFor(n * 20)}">${n}</button>`).join("")}</div>
             <div class="crit__est" hidden></div>
           </div>`).join("")}
-        <p class="est-src" id="estSrc" hidden></p>
       </div>
       <div class="field">
         <span class="label">Coup de cœur</span>
@@ -1272,12 +1275,12 @@ function paintCrits() {
     any = any || e !== undefined;
     box.hidden = false;
     box.innerHTML = e === undefined ? esc(why)
-      : u === undefined ? `<b>Estimé à ${e}</b> : ${esc(why)}. Touchez une note pour la changer.`
+      : u === undefined ? `<b>Estimé à ${e}</b> : ${esc(why)}.`
       : u === e ? `Comme l’estimation : ${esc(why)}.`
       : `Estimation ${e} : ${esc(why)}. <button type="button" class="linkbtn" data-reset>Revenir à l’estimation</button>`;
   });
   const src = $("#estSrc");
-  if (src) { src.hidden = !any; src.textContent = "Estimations d’après les ventes DVF et OpenStreetMap, comparées aux autres coins de Paris et de la petite couronne où des appartements se vendent. Elles comptent dans la note tant que vous ne les changez pas."; }
+  if (src) { src.hidden = !any; src.textContent = "Les notes en pointillés sont estimées d’après les ventes DVF et OpenStreetMap, en comparant ce coin aux autres quartiers de Paris et de la petite couronne. Elles comptent dans la note tant que vous ne les changez pas : touchez une autre note pour la remplacer."; }
 }
 function updateScoreBox() {
   const box = $("#sbox"); if (!box) return;
