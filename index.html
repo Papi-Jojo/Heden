@@ -56,7 +56,18 @@ button{cursor:pointer}
 .brand svg{width:30px;height:30px;flex:none}
 .brand b{font-family:var(--display);font-variation-settings:"wdth" 112;font-size:23px;font-weight:700;letter-spacing:-.015em;line-height:1}
 .brand span{font-size:13px;color:var(--zinc);white-space:nowrap;margin-left:6px;padding-left:12px;border-left:1px solid var(--trait)}
-.tabs{display:flex;gap:4px;margin-left:auto}
+.tabs{display:flex;gap:4px}
+.acct{margin-left:auto;display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 10px;border-radius:var(--pilule);border:1px solid var(--trait);background:none;font-size:13px;font-weight:600;color:var(--ardoise-2);max-width:260px}
+.acct i{width:8px;height:8px;border-radius:50%;background:var(--zinc);flex:none}
+.acct.on i{background:var(--email)}
+.acct.err i{background:var(--alerte)}
+.acct span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct[hidden]+.tabs{margin-left:auto}
+.compte--ok{border-color:var(--email);background:var(--email-doux)}
+.acct-line{display:flex;align-items:center;gap:7px;margin-top:6px;font-size:12.5px;color:var(--zinc)}
+.acct-line i{width:7px;height:7px;border-radius:50%;background:var(--zinc);flex:none}
+.acct-line.on i{background:var(--email)}
+.acct-line.err i{background:var(--alerte)}
 .tab{border:0;background:none;height:38px;padding:0 16px;border-radius:var(--pilule);font-weight:600;font-size:14px;color:var(--ardoise-2)}
 .tab:hover{background:var(--enduit)}
 .tab[aria-selected="true"]{background:var(--email);color:var(--on-email)}
@@ -331,6 +342,7 @@ main{position:relative;min-height:0;grid-row:2}
       <svg viewBox="0 0 64 64" aria-hidden="true"><polygon points="8,15 44,8 56,21 51,55 12,48" style="fill:var(--email);fill-opacity:.2;stroke:var(--email);stroke-width:3.6;stroke-linejoin:round"/><circle cx="8" cy="15" r="3.3" style="fill:var(--calcaire);stroke:var(--email);stroke-width:2.4"/><circle cx="44" cy="8" r="3.3" style="fill:var(--calcaire);stroke:var(--email);stroke-width:2.4"/><circle cx="51" cy="55" r="3.3" style="fill:var(--calcaire);stroke:var(--email);stroke-width:2.4"/><circle cx="12" cy="48" r="3.3" style="fill:var(--calcaire);stroke:var(--email);stroke-width:2.4"/><circle cx="56" cy="21" r="5.4" style="fill:var(--laiton-vif)"/></svg>
       <b>heden</b>
     </div>
+    <button class="acct" id="acct" type="button" hidden></button>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-tab="map" aria-selected="true">Carte</button>
       <button class="tab" role="tab" data-tab="profile" aria-selected="false">Profil</button>
@@ -382,7 +394,7 @@ main{position:relative;min-height:0;grid-row:2}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
+<script src="config.js?v=3"></script>
 <script>
 (() => {
 "use strict";
@@ -548,7 +560,7 @@ function setTab(t) {
   $("#view-profile").hidden = t !== "profile";
   if (t === "map") { setTimeout(() => map.invalidateSize(), 0); renderZones(); renderPanel(); }
   else renderProfile();
-  try { history.replaceState(null, "", t === "profile" ? "#profil" : "#carte"); } catch (e) {}
+  try { if (!/(access_token|error_description|error_code)=/.test(location.hash)) history.replaceState(null, "", t === "profile" ? "#profil" : "#carte"); } catch (e) {}
 }
 $$("[data-tab]").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
 
@@ -835,6 +847,7 @@ function renderList() {
       <div class="grow">
         <h2>${n ? `${n} zone${n > 1 ? "s" : ""} notée${n > 1 ? "s" : ""}` : "Aucune zone pour l’instant"}</h2>
         <div class="sub">${best ? `En tête : ${esc(best.z.name || "Sans nom")}, ${best.s.score}/100` : esc(profileLine) + `, ${crit().filter(c => c.weight > 0).length} critères`}</div>
+        ${cloudReady ? `<div class="acct-line ${cloud.user ? (cloud.status === "error" ? "err" : "on") : ""}"><i></i><span>${cloud.user ? esc(accountShort()) : "Sur cet appareil uniquement"}</span></div>` : ""}
       </div>
       <button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button>
     </div>
@@ -1209,9 +1222,9 @@ $("#locate").onclick = () => {
 function accountHTML() {
   if (!cloudReady) return "";
   if (cloud.user) return `
-    <section class="sec compte">
-      <h2>Votre compte</h2>
-      <p class="hint2">Connecté avec <b>${esc(cloud.user.email || "")}</b>. Vos zones, vos notes et votre profil vous suivent sur tous vos appareils.</p>
+    <section class="sec compte compte--ok">
+      <h2>Vous êtes connecté</h2>
+      <p class="hint2">Compte <b>${esc(cloud.user.email || "")}</b>. Vos zones, vos notes et votre profil vous suivent sur tous vos appareils.</p>
       <p class="hint2" id="syncState">${esc(syncLabel())}</p>
       <div class="datarow"><button class="btn" id="logout" type="button">Se déconnecter</button></div>
     </section>`;
@@ -1504,6 +1517,22 @@ function hasPending() {
 function setCloudStatus(st, err) {
   cloud.status = st; cloud.error = err ? (err.message || String(err)) : "";
   const el = document.getElementById("syncState"); if (el) el.textContent = syncLabel();
+  renderAccountChip();
+  const al = document.querySelector(".acct-line"); if (al && cloud.user) { al.className = "acct-line " + (st === "error" ? "err" : "on"); al.querySelector("span").textContent = accountShort(); }
+}
+function accountShort() {
+  if (!cloud.user) return "";
+  if (cloud.status === "sync") return "Synchronisation…";
+  if (cloud.status === "error") return "Connecté, synchronisation en attente";
+  return "Connecté, " + (cloud.user.email || "");
+}
+function renderAccountChip() {
+  const b = document.getElementById("acct"); if (!b) return;
+  if (!cloudReady) { b.hidden = true; return; }
+  b.hidden = false;
+  b.className = "acct" + (cloud.user ? (cloud.status === "error" ? " err" : " on") : "");
+  b.innerHTML = `<i></i><span>${cloud.user ? esc(cloud.user.email || "Connecté") : "Se connecter"}</span>`;
+  b.title = cloud.user ? "Compte connecté : vos zones sont synchronisées" : "Se connecter pour retrouver ses zones sur tous ses appareils";
 }
 function syncLabel() {
   if (!cloud.user) return "";
@@ -1666,9 +1695,12 @@ function cloudInit() {
     const u = session && session.user ? session.user : null;
     if (u && (!cloud.user || cloud.user.id !== u.id)) {
       cloud.user = u; cloud.step = "email"; cloud.synced = null; cloud.names = {};
+      renderAccountChip();
+      if (event === "SIGNED_IN") toast("Vous êtes connecté : " + (u.email || ""));
+      try { if (/(access_token|error)=/.test(location.hash)) history.replaceState(null, "", currentTab === "profile" ? "#profil" : "#carte"); } catch (e) {}
       setTimeout(cloudLoad, 0);
     } else if (!u && cloud.user) {
-      cloud.user = null; cloud.mapId = null; cloud.synced = null; setCloudStatus("local");
+      cloud.user = null; cloud.mapId = null; cloud.synced = null; setCloudStatus("local"); renderAccountChip();
       state = load() || defaultState(); state.zones.forEach(finishZoneGeometry);
       selectedId = null; ui.mode = "list";
       rerenderAll(); renderPanel();
@@ -1676,6 +1708,15 @@ function cloudInit() {
     } else if (u) cloud.user = u;
   });
   window.addEventListener("online", () => scheduleSync(300));
+  const hp = new URLSearchParams(location.hash.slice(1));
+  if (hp.get("error_description") || hp.get("error_code")) {
+    const code = hp.get("error_code") || "";
+    setTab("profile");
+    toast(/expired/.test(code) ? "Ce lien a expiré ou a déjà servi : demandez-en un nouveau" : "Connexion impossible avec ce lien : demandez-en un nouveau");
+    try { history.replaceState(null, "", "#profil"); } catch (e) {}
+  }
+  const ab = document.getElementById("acct"); if (ab) ab.onclick = () => setTab("profile");
+  renderAccountChip();
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && cloud.user) cloudRefresh(false).catch(() => {}); });
 }
 
