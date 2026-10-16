@@ -63,8 +63,9 @@ button{cursor:pointer}
 .acct.err i{background:var(--alerte)}
 .acct span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .acct[hidden]+.tabs{margin-left:auto}
-.compte--ok{border-color:var(--email);background:var(--email-doux)}
-.acct-line{display:flex;align-items:center;gap:7px;margin-top:6px;font-size:12.5px;color:var(--zinc)}
+.acct-line{display:inline-flex;align-items:center;gap:7px;margin-top:6px;padding:0;border:0;background:none;font:inherit;font-size:12.5px;color:var(--zinc);cursor:pointer;max-width:100%}
+.acct-line span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-line b{color:var(--email);font-weight:650;text-decoration:underline;text-underline-offset:2px}
 .acct-line i{width:7px;height:7px;border-radius:50%;background:var(--zinc);flex:none}
 .acct-line.on i{background:var(--email)}
 .acct-line.err i{background:var(--alerte)}
@@ -338,9 +339,31 @@ main{position:relative;min-height:0;grid-row:2}
 .addrow{display:flex;gap:8px;flex-wrap:wrap}
 .addrow select{border:1px solid var(--trait-fort);border-radius:var(--pilule);background:var(--calcaire);padding:0 16px;height:44px;max-width:100%}
 .datarow{display:flex;gap:8px;flex-wrap:wrap}
-.compte{padding:20px;border:1px solid var(--trait);border-radius:var(--rayon-m);background:var(--calcaire)}
-.compte__form{display:flex;flex-direction:column;gap:12px;max-width:420px}
-.compte .hint2{margin:0}
+.acctrow{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--trait);border-radius:var(--rayon-m);background:var(--calcaire)}
+.acctrow>i{width:8px;height:8px;border-radius:50%;background:var(--zinc);flex:none}
+.acctrow.on>i{background:var(--email)}
+.acctrow span{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.acctrow b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acctrow small{font-size:12.5px;color:var(--zinc)}
+.auth{position:fixed;inset:0;z-index:2000;display:flex;align-items:flex-end;justify-content:center}
+.auth__veil{position:absolute;inset:0;background:rgba(38,35,31,.32);opacity:0;transition:opacity .2s cubic-bezier(.2,.7,.2,1)}
+.auth__card{position:relative;width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px;padding:18px 20px calc(20px + env(safe-area-inset-bottom));background:var(--calcaire);border-radius:var(--rayon-l) var(--rayon-l) 0 0;box-shadow:var(--ombre-feuille);transform:translateY(24px);opacity:0;transition:transform .22s cubic-bezier(.2,.7,.2,1),opacity .18s}
+.auth.is-open .auth__veil{opacity:1}
+.auth.is-open .auth__card{transform:none;opacity:1}
+@media (min-width:900px){.auth{align-items:center}.auth__card{border-radius:var(--rayon-l);padding-bottom:22px}}
+@media (prefers-reduced-motion:reduce){.auth__veil,.auth__card{transition:none}}
+.auth__head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.auth__head h2{margin:0;font-family:var(--display);font-variation-settings:"wdth" 100;font-size:19px;font-weight:650}
+.auth__txt{margin:0;font-size:14px;line-height:20px;color:var(--ardoise-2)}
+.auth__small{margin:0;font-size:12.5px;color:var(--zinc)}
+.auth__form{display:flex;flex-direction:column;gap:10px}
+.auth__form input{height:48px;font-size:16px;flex:none}
+.auth__form .btn{height:48px;min-height:48px;flex:none}
+.auth__code{text-align:center;letter-spacing:.5em;font-size:24px!important;font-weight:700;padding-left:.5em}
+.auth__code.is-bad{border-color:var(--alerte)}
+.auth__links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13.5px}
+.auth__links .link:disabled{color:var(--zinc);text-decoration:none;cursor:default}
+.auth__foot{display:flex;justify-content:flex-end}
 .toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--ardoise);color:var(--pierre);padding:10px 18px;border-radius:var(--pilule);font-size:14px;font-weight:500;z-index:3000;box-shadow:var(--ombre-flottant);transition:opacity .2s;white-space:nowrap}
 
 /* ---------- Mobile ---------- */
@@ -1149,7 +1172,7 @@ function renderList() {
         ${mapSwitchHTML()}
         <h2>${n ? `${n} zone${n > 1 ? "s" : ""} notée${n > 1 ? "s" : ""}` : "Aucune zone pour l’instant"}</h2>
         <div class="sub">${best ? `En tête : ${esc(best.z.name || "Sans nom")}, ${best.s.score}/100` : esc(profileLine) + `, ${crit().filter(c => c.weight > 0).length} critères`}</div>
-        ${cloudReady ? `<div class="acct-line ${cloud.user ? (cloud.status === "error" ? "err" : "on") : ""}"><i></i><span>${cloud.user ? esc(accountShort()) : "Sur cet appareil uniquement"}</span></div>` : ""}
+        ${cloudReady ? `<button type="button" class="acct-line ${cloud.user ? (cloud.status === "error" ? "err" : "on") : ""}" data-auth><i></i><span>${cloud.user ? esc(accountShort()) : "Sur cet appareil"}</span>${cloud.user ? "" : `<b>Se connecter</b>`}</button>` : ""}
       </div>
       <button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button>
     </div>
@@ -1196,7 +1219,8 @@ function renderList() {
     </div>`;
   $("#newZone").onclick = e => { e.stopPropagation(); startNew(); };
   $$("[data-map]", panel).forEach(b => b.onclick = e => { e.stopPropagation(); switchMap(b.dataset.map); });
-  const gl = $("#goLogin"); if (gl) gl.onclick = () => setTab("profile");
+  const gl = $("#goLogin"); if (gl) gl.onclick = e => { e.stopPropagation(); openAuth(); };
+  bindAccount(panel);
   $$(".zrow", panel).forEach(r => r.onclick = () => openDetail(r.dataset.id, true));
   $$("[data-sort]", panel).forEach(b => b.onclick = () => { ui.sort = b.dataset.sort; try { localStorage.setItem("heden.sort", ui.sort); } catch (e) {} renderList(); applySheet(); });
   const ex = $("#loadEx"); if (ex) ex.onclick = loadExamples;
@@ -1650,58 +1674,108 @@ $("#locate").onclick = () => {
 /* =========================================================
    Onglet profil
    ========================================================= */
+/* =========================================================
+   Connexion : petit panneau qui s'ouvre de partout
+   ========================================================= */
+const auth = {open: false, note: "", cooldown: 0, timer: null};
+const maskMail = m => { const [u, d] = String(m || "").split("@"); return d ? (u.length <= 2 ? u : u.slice(0, 2) + "•••") + "@" + d : m; };
 function accountHTML() {
   if (!cloudReady) return "";
-  if (cloud.user) return `
-    <section class="sec compte compte--ok">
-      <h2>Vous êtes connecté</h2>
-      <p class="hint2">Compte <b>${esc(cloud.user.email || "")}</b>. Vos zones, vos notes et votre profil vous suivent sur tous vos appareils.</p>
-      <p class="hint2" id="syncState">${esc(syncLabel())}</p>
-      <div class="datarow"><button class="btn" id="logout" type="button">Se déconnecter</button></div>
-    </section>`;
-  if (cloud.step === "code") return `
-    <section class="sec compte">
-      <h2>Votre compte</h2>
-      <p class="hint2">Un e-mail vient d’être envoyé à <b>${esc(cloud.pendingEmail)}</b>. Ouvrez le lien qu’il contient <b>sur cet appareil</b> : vous serez connecté automatiquement. Pensez à regarder dans les indésirables.</p>
-      ${CFG.codeParEmail ? `<form class="compte__form" id="codeForm">
-        <div class="field"><label class="label" for="loginCode">Ou saisissez le code reçu</label>
-          <input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456"></div>
-        <div class="datarow"><button class="btn btn--primary" type="submit">Se connecter</button></div>
-      </form>` : ""}
-      <div class="datarow"><button class="btn btn--ghost" id="changeMail" type="button">Changer d’adresse ou renvoyer</button></div>
-    </section>`;
-  return `
-    <section class="sec compte">
-      <h2>Votre compte</h2>
-      <p class="hint2">Connectez-vous avec votre e-mail pour retrouver votre carte sur votre téléphone et votre ordinateur. Pas de mot de passe : vous recevez un lien de connexion.</p>
-      <form class="compte__form" id="mailForm">
-        <div class="field"><label class="label" for="loginMail">Adresse e-mail</label>
-          <input type="email" id="loginMail" autocomplete="email" inputmode="email" placeholder="prenom@exemple.fr" value="${esc(cloud.pendingEmail)}"></div>
-        <div class="datarow"><button class="btn btn--primary" type="submit">Recevoir le lien de connexion</button></div>
-      </form>
-    </section>`;
+  return cloud.user
+    ? `<div class="acctrow on"><i></i><span><b>${esc(cloud.user.email || "Connecté")}</b><small id="syncState">${esc(syncLabel())}</small></span><button class="link" type="button" data-auth>Gérer</button></div>`
+    : `<div class="acctrow"><i></i><span><b>Sur cet appareil uniquement</b><small>Connectez-vous pour retrouver vos zones partout</small></span><button class="btn btn--sm btn--primary" type="button" data-auth>Se connecter</button></div>`;
 }
-function bindAccount() {
-  const mf = $("#mailForm");
-  if (mf) mf.onsubmit = async e => {
+function bindAccount(root = document) {
+  $$("[data-auth]", root).forEach(b => b.onclick = e => { e.stopPropagation(); openAuth(); });
+}
+function openAuth(note) {
+  if (!cloudReady) return;
+  auth.open = true; auth.note = note || "";
+  if (!cloud.user && cloud.step !== "code") cloud.step = "email";
+  renderAuth();
+  const el = $("#auth"); el.hidden = false;
+  requestAnimationFrame(() => { el.classList.add("is-open"); const f = el.querySelector("input"); if (f && !cloud.user) f.focus({preventScroll: true}); });
+}
+function closeAuth() {
+  const el = $("#auth"); if (!el || el.hidden) return;
+  auth.open = false; el.classList.remove("is-open");
+  if (document.activeElement && el.contains(document.activeElement)) document.activeElement.blur();
+  setTimeout(() => { if (!auth.open) el.hidden = true; }, 200);
+}
+function startCooldown() {
+  auth.cooldown = 30; clearInterval(auth.timer);
+  auth.timer = setInterval(() => {
+    auth.cooldown--; const r = $("#resend");
+    if (r) { r.disabled = auth.cooldown > 0; r.textContent = auth.cooldown > 0 ? `Renvoyer le code (${auth.cooldown} s)` : "Renvoyer le code"; }
+    if (auth.cooldown <= 0) clearInterval(auth.timer);
+  }, 1000);
+}
+function renderAuth() {
+  let el = $("#auth");
+  if (!el) {
+    el = document.createElement("div"); el.id = "auth"; el.className = "auth"; el.hidden = true;
+    el.innerHTML = `<div class="auth__veil" data-close></div><div class="auth__card" role="dialog" aria-modal="true" aria-labelledby="authTitle"></div>`;
+    document.body.appendChild(el);
+    el.addEventListener("click", e => { if (e.target.closest("[data-close]")) closeAuth(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && auth.open) closeAuth(); });
+  }
+  const card = el.querySelector(".auth__card");
+  const close = `<button class="x" type="button" data-close aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+  let last = ""; try { last = localStorage.getItem("heden.lastEmail") || ""; } catch (e) {}
+  if (cloud.user) {
+    card.innerHTML = `<div class="auth__head"><h2 id="authTitle">Votre compte</h2>${close}</div>
+      <p class="auth__txt">Connecté avec <b>${esc(cloud.user.email || "")}</b>. Vos zones, vos notes et votre profil vous suivent sur tous vos appareils.</p>
+      <p class="auth__small" id="syncState2">${esc(syncLabel())}</p>
+      <div class="auth__foot"><button class="btn btn--sm btn--ghost btn--danger" type="button" id="logout">Se déconnecter</button></div>`;
+    $("#logout").onclick = async () => { closeAuth(); await signOut(); };
+    return;
+  }
+  if (cloud.step === "code") {
+    card.innerHTML = `<div class="auth__head"><h2 id="authTitle">Saisissez le code</h2>${close}</div>
+      <p class="auth__txt">Un code à 6 chiffres vient d’être envoyé à <b>${esc(maskMail(cloud.pendingEmail))}</b>. Pensez aux indésirables.${CFG.codeParEmail ? "" : " Ouvrez le lien de l’e-mail sur cet appareil."}</p>
+      ${CFG.codeParEmail ? `<form id="codeForm" class="auth__form" autocomplete="on">
+        <input type="text" id="loginCode" class="auth__code num" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="••••••" aria-label="Code à 6 chiffres">
+        <button class="btn btn--primary btn--block" type="submit">Se connecter</button>
+      </form>` : ""}
+      <div class="auth__links"><button class="link" type="button" id="resend" ${auth.cooldown > 0 ? "disabled" : ""}>${auth.cooldown > 0 ? `Renvoyer le code (${auth.cooldown} s)` : "Renvoyer le code"}</button><button class="link" type="button" id="changeMail">Changer d’adresse</button></div>`;
+    const cf = $("#codeForm"), ci = $("#loginCode");
+    const submit = async () => {
+      const code = ci.value.replace(/\D/g, "");
+      if (code.length < 6) return toast("Le code fait 6 chiffres");
+      const b = cf.querySelector("button"); b.disabled = true; b.textContent = "Vérification…"; ci.disabled = true;
+      try { await verifyLoginCode(cloud.pendingEmail, code); }
+      catch (err) { b.disabled = false; ci.disabled = false; b.textContent = "Se connecter"; ci.value = ""; ci.focus(); ci.classList.add("is-bad"); toast("Code incorrect ou expiré"); }
+    };
+    if (cf) {
+      cf.onsubmit = e => { e.preventDefault(); submit(); };
+      ci.oninput = () => { ci.classList.remove("is-bad"); ci.value = ci.value.replace(/\D/g, "").slice(0, 6); if (ci.value.length === 6) submit(); };
+    }
+    $("#resend").onclick = async e => {
+      e.target.disabled = true;
+      try { await sendLoginEmail(cloud.pendingEmail); toast("Nouveau code envoyé"); startCooldown(); }
+      catch (err) { e.target.disabled = false; toast(/rate|seconds/i.test(err.message || "") ? "Trop de demandes : réessayez dans une minute" : "Envoi impossible pour le moment"); }
+    };
+    $("#changeMail").onclick = () => { cloud.step = "email"; renderAuth(); const f = $("#loginMail"); if (f) f.focus(); };
+    return;
+  }
+  card.innerHTML = `<div class="auth__head"><h2 id="authTitle">Se connecter</h2>${close}</div>
+    <p class="auth__txt">${auth.note ? esc(auth.note) : "Retrouvez vos zones sur votre téléphone et votre ordinateur, et partagez une carte à deux."} Pas de mot de passe : vous recevez un code par e-mail.</p>
+    <form id="mailForm" class="auth__form">
+      <input type="email" id="loginMail" autocomplete="email" inputmode="email" placeholder="prenom@exemple.fr" aria-label="Adresse e-mail" value="${esc(cloud.pendingEmail || last)}">
+      <button class="btn btn--primary btn--block" type="submit">Recevoir un code</button>
+    </form>`;
+  $("#mailForm").onsubmit = async e => {
     e.preventDefault();
-    const email = $("#loginMail").value.trim();
+    const email = $("#loginMail").value.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("Adresse e-mail incomplète");
-    const b = mf.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Envoi…";
-    try { await sendLoginEmail(email); cloud.pendingEmail = email; cloud.step = "code"; renderProfile(); }
-    catch (err) { b.disabled = false; b.textContent = "Recevoir le lien de connexion"; toast(/rate|seconds/i.test(err.message || "") ? "Trop de demandes : réessayez dans une minute" : "Envoi impossible pour le moment"); }
+    const b = e.target.querySelector("button"); b.disabled = true; b.textContent = "Envoi…";
+    try {
+      await sendLoginEmail(email);
+      cloud.pendingEmail = email; cloud.step = "code";
+      try { localStorage.setItem("heden.lastEmail", email); } catch (err) {}
+      startCooldown(); renderAuth(); const c = $("#loginCode"); if (c) c.focus();
+    } catch (err) { b.disabled = false; b.textContent = "Recevoir un code"; toast(/rate|seconds/i.test(err.message || "") ? "Trop de demandes : réessayez dans une minute" : "Envoi impossible pour le moment"); }
   };
-  const cf = $("#codeForm");
-  if (cf) cf.onsubmit = async e => {
-    e.preventDefault();
-    const code = $("#loginCode").value.trim();
-    if (code.length < 6) return toast("Le code fait 6 chiffres");
-    const b = cf.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Vérification…";
-    try { await verifyLoginCode(cloud.pendingEmail, code); }
-    catch (err) { b.disabled = false; b.textContent = "Se connecter"; toast("Code incorrect ou expiré"); }
-  };
-  const cm = $("#changeMail"); if (cm) cm.onclick = () => { cloud.step = "email"; renderProfile(); };
-  const lo = $("#logout"); if (lo) lo.onclick = () => signOut();
 }
 function renderProfile() {
   const p = state.profile;
@@ -1789,7 +1863,7 @@ function renderProfile() {
       <p class="hint2 num">${state.zones.length} zone${state.zones.length > 1 ? "s" : ""} enregistrée${state.zones.length > 1 ? "s" : ""}${storageOk ? "" : " · stockage local bloqué par ce navigateur"}.</p>
     </section>`;
 
-  bindAccount();
+  bindAccount($("#prof"));
   bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
   $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); toast(p.halfPoints ? "Notes au demi-point activées" : "Notes au demi-point désactivées"); };
@@ -1955,6 +2029,7 @@ function hasPending() {
 function setCloudStatus(st, err) {
   cloud.status = st; cloud.error = err ? (err.message || String(err)) : "";
   const el = document.getElementById("syncState"); if (el) el.textContent = syncLabel();
+  const el2 = document.getElementById("syncState2"); if (el2) el2.textContent = syncLabel();
   renderAccountChip();
   const al = document.querySelector(".acct-line"); if (al && cloud.user) { al.className = "acct-line " + (st === "error" ? "err" : "on"); al.querySelector("span").textContent = accountShort(); }
 }
@@ -2226,7 +2301,7 @@ function sharedHTML() {
   try { pending = localStorage.getItem("heden.invite"); } catch (e) {}
   if (!cloud.user) return `<section class="sec">
       <h2>Carte à deux</h2>
-      <p class="hint2">${pending ? `<b>Vous avez reçu une invitation.</b> Connectez-vous ci-dessus avec votre e-mail : vous rejoindrez la carte automatiquement.` : "Connectez-vous pour créer une carte commune avec votre binôme. Chacun y note les zones avec son propre profil, et la couleur montre votre note commune."}</p>
+      <p class="hint2">${pending ? `<b>Vous avez reçu une invitation.</b> <button class="link" type="button" data-auth>Connectez-vous</button> avec votre e-mail : vous rejoindrez la carte automatiquement.` : `<button class="link" type="button" data-auth>Connectez-vous</button> pour créer une carte commune avec votre binôme. Chacun y note les zones avec son propre profil, et la couleur montre votre note commune.`}</p>
     </section>`;
   const shared = cloud.maps.filter(m => m.kind === "partagee");
   return `<section class="sec" id="duoSec">
@@ -2353,7 +2428,9 @@ function cloudInit() {
     if (u && (!cloud.user || cloud.user.id !== u.id)) {
       cloud.user = u; cloud.step = "email"; cloud.synced = null; cloud.names = {};
       renderAccountChip();
-      if (event === "SIGNED_IN") toast("Vous êtes connecté : " + (u.email || ""));
+      if (event === "SIGNED_IN") toast("Connecté : " + (u.email || ""));
+      cloud.pendingEmail = ""; clearInterval(auth.timer); auth.cooldown = 0;
+      if (auth.open) closeAuth();
       try { if (/(access_token|error)=/.test(location.hash)) history.replaceState(null, "", currentTab === "profile" ? "#profil" : "#carte"); } catch (e) {}
       setTimeout(cloudLoad, 0);
     } else if (!u && cloud.user) {
@@ -2373,17 +2450,16 @@ function cloudInit() {
     if (inv) {
       localStorage.setItem("heden.invite", inv.trim().toUpperCase());
       history.replaceState(null, "", location.pathname + location.hash);
-      setTimeout(() => { if (!cloud.user) { setTab("profile"); toast("Connectez-vous pour rejoindre la carte de votre binôme"); } }, 1200);
+      setTimeout(() => { if (!cloud.user) openAuth("Votre binôme vous invite sur sa carte : connectez-vous pour la rejoindre."); }, 1200);
     }
   } catch (e) {}
   const hp = new URLSearchParams(location.hash.slice(1));
   if (hp.get("error_description") || hp.get("error_code")) {
     const code = hp.get("error_code") || "";
-    setTab("profile");
-    toast(/expired/.test(code) ? "Ce lien a expiré ou a déjà servi : demandez-en un nouveau" : "Connexion impossible avec ce lien : demandez-en un nouveau");
-    try { history.replaceState(null, "", "#profil"); } catch (e) {}
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    openAuth(/expired/.test(code) ? "Ce lien a expiré ou a déjà servi." : "Connexion impossible avec ce lien.");
   }
-  const ab = document.getElementById("acct"); if (ab) ab.onclick = () => setTab("profile");
+  const ab = document.getElementById("acct"); if (ab) ab.onclick = () => openAuth();
   renderAccountChip();
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && cloud.user) cloudRefresh(false).catch(() => {}); });
 }
