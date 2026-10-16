@@ -1,0 +1,26 @@
+# Interroge la base chaque lundi et chaque jeudi pour éviter que le projet Supabase gratuit
+# ne soit mis en pause après une semaine sans visite. Lit l'adresse et la clé publique dans config.js.
+name: Réveil Supabase
+on:
+  schedule:
+    - cron: "17 6 * * 1,4"
+  workflow_dispatch:
+jobs:
+  reveil:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lire la configuration
+        id: cfg
+        run: |
+          URL=$(grep -oE 'supabaseUrl:\s*"[^"]*"' config.js | sed -E 's/.*"([^"]*)"/\1/')
+          KEY=$(grep -oE 'supabaseAnonKey:\s*"[^"]*"' config.js | sed -E 's/.*"([^"]*)"/\1/')
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+      - name: Interroger la base
+        if: steps.cfg.outputs.url != ''
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.cfg.outputs.url }}/rest/v1/heartbeat?select=id" \
+            -H "apikey: ${{ steps.cfg.outputs.key }}")
+          echo "Réponse : $code"
+          test "$code" = "200"

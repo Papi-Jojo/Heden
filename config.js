@@ -1,0 +1,10 @@
+/* Configuration de Heden.
+   Remplir avec les valeurs de Supabase > Project Settings > API (ou Data API) :
+   - supabaseUrl     : « Project URL », du type https://abcdefgh.supabase.co
+   - supabaseAnonKey : clé publique « anon » / « publishable ». Elle est faite pour être visible dans le site ;
+                       ne jamais mettre ici la clé « service_role » / « secret ».
+   Laissé vide, le site fonctionne sans compte, avec les zones enregistrées sur l'appareil. */
+window.HEDEN_CONFIG = {
+  supabaseUrl: "",
+  supabaseAnonKey: ""
+};
