@@ -158,6 +158,7 @@ main{position:relative;min-height:0;grid-row:2}
 .heart{color:var(--laiton-vif);display:inline-flex}
 
 .empty{display:flex;flex-direction:column;gap:18px}
+.empty>p{margin:0;font-size:14.5px;color:var(--ardoise-2)}
 .empty ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:0;counter-reset:s;position:relative}
 .empty li{position:relative;display:grid;grid-template-columns:28px 1fr;gap:14px;font-size:14.5px;color:var(--ardoise-2);padding-bottom:18px}
 .empty li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--calcaire);border:2px solid var(--ardoise);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ardoise);position:relative;z-index:1}
@@ -283,6 +284,26 @@ main{position:relative;min-height:0;grid-row:2}
 .wctl output small{display:block;color:var(--zinc);font-size:12px;font-weight:500}
 .x{width:36px;height:36px;border-radius:50%;border:0;background:none;color:var(--zinc);display:grid;place-items:center}
 .x.armed{color:var(--alerte);background:var(--enduit)}
+.mapsw{display:inline-flex;gap:2px;padding:3px;margin-bottom:8px;border-radius:var(--pilule);border:1px solid var(--trait);background:var(--pierre);max-width:100%;overflow-x:auto}
+.mapsw button{border:0;background:none;height:32px;padding:0 13px;border-radius:var(--pilule);font:600 13px/1 var(--sans);color:var(--ardoise-2);white-space:nowrap;cursor:pointer}
+.mapsw button[aria-pressed="true"]{background:var(--email);color:var(--on-email)}
+.duo{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--trait);border-radius:var(--rayon-m)}
+.duo__row{display:flex;align-items:center;gap:10px;font-size:14.5px}
+.duo__row span:first-child{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duo__row b{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+.duo__row b i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.duo__row em{font-style:normal;color:var(--zinc);font-size:13px}
+.duo__row .heart{color:var(--laiton-vif)}
+.duo__c{margin:-2px 0 0;font-size:13.5px;color:var(--ardoise-2);white-space:pre-wrap}
+.duo__h{margin:2px 0 0;font-size:12px;color:var(--zinc)}
+.mapcard{display:flex;flex-direction:column;gap:12px;padding:14px 16px;border:1px solid var(--trait);border-radius:var(--rayon-m);background:var(--calcaire);margin-bottom:12px}
+.mapcard b{font-family:var(--display);font-variation-settings:"wdth" 100;font-size:16px}
+.mapcard .hint2{margin:2px 0 0}
+.invite{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:var(--rayon-m);background:var(--email-doux)}
+.invite__code{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:.14em;color:var(--email)}
+.invite .hint2{margin:0}
+.inline-form{display:flex;align-items:flex-end;gap:10px;margin-top:14px}
+.inline-form .field{flex:1;min-width:0}
 .x:hover{background:var(--enduit);color:var(--ardoise)}
 .totals{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13.5px;color:var(--zinc)}
 .addrow{display:flex;gap:8px;flex-wrap:wrap}
@@ -504,14 +525,14 @@ function load() {
 }
 function save() {
   try {
-    if (cloud.user) localStorage.setItem("heden.cache." + cloud.user.id, JSON.stringify({state, synced: cloud.synced}));
+    if (cloud.user) localStorage.setItem("heden.cache." + cloud.user.id, JSON.stringify({state, synced: cloud.synced, mapId: cloud.mapId}));
     else localStorage.setItem(KEY, JSON.stringify(state));
     storageOk = true;
   } catch (e) { storageOk = false; }
   if (cloud.user) scheduleSync();
 }
 /* état de la synchronisation : rempli par le module Supabase plus bas */
-let cloud = {client: null, user: null, mapId: null, names: {}, synced: null, status: "local", timer: null, busy: false, again: false, lastSync: null, error: "", pendingEmail: "", step: "email"};
+let cloud = {client: null, user: null, mapId: null, personalMapId: null, maps: [], people: {}, channel: null, invite: null, names: {}, synced: null, status: "local", timer: null, busy: false, again: false, lastSync: null, error: "", pendingEmail: "", step: "email"};
 let state = load() || defaultState();
 if (!state.profile || !Array.isArray(state.zones)) state = defaultState();
 
@@ -559,22 +580,45 @@ let selectedId = null;
 
 /* Note d'un critère : celle de la personne si elle l'a donnée, sinon l'estimation */
 const userVal = (z, id) => z.ratings && typeof z.ratings[id] === "number" ? z.ratings[id] : undefined;
-function critVal(z, id) {
-  const u = userVal(z, id);
+function critValFor(z, id, ratings, budget) {
+  const u = ratings && typeof ratings[id] === "number" ? ratings[id] : undefined;
   if (u !== undefined) return {v: u, est: false};
-  const e = estScore(z, id);
+  const e = estScore(z, id, budget);
   return e === undefined ? {v: undefined, est: false} : {v: e, est: true};
 }
-function scoreOf(z) {
+const critVal = (z, id) => critValFor(z, id, z.ratings, state.profile.budget);
+function scoreWith(z, ratings, criteria, budget) {
   let wsum = 0, acc = 0, rated = 0, total = 0, estimated = 0;
-  for (const c of crit()) {
+  for (const c of criteria) {
     if (!(c.weight > 0)) continue;
     total++;
-    const {v, est} = critVal(z, c.id);
+    const {v, est} = critValFor(z, c.id, ratings, budget);
     if (typeof v === "number") { wsum += c.weight; acc += c.weight * v / 5; rated++; if (est) estimated++; }
   }
   return {score: wsum ? Math.round(acc / wsum * 100) : null, rated, total, estimated, complete: total > 0 && rated === total};
 }
+const scoreOf = z => scoreWith(z, z.ratings, crit(), state.profile.budget);
+
+/* Carte à deux : chacun note avec son profil, la carte montre la note commune */
+const curMap = () => cloud.user ? cloud.maps.find(m => m.id === cloud.mapId) : null;
+const isShared = () => { const m = curMap(); return !!(m && m.kind === "partagee"); };
+const hasRated = r => !!r && (Object.keys(r.ratings || {}).length > 0 || !!r.fav || !!r.comment);
+const personName = id => (cloud.people[id] && cloud.people[id].name) || cloud.names[id] || "Votre binôme";
+function partnerScores(z) {
+  return (z.others || []).filter(hasRated).map(o => {
+    const p = cloud.people[o.userId] || {};
+    const cs = Array.isArray(p.criteria) && p.criteria.length ? p.criteria : crit();
+    return {userId: o.userId, name: personName(o.userId), fav: o.fav, comment: o.comment, s: scoreWith(z, o.ratings, cs, p.budget)};
+  });
+}
+function zoneScore(z) {
+  const mine = scoreOf(z);
+  if (!isShared()) return mine;
+  const vals = [hasRated(z) ? mine.score : null, ...partnerScores(z).map(p => p.s.score)].filter(v => v != null);
+  if (!vals.length) return mine;
+  return Object.assign({}, mine, {score: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length), joint: vals.length > 1});
+}
+const anyFav = z => !!z.fav || (isShared() && (z.others || []).some(o => o.fav));
 const zonePrice = z => z.price > 0 ? z.price : (z.est && z.est.prix ? z.est.prix.med : null);
 const overBudget = z => state.profile.budget > 0 && zonePrice(z) > state.profile.budget;
 
@@ -703,10 +747,10 @@ async function estimate(points) {
   }
   return {v: meta.version, g: geomKey(points), s, why, prix};
 }
-function estScore(z, id) {
+function estScore(z, id, budget = state.profile.budget) {
   const e = z.est; if (!e) return undefined;
   if (id === "prix") {
-    const b = state.profile.budget, p = e.prix && e.prix.med;
+    const b = budget, p = e.prix && e.prix.med;
     if (!(b > 0) || !p) return undefined;
     const r = p / b;
     return r <= .85 ? 5 : r <= .92 ? 4 : r <= .98 ? 3 : r <= 1.04 ? 2 : r <= 1.10 ? 1 : 0;
@@ -850,7 +894,7 @@ function renderZones() {
   zoneLayer.clearLayers();
   for (const z of state.zones) {
     if (draft && draft.id === z.id) continue;
-    const {score} = scoreOf(z);
+    const {score} = zoneScore(z);
     const col = colorFor(score);
     const out = overBudget(z);
     const circle = L.polygon(z.points, {
@@ -860,7 +904,7 @@ function renderZones() {
     });
     const badge = L.marker([z.lat, z.lng], {
       icon: L.divIcon({className: "", iconSize: null,
-        html: `<span class="zone-badge" style="--c:${col}"><i></i>${score == null ? "–" : score}${z.fav ? HEART : ""}</span>`}),
+        html: `<span class="zone-badge" style="--c:${col}"><i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}</span>`}),
       keyboard: false
     });
     const onClick = e => { if (ui.mode === "placing") { addPoint(e.latlng); return; } openDetail(z.id); };
@@ -1023,7 +1067,7 @@ window.addEventListener("pointercancel", endSheetDrag);
 panel.addEventListener("click", e => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); } }, true);
 
 function sortedZones() {
-  return state.zones.map(z => ({z, s: scoreOf(z)})).sort((a, b) => {
+  return state.zones.map(z => ({z, s: zoneScore(z)})).sort((a, b) => {
     const oa = overBudget(a.z), ob = overBudget(b.z);
     if (oa !== ob) return oa ? 1 : -1;
     return (b.s.score ?? -1) - (a.s.score ?? -1);
@@ -1041,6 +1085,7 @@ function renderList() {
     <div class="grip"></div>
     <div class="panel__head" id="phead">
       <div class="grow">
+        ${mapSwitchHTML()}
         <h2>${n ? `${n} zone${n > 1 ? "s" : ""} notée${n > 1 ? "s" : ""}` : "Aucune zone pour l’instant"}</h2>
         <div class="sub">${best ? `En tête : ${esc(best.z.name || "Sans nom")}, ${best.s.score}/100` : esc(profileLine) + `, ${crit().filter(c => c.weight > 0).length} critères`}</div>
         ${cloudReady ? `<div class="acct-line ${cloud.user ? (cloud.status === "error" ? "err" : "on") : ""}"><i></i><span>${cloud.user ? esc(accountShort()) : "Sur cet appareil uniquement"}</span></div>` : ""}
@@ -1061,10 +1106,10 @@ function renderList() {
               <span class="score-chip ${s.score == null ? "none" : ""}" style="--c:${colorFor(s.score)}">${s.score == null ? "–" : s.score}</span>
               <div>
                 <div class="t">${esc(z.name || "Sans nom")}</div>
-                <div class="m">${esc(placeLabel(z))}${z.author ? `, par ${esc(z.author)}` : ""}</div>
+                <div class="m">${esc(placeLabel(z))}${z.author ? `, par ${esc(z.author)}` : ""}${isShared() ? esc(duoLine(z)) : ""}</div>
               </div>
               <span class="tags">
-                ${z.fav ? `<span class="heart" title="Coup de cœur">${HEART}</span>` : ""}
+                ${anyFav(z) ? `<span class="heart" title="Coup de cœur">${HEART}</span>` : ""}
                 ${overBudget(z) ? `<span class="tag tag--alerte">Hors budget</span>` : ""}
                 ${!s.complete && s.score != null ? `<span class="tag">Partielle</span>` : ""}
                 
@@ -1072,6 +1117,10 @@ function renderList() {
             </button>`).join("")}
         </div>
         ${state.zones.some(z => z.example) ? `<div><button class="link" id="dropEx" type="button">Retirer les zones d’exemple</button></div>` : ""}
+      ` : isShared() ? `
+        <div class="empty">
+          <p>Rien encore sur cette carte commune. Tracez une zone avec <b>+ Zone</b>, ou ouvrez une zone de votre carte et touchez <b>Copier sur la carte commune</b>.</p>
+        </div>
       ` : `
         <div class="empty">
           <ol>
@@ -1084,6 +1133,7 @@ function renderList() {
       `}
     </div>`;
   $("#newZone").onclick = e => { e.stopPropagation(); startNew(); };
+  $$("[data-map]", panel).forEach(b => b.onclick = e => { e.stopPropagation(); switchMap(b.dataset.map); });
   const gl = $("#goLogin"); if (gl) gl.onclick = () => setTab("profile");
   $$(".zrow", panel).forEach(r => r.onclick = () => openDetail(r.dataset.id, true));
   const ex = $("#loadEx"); if (ex) ex.onclick = loadExamples;
@@ -1349,9 +1399,13 @@ function openDetail(id, fly) {
 function renderDetail() {
   const z = state.zones.find(x => x.id === selectedId);
   if (!z) { ui.mode = "list"; return renderPanel(); }
-  const s = scoreOf(z);
+  const s = scoreOf(z), zs = zoneScore(z), duo = isShared();
   const cs = crit().filter(c => c.weight > 0);
   const wsum = cs.reduce((a, c) => a + c.weight, 0) || 1;
+  const big = duo ? zs : s;
+  const partners = duo ? partnerScores(z) : [];
+  const waiting = duo ? curMap().members.filter(m => m.userId !== cloud.user.id && !partners.some(p => p.userId === m.userId)) : [];
+  const copyTargets = !duo && cloud.user ? cloud.maps.filter(m => m.kind === "partagee") : [];
   panel.innerHTML = `
     <div class="grip"></div>
     <div class="panel__head">
@@ -1363,11 +1417,18 @@ function renderDetail() {
     </div>
     <div class="panel__body">
       <div class="scorebox">
-        <div class="big ${s.score == null ? "none" : ""}" style="--c:${colorFor(s.score)}">${s.score == null ? "–" : s.score}</div>
-        <div><strong>${s.score == null ? "Pas encore de note" : verdict(s.score)}</strong>
-        <p class="num">${s.rated} sur ${s.total} critères notés${s.estimated ? `, dont ${s.estimated} estimé${s.estimated > 1 ? "s" : ""}` : ""}</p>${z.fav ? `<p style="color:var(--laiton);font-weight:600;margin-top:2px"><span class="heart">${HEART}</span> Coup de cœur</p>` : ""}</div>
+        <div class="big ${big.score == null ? "none" : ""}" style="--c:${colorFor(big.score)}">${big.score == null ? "–" : big.score}</div>
+        <div><strong>${big.score == null ? "Pas encore de note" : verdict(big.score)}</strong>
+        <p class="num">${duo ? (zs.joint ? "Note commune, moyenne de vos deux notes" : hasRated(z) ? "Votre note, en attendant celle de votre binôme" : partners.length ? `Note de ${esc(partners[0].name)}, en attendant la vôtre` : "Estimation, personne n’a encore noté") : `${s.rated} sur ${s.total} critères notés${s.estimated ? `, dont ${s.estimated} estimé${s.estimated > 1 ? "s" : ""}` : ""}`}</p>${z.fav ? `<p style="color:var(--laiton);font-weight:600;margin-top:2px"><span class="heart">${HEART}</span> Coup de cœur</p>` : ""}</div>
       </div>
       ${overBudget(z) ? `<div class="banner banner--alerte">${z.price > 0 ? "Prix observé" : "Prix estimé"} de ${fmtInt(zonePrice(z))} €/m², au-dessus de votre budget de ${fmtInt(state.profile.budget)} €/m².</div>` : ""}
+      ${duo ? `<div class="duo">
+        <div class="duo__row"><span>Vous</span>${hasRated(z) ? `<b class="num" style="--c:${colorFor(s.score)}"><i></i>${s.score ?? "–"}</b>` : `<em>Pas encore noté</em>`}${z.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
+        ${partners.map(p => `<div class="duo__row"><span>${esc(p.name)}</span><b class="num" style="--c:${colorFor(p.s.score)}"><i></i>${p.s.score ?? "–"}</b>${p.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
+          ${p.comment ? `<p class="duo__c">${esc(p.name)} : ${esc(p.comment)}</p>` : ""}`).join("")}
+        ${waiting.map(m => `<div class="duo__row"><span>${esc(personName(m.userId))}</span><em>Pas encore noté</em></div>`).join("")}
+        <p class="duo__h">Chacun note avec son propre profil. Le détail ci-dessous montre vos critères.</p>
+      </div>` : ""}
       ${priceHTML(z)}
       ${!s.complete && s.total ? `<div class="banner">Note partielle : ${s.total - s.rated} critère${s.total - s.rated > 1 ? "s" : ""} de votre profil n’${s.total - s.rated > 1 ? "ont" : "a"} pas encore été noté${s.total - s.rated > 1 ? "s" : ""}.</div>` : ""}
       <div class="breakdown">
@@ -1386,7 +1447,8 @@ function renderDetail() {
         ${z.author ? `<dt>Notée par</dt><dd>${esc(z.author)}</dd>` : ""}
       </dl>
       ${z.comment ? `<div class="note">${esc(z.comment)}</div>` : ""}
-      <div><button class="btn btn--sm btn--danger" id="del" type="button">Supprimer la zone</button></div>
+      ${copyTargets.length ? `<div class="datarow">${copyTargets.map(m => `<button class="btn btn--sm" data-copy="${m.id}" type="button">Copier sur « ${esc(m.name)} »</button>`).join("")}</div>` : ""}
+      <div><button class="btn btn--sm btn--danger" id="del" type="button">${duo ? "Supprimer la zone pour vous deux" : "Supprimer la zone"}</button></div>
     </div>
     <div class="panel__foot">
       <button class="btn" id="adj" type="button">Ajuster le tracé</button>
@@ -1395,9 +1457,11 @@ function renderDetail() {
   $("#close").onclick = () => { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); };
   $("#edit").onclick = () => { draft = Object.assign(clone(z), {closed: true}); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
   $("#adj").onclick = () => { draft = Object.assign(clone(z), {closed: true}); selVertex = null; ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); renderZones(); drawDraft(); renderPanel(); };
+  $$("[data-copy]", panel).forEach(b => b.onclick = () => copyToMap(z, b.dataset.copy, b));
   const del = $("#del");
   del.onclick = () => {
-    if (!del.classList.contains("armed")) { del.classList.add("armed"); del.textContent = "Confirmer la suppression"; setTimeout(() => { if (del.isConnected) { del.classList.remove("armed"); del.textContent = "Supprimer la zone"; } }, 3500); return; }
+    const label = del.textContent;
+    if (!del.classList.contains("armed")) { del.classList.add("armed"); del.textContent = "Confirmer la suppression"; setTimeout(() => { if (del.isConnected) { del.classList.remove("armed"); del.textContent = label; } }, 3500); return; }
     state.zones = state.zones.filter(x => x.id !== z.id); save();
     selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); toast("Zone supprimée");
   };
@@ -1555,6 +1619,7 @@ function renderProfile() {
       <p class="lead">Vos critères et leurs poids déterminent la note de chaque zone. Modifier un poids recalcule toutes les notes, sans retoucher vos évaluations.</p>
     </div>
     ${accountHTML()}
+    ${sharedHTML()}
 
     <section class="sec">
       <h2>Vous</h2>
@@ -1630,6 +1695,7 @@ function renderProfile() {
     </section>`;
 
   bindAccount();
+  bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
   $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); toast(p.halfPoints ? "Notes au demi-point activées" : "Notes au demi-point désactivées"); };
   $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
@@ -1846,7 +1912,7 @@ async function syncNow() {
     if (rUp.length) { const {error} = await c.from("ratings").upsert(rUp); if (error) throw error; }
     if (dels.length) { const {error} = await c.from("zones").delete().in("id", dels); if (error) throw error; }
     cloud.synced = cur; cloud.lastSync = new Date();
-    try { localStorage.setItem("heden.cache." + cloud.user.id, JSON.stringify({state, synced: cloud.synced})); } catch (e) {}
+    try { localStorage.setItem("heden.cache." + cloud.user.id, JSON.stringify({state, synced: cloud.synced, mapId: cloud.mapId})); } catch (e) {}
     setCloudStatus("ok");
   } catch (err) {
     console.warn("Heden : synchronisation", err);
@@ -1884,7 +1950,11 @@ async function cloudLoad() {
   try {
     // 2. carte perso
     const {data: mapId, error: e1} = await c.rpc("ensure_personal_map"); if (e1) throw e1;
-    cloud.mapId = mapId;
+    cloud.personalMapId = mapId;
+    await loadMaps();
+    const known = id => cloud.maps.some(m => m.id === id);
+    cloud.mapId = cached && known(cached.mapId) ? cached.mapId : mapId;
+    if (cloud.mapId !== mapId && !known(cloud.mapId)) cloud.mapId = mapId;
     // 3. reprise, une seule fois, des zones saisies sur cet appareil avant la connexion
     const flag = "heden.migrated." + me;
     let migrated = false;
@@ -1902,14 +1972,216 @@ async function cloudLoad() {
       } catch (e) {}
       if (toMove.length) toast(`${toMove.length} zone${toMove.length > 1 ? "s" : ""} de cet appareil ajoutée${toMove.length > 1 ? "s" : ""} à votre compte`);
     }
-    // 4. envoyer d'abord ce qui attend
+    // 4. envoyer d'abord ce qui attend, puis afficher la carte choisie la dernière fois
     if (hasPending()) await syncNow();
+    let pref = null;
+    try { pref = localStorage.getItem("heden.map." + me); } catch (e) {}
+    if (pref && pref !== cloud.mapId && known(pref)) resetForMap(pref);
+    setupRealtime();
     await cloudRefresh(true);
+    // 5. invitation reçue par lien
+    let inv = null;
+    try { inv = localStorage.getItem("heden.invite"); } catch (e) {}
+    if (inv) { try { localStorage.removeItem("heden.invite"); } catch (e) {} await joinWithCode(inv); }
   } catch (err) {
     console.warn("Heden : chargement du compte", err);
     setCloudStatus("error", err);
     toast("Impossible de joindre la base pour l'instant. Vos zones restent sur l'appareil.");
   }
+}
+
+/* ---------- Cartes : perso et partagées ---------- */
+async function loadPeople(ids) {
+  const {data: ps} = await cloud.client.from("profiles").select("id, display_name, criteria, budget, half_points").in("id", ids);
+  (ps || []).forEach(x => {
+    cloud.names[x.id] = x.display_name || "";
+    cloud.people[x.id] = {name: x.display_name || "", criteria: Array.isArray(x.criteria) ? x.criteria : [], budget: x.budget == null ? null : Number(x.budget)};
+  });
+}
+async function loadMaps() {
+  const me = cloud.user.id;
+  const {data, error} = await cloud.client.from("maps").select("id, name, kind, owner, created_at, map_members(user_id, role)");
+  if (error) throw error;
+  cloud.maps = (data || []).map(m => ({id: m.id, name: m.name, kind: m.kind, owner: m.owner, createdAt: m.created_at,
+      members: (m.map_members || []).map(x => ({userId: x.user_id, role: x.role}))}))
+    .sort((a, b) => (a.kind === "perso" ? 0 : 1) - (b.kind === "perso" ? 0 : 1) || String(a.createdAt).localeCompare(String(b.createdAt)));
+  const ids = [...new Set(cloud.maps.flatMap(m => m.members.map(x => x.userId)))].filter(id => id !== me);
+  if (ids.length) await loadPeople(ids);
+}
+const mapLabel = m => m.kind === "perso" ? "Ma carte" : m.name;
+function membersLabel(m) {
+  const others = m.members.filter(x => x.userId !== cloud.user.id).map(x => personName(x.userId));
+  return others.length ? "Vous et " + others.join(", ") : "Vous seul pour l’instant : invitez votre binôme";
+}
+function duoLine(z) {
+  const parts = [hasRated(z) ? `vous ${scoreOf(z).score ?? "–"}` : null, ...partnerScores(z).map(p => `${p.name} ${p.s.score ?? "–"}`)].filter(Boolean);
+  return parts.length ? " · " + parts.join(", ") : " · pas encore notée";
+}
+function mapSwitchHTML() {
+  if (!cloud.user || cloud.maps.length < 2) return "";
+  return `<div class="mapsw" role="group" aria-label="Carte affichée">${cloud.maps.map(m =>
+    `<button type="button" data-map="${m.id}" aria-pressed="${m.id === cloud.mapId}">${esc(mapLabel(m))}</button>`).join("")}</div>`;
+}
+let stashedExamples = [];
+function resetForMap(id) {
+  if (cloud.mapId === cloud.personalMapId) stashedExamples = state.zones.filter(z => z.example);
+  cloud.mapId = id;
+  state.zones = id === cloud.personalMapId ? stashedExamples : [];
+  cloud.synced = {zones: {}, profile: cloud.synced ? cloud.synced.profile : null};
+  try { localStorage.setItem("heden.map." + cloud.user.id, id); } catch (e) {}
+}
+async function switchMap(id) {
+  if (!cloud.user || id === cloud.mapId || !cloud.maps.some(m => m.id === id)) return;
+  clearTimeout(cloud.timer);
+  for (let k = 0; cloud.busy && k < 100; k++) await new Promise(r => setTimeout(r, 100));
+  if (hasPending()) await syncNow();
+  if (hasPending()) { toast("Vos dernières modifications ne sont pas encore envoyées : réessayez dans un instant"); return; }
+  if (draft) { draft = null; selVertex = null; clearDraftLayers(); setHint(null); }
+  resetForMap(id);
+  selectedId = null; ui.mode = "list";
+  if (currentTab !== "map") setTab("map");
+  renderZones(); renderPanel();
+  setupRealtime();
+  await cloudRefresh(true);
+  const pts = state.zones.flatMap(z => z.points || []);
+  if (pts.length) setTimeout(() => { try { map.invalidateSize(); map.fitBounds(L.latLngBounds(pts).pad(0.2), {maxZoom: 16}); } catch (e) {} }, 80);
+  toast(isShared() ? `Carte « ${curMap().name} »` : "Votre carte");
+}
+function setupRealtime() {
+  const c = cloud.client;
+  if (cloud.channel) { try { c.removeChannel(cloud.channel); } catch (e) {} cloud.channel = null; }
+  if (!isShared() || typeof c.channel !== "function") return;
+  let t = null;
+  const later = () => { clearTimeout(t); t = setTimeout(() => {
+    if (ui.mode === "list" || ui.mode === "detail") cloudRefresh(true).catch(() => {}); else later();
+  }, 900); };
+  try {
+    cloud.channel = c.channel("carte-" + cloud.mapId)
+      .on("postgres_changes", {event: "*", schema: "public", table: "zones", filter: "map_id=eq." + cloud.mapId}, later)
+      .on("postgres_changes", {event: "*", schema: "public", table: "ratings"}, later)
+      .subscribe();
+  } catch (e) { console.warn("Heden : temps réel", e); }
+}
+async function copyToMap(z, mapId, btn) {
+  const m = cloud.maps.find(x => x.id === mapId); if (!m) return;
+  if (btn) btn.disabled = true;
+  try {
+    const id = zoneId(), now = new Date().toISOString();
+    const row = Object.assign(zoneRow(z), {id, map_id: mapId, created_by: cloud.user.id, updated_at: now});
+    let {error} = await cloud.client.from("zones").upsert(row); if (error) throw error;
+    ({error} = await cloud.client.from("ratings").upsert(Object.assign(ratingRow(z), {zone_id: id, updated_at: now}))); if (error) throw error;
+    toast(`Zone copiée sur « ${m.name} »`);
+  } catch (err) { console.warn(err); toast("Copie impossible pour le moment. Réessayez plus tard."); }
+  if (btn) btn.disabled = false;
+}
+const inviteLink = code => location.origin + location.pathname + "?rejoindre=" + encodeURIComponent(code);
+async function createSharedMap(name) {
+  const {data, error} = await cloud.client.rpc("create_shared_map", {map_name: name || "Notre carte"});
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  await loadMaps();
+  cloud.invite = {mapId: row.map_id, code: row.code};
+  return row;
+}
+async function newInvite(mapId) {
+  const {data, error} = await cloud.client.rpc("new_invite", {m: mapId});
+  if (error) throw error;
+  cloud.invite = {mapId, code: data};
+}
+async function joinWithCode(code) {
+  code = String(code || "").trim().toUpperCase();
+  if (!code) return;
+  const {data, error} = await cloud.client.rpc("join_map", {invite_code: code});
+  if (error) { toast(/invalide|expir/i.test(error.message || "") ? "Ce code est invalide ou a expiré : demandez-en un nouveau" : "Impossible de rejoindre la carte pour le moment"); return false; }
+  await loadMaps();
+  const m = cloud.maps.find(x => x.id === data);
+  await switchMap(data);
+  toast(`Vous avez rejoint « ${m ? m.name : "la carte"} »`);
+  return true;
+}
+async function leaveSharedMap(mapId) {
+  if (cloud.mapId === mapId) await switchMap(cloud.personalMapId);
+  const {error} = await cloud.client.rpc("leave_map", {m: mapId});
+  if (error) { toast("Impossible de quitter la carte pour le moment"); return; }
+  await loadMaps();
+  if (cloud.invite && cloud.invite.mapId === mapId) cloud.invite = null;
+  toast("Vous avez quitté la carte");
+  rerenderAll();
+}
+function inviteHTML(inv) {
+  return `<div class="invite">
+    <span class="label">Invitation, valable 14 jours</span>
+    <div class="invite__code num">${esc(inv.code)}</div>
+    <p class="hint2">Envoyez ce lien à votre binôme. Il se connecte avec son e-mail et arrive directement sur la carte.</p>
+    <div class="datarow"><button class="btn btn--sm btn--primary" type="button" data-act="share">${navigator.share ? "Envoyer le lien" : "Copier le lien"}</button>${navigator.share ? `<button class="btn btn--sm" type="button" data-act="copy">Copier le lien</button>` : ""}</div>
+  </div>`;
+}
+function sharedHTML() {
+  if (!cloudReady) return "";
+  let pending = null;
+  try { pending = localStorage.getItem("heden.invite"); } catch (e) {}
+  if (!cloud.user) return `<section class="sec">
+      <h2>Carte à deux</h2>
+      <p class="hint2">${pending ? `<b>Vous avez reçu une invitation.</b> Connectez-vous ci-dessus avec votre e-mail : vous rejoindrez la carte automatiquement.` : "Connectez-vous pour créer une carte commune avec votre binôme. Chacun y note les zones avec son propre profil, et la couleur montre votre note commune."}</p>
+    </section>`;
+  const shared = cloud.maps.filter(m => m.kind === "partagee");
+  return `<section class="sec" id="duoSec">
+    <h2>Carte à deux</h2>
+    <p class="hint2">Une carte commune, en plus de la vôtre : vous y tracez les zones à deux, chacun les note avec son profil, et la couleur montre votre note commune.</p>
+    ${shared.map(m => `<div class="mapcard" data-m="${m.id}">
+      <div><b>${esc(m.name)}</b><p class="hint2">${esc(membersLabel(m))}</p></div>
+      ${cloud.invite && cloud.invite.mapId === m.id ? inviteHTML(cloud.invite) : ""}
+      <div class="datarow">
+        <button class="btn btn--sm" type="button" data-act="open" ${cloud.mapId === m.id ? "disabled" : ""}>${cloud.mapId === m.id ? "Carte affichée" : "Ouvrir la carte"}</button>
+        <button class="btn btn--sm" type="button" data-act="invite">Inviter</button>
+        <button class="btn btn--sm btn--ghost btn--danger" type="button" data-act="leave">Quitter</button>
+      </div>
+    </div>`).join("")}
+    <form class="inline-form" id="newMapForm">
+      <div class="field"><label class="label" for="newMapName">${shared.length ? "Créer une autre carte commune" : "Créer une carte commune"}</label>
+        <input type="text" id="newMapName" placeholder="Ex. Notre recherche" maxlength="40"></div>
+      <button class="btn ${shared.length ? "" : "btn--primary"}" type="submit">Créer</button>
+    </form>
+    <form class="inline-form" id="joinForm">
+      <div class="field"><label class="label" for="joinCode">Rejoindre avec un code</label>
+        <input type="text" id="joinCode" placeholder="Ex. 7F3A9C21" maxlength="12" autocapitalize="characters" autocomplete="off"></div>
+      <button class="btn" type="submit">Rejoindre</button>
+    </form>
+  </section>`;
+}
+function bindShared() {
+  const sec = $("#duoSec"); if (!sec) return;
+  $("#newMapForm").onsubmit = async e => {
+    e.preventDefault();
+    const b = e.target.querySelector("button"); b.disabled = true;
+    try { await createSharedMap($("#newMapName").value.trim()); toast("Carte créée : envoyez l’invitation à votre binôme"); }
+    catch (err) { console.warn(err); toast("Création impossible pour le moment"); }
+    renderProfile();
+  };
+  $("#joinForm").onsubmit = async e => {
+    e.preventDefault();
+    const code = $("#joinCode").value; if (!code.trim()) return;
+    const b = e.target.querySelector("button"); b.disabled = true;
+    const ok = await joinWithCode(code);
+    if (!ok) { b.disabled = false; }
+  };
+  $$(".mapcard", sec).forEach(card => {
+    const id = card.dataset.m;
+    card.onclick = async e => {
+      const b = e.target.closest("[data-act]"); if (!b) return;
+      const act = b.dataset.act;
+      if (act === "open") switchMap(id);
+      else if (act === "invite") { b.disabled = true; try { await newInvite(id); } catch (err) { toast("Invitation impossible pour le moment"); } renderProfile(); }
+      else if (act === "share" || act === "copy") {
+        const link = inviteLink(cloud.invite.code);
+        if (act === "share" && navigator.share) { try { await navigator.share({title: "Heden", text: "Rejoignez ma carte sur Heden pour noter les quartiers ensemble.", url: link}); } catch (err) {} return; }
+        try { await navigator.clipboard.writeText(link); toast("Lien copié"); } catch (err) { window.prompt("Copiez ce lien :", link); }
+      } else if (act === "leave") {
+        if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Confirmer : quitter la carte"; setTimeout(() => { if (b.isConnected) { b.classList.remove("armed"); b.textContent = "Quitter"; } }, 3500); return; }
+        leaveSharedMap(id);
+      }
+    };
+  });
 }
 
 async function cloudRefresh(force) {
@@ -1924,16 +2196,14 @@ async function cloudRefresh(force) {
   if (e1 || e2) { setCloudStatus("error", e1 || e2); return; }
   const ids = new Set();
   (rows || []).forEach(r => { ids.add(r.created_by); (r.ratings || []).forEach(x => ids.add(x.user_id)); });
+  (curMap() ? curMap().members : []).forEach(m => ids.add(m.userId));
   ids.delete(me);
-  if (ids.size) {
-    const {data: ps} = await c.from("profiles").select("id, display_name").in("id", [...ids]);
-    (ps || []).forEach(x => { cloud.names[x.id] = x.display_name || ""; });
-  }
+  if (ids.size) await loadPeople([...ids]);
   let pushProfile = false;
   if (prof && Array.isArray(prof.criteria) && prof.criteria.length) {
     state.profile = {name: prof.display_name || "", presetId: prof.preset_id || null, modified: !!prof.modified, budget: prof.budget == null ? null : Number(prof.budget), criteria: prof.criteria, halfPoints: !!prof.half_points};
   } else pushProfile = true;   // compte neuf : on garde le profil de l'appareil
-  const examples = state.zones.filter(z => z.example);
+  const examples = cloud.mapId === cloud.personalMapId ? state.zones.filter(z => z.example) : [];
   state.zones = (rows || []).map(zoneFromRow).concat(examples);
   cloud.synced = snapshot();
   if (pushProfile) cloud.synced.profile = null;
@@ -1978,7 +2248,9 @@ function cloudInit() {
       try { if (/(access_token|error)=/.test(location.hash)) history.replaceState(null, "", currentTab === "profile" ? "#profil" : "#carte"); } catch (e) {}
       setTimeout(cloudLoad, 0);
     } else if (!u && cloud.user) {
-      cloud.user = null; cloud.mapId = null; cloud.synced = null; setCloudStatus("local"); renderAccountChip();
+      if (cloud.channel) { try { cloud.client.removeChannel(cloud.channel); } catch (e) {} }
+      Object.assign(cloud, {user: null, mapId: null, personalMapId: null, maps: [], people: {}, channel: null, invite: null, synced: null});
+      setCloudStatus("local"); renderAccountChip();
       state = load() || defaultState(); state.zones.forEach(finishZoneGeometry);
       selectedId = null; ui.mode = "list";
       rerenderAll(); renderPanel();
@@ -1986,6 +2258,15 @@ function cloudInit() {
     } else if (u) cloud.user = u;
   });
   window.addEventListener("online", () => scheduleSync(300));
+  /* lien d'invitation : ?rejoindre=CODE */
+  try {
+    const sp = new URLSearchParams(location.search), inv = sp.get("rejoindre");
+    if (inv) {
+      localStorage.setItem("heden.invite", inv.trim().toUpperCase());
+      history.replaceState(null, "", location.pathname + location.hash);
+      setTimeout(() => { if (!cloud.user) { setTab("profile"); toast("Connectez-vous pour rejoindre la carte de votre binôme"); } }, 1200);
+    }
+  } catch (e) {}
   const hp = new URLSearchParams(location.hash.slice(1));
   if (hp.get("error_description") || hp.get("error_code")) {
     const code = hp.get("error_code") || "";
