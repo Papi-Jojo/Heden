@@ -66,8 +66,8 @@ main{position:relative;min-height:0}
 
 /* ---------- Carte ---------- */
 #view-map{display:grid;grid-template-columns:var(--panel-w) 1fr}
-#map{position:relative;height:100%;min-width:0;background:var(--pierre)}
-.leaflet-container{font-family:var(--sans);background:var(--pierre)}
+#map{position:relative;height:100%;min-width:0;background:#F3EEE5}
+.leaflet-container{font-family:var(--sans);background:#F3EEE5}
 .leaflet-control-attribution{font-size:10px;background:color-mix(in srgb,var(--calcaire) 80%,transparent)!important;color:var(--zinc)}
 .leaflet-control-attribution a{color:var(--ardoise-2)}
 .map-top{position:absolute;z-index:600;top:14px;left:14px;right:14px;display:flex;gap:10px;align-items:flex-start;pointer-events:none}
@@ -282,7 +282,7 @@ main{position:relative;min-height:0}
   <header class="topbar">
     <div class="brand">
       <svg viewBox="0 0 64 64" aria-hidden="true"><polygon points="8,15 44,8 56,21 51,55 12,48" style="fill:var(--email);fill-opacity:.2;stroke:var(--email);stroke-width:3.6;stroke-linejoin:round"/><circle cx="8" cy="15" r="3.3" style="fill:var(--calcaire);stroke:var(--email);stroke-width:2.4"/><circle cx="44" cy="8" r="3.3" style="fill:var(--calcaire);stroke:var(--email);stroke-width:2.4"/><circle cx="51" cy="55" r="3.3" style="fill:var(--calcaire);stroke:var(--email);stroke-width:2.4"/><circle cx="12" cy="48" r="3.3" style="fill:var(--calcaire);stroke:var(--email);stroke-width:2.4"/><circle cx="56" cy="21" r="5.4" style="fill:var(--laiton-vif)"/></svg>
-      <b>heden</b><span>Paris, coin par coin</span>
+      <b>heden</b>
     </div>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-tab="map" aria-selected="true">Carte</button>
@@ -399,6 +399,7 @@ function interp(stops, score) {
   const c = stops[stops.length - 1][1]; return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 function colorFor(score) { return score == null ? "#A39B90" : interp(STOPS, score); }
+function traitMap(score) { return score == null ? "#857B6E" : interp(TRAIT_JOUR, score); }
 function traitFor(score) { return score == null ? "#857B6E" : interp(window.matchMedia("(prefers-color-scheme: dark)").matches ? TRAIT_NUIT : TRAIT_JOUR, score); }
 const GRADIENT = STOPS.map(([p, c]) => `rgb(${c.join(",")}) ${p}%`).join(",");
 document.documentElement.style.setProperty("--g", GRADIENT);
@@ -529,18 +530,18 @@ function getPlan() {
   planLayer = tiles.osm;
   return planLayer;
 }
-const MAPTONES = {
-  jour: {fond: "#E9E4DB", rue: "#FBF9F6", bord: "#D8D0C4", bati: "#DCD5CA", eau: "#C7D2DB", vert: "#D3DBC4", libelle: "#6B655D", halo: "#EFEBE4", limite: "#B9AFA2"},
-  nuit: {fond: "#1E1C19", rue: "#34302A", bord: "#26231F", bati: "#2A2622", eau: "#1F2A33", vert: "#232A20", libelle: "#9C958B", halo: "#1E1C19", limite: "#4A443D"}
-};
+/* La carte reste en beige clair dans les deux thèmes : c'est elle qu'on regarde. */
+const MAPTONES = {fond: "#F3EEE5", rue: "#FFFDF9", bord: "#E2DACD", bati: "#E6DFD3", eau: "#CCD7E0", vert: "#DCE3CD", libelle: "#6B655D", halo: "#F7F3EC", limite: "#C3B9AC"};
 function tintPlan() {
   if (!planLayer || typeof planLayer.getMaplibreMap !== "function") return;
   const m = planLayer.getMaplibreMap(); if (!m) return;
   const apply = () => {
-    const t = MAPTONES[dark.matches ? "nuit" : "jour"], st = m.getStyle(); if (!st || !st.layers) return;
+    const t = MAPTONES, st = m.getStyle(); if (!st || !st.layers) return;
     const set = (id, k, v) => { try { m.setPaintProperty(id, k, v); } catch (e) {} };
     for (const l of st.layers) {
       const id = l.id;
+      /* voies ferrées, métro aérien, ferries et pistes : masqués, ils brouillent la lecture des îlots */
+      if (/rail|transit|ferry|aeroway|aerialway/.test(id)) { try { m.setLayoutProperty(id, "visibility", "none"); } catch (e) {} continue; }
       if (l.type === "background") set(id, "background-color", t.fond);
       else if (l.type === "fill") {
         if (/water/.test(id)) set(id, "fill-color", t.eau);
@@ -569,7 +570,7 @@ function applyBase() {
   if (draft) drawDraft();
 }
 $$("#basemap button").forEach(b => b.addEventListener("click", () => { base = b.dataset.base; applyBase(); }));
-dark.addEventListener?.("change", () => { tintPlan(); renderZones(); if (draft) drawDraft(); });
+dark.addEventListener?.("change", () => { renderZones(); if (draft) drawDraft(); });
 applyBase();
 
 function updateFar() { map.getContainer().classList.toggle("map--far", map.getZoom() < 13); }
@@ -585,7 +586,7 @@ function renderZones() {
     const col = colorFor(score);
     const out = overBudget(z);
     const circle = L.polygon(z.points, {
-      color: traitFor(score), weight: selectedId === z.id ? 3 : 2, opacity: 1,
+      color: traitMap(score), weight: selectedId === z.id ? 3 : 2, opacity: 1,
       fillColor: col, fillOpacity: out ? .12 : (selectedId === z.id ? .45 : .3),
       dashArray: out ? "5 6" : null, bubblingMouseEvents: false
     });
@@ -602,7 +603,7 @@ function renderZones() {
 
 /* Zone en cours de tracé : sommets, poignées de milieu, aperçu rempli */
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const draftColor = () => base === "sat" ? "#F8F5F0" : (cssVar("--email") || "#1F3A6E");
+const draftColor = () => base === "sat" ? "#F8F5F0" : "#1F3A6E";
 let draftShape = null, selVertex = null;
 function clearDraftLayers() { clearGhost(); if (draftLayers) { draftLayers.forEach(l => map.removeLayer(l)); draftLayers = null; draftShape = null; } }
 function handleIcon(cls, size) { return L.divIcon({className: "handle " + cls, iconSize: [size, size]}); }
@@ -920,7 +921,7 @@ function updateScoreBox() {
     <p class="num">${s.rated} sur ${s.total} critères notés${overBudget(draft) ? ", au-dessus de votre budget" : ""}</p></div>`;
   if (draftShape) {
     if (s.score == null) draftShape.setStyle({color: draftColor(), fillColor: draftColor(), fillOpacity: .24});
-    else draftShape.setStyle({color: traitFor(s.score), fillColor: col, fillOpacity: .34});
+    else draftShape.setStyle({color: traitMap(s.score), fillColor: col, fillOpacity: .34});
   }
 }
 
