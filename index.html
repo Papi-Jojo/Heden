@@ -584,6 +584,8 @@ $$("#basemap button").forEach(b => b.addEventListener("click", () => { base = b.
 dark.addEventListener?.("change", () => { renderZones(); if (draft) drawDraft(); });
 applyBase();
 
+/* Les contrôles posés sur la carte (recherche, Plan/Satellite, position, consigne) ne doivent jamais poser de point */
+document.querySelectorAll("#map .map-top, #map .fab-col, #map .hint").forEach(el => { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); });
 function updateFar() { map.getContainer().classList.toggle("map--far", map.getZoom() < 13); }
 map.on("zoomend", updateFar); updateFar();
 
@@ -1141,7 +1143,6 @@ $("#locate").onclick = () => {
     const ll = L.latLng(p.coords.latitude, p.coords.longitude);
     if (!L.latLngBounds(BOUNDS).pad(0.25).contains(ll)) return toast("Vous êtes hors de la zone couverte");
     map.flyTo(ll, 16, {duration: .6});
-    if (ui.mode === "placing") addPoint(ll);
   }, () => toast("Position refusée ou introuvable"), {enableHighAccuracy: true, timeout: 8000});
 };
 
