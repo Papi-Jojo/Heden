@@ -12,7 +12,7 @@ Variables facultatives : HEDEN_DVF_DIR (CSV déjà téléchargés), HEDEN_OSM_PO
 """
 import csv, gzip, io, json, math, os, random, re, sys, time, urllib.request
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 
 S, W, N, E = 48.72, 2.13, 48.99, 2.57
 DLAT, DLNG = 0.01, 0.015
@@ -91,28 +91,39 @@ def dvf_sales():
             m = muts.get(mid)
             if m is None:
                 m = muts[mid] = {"nature": r["nature_mutation"], "val": r["valeur_fonciere"], "date": r["date_mutation"],
-                                 "locs": set(), "other": False, "parc": set(), "lat": None, "lng": None}
+                                 "locs": set(), "other": False, "dep": False, "parc": set(), "lat": None, "lng": None,
+                                 "com": r.get("code_commune", ""), "nom": r.get("nom_commune", "")}
             m["parc"].add(r["id_parcelle"])
             t = r["type_local"]
             if t in ("Appartement", "Maison"):
-                m["locs"].add((t, r["surface_reelle_bati"], r["id_parcelle"], r["lot1_numero"]))
+                m["locs"].add((t, r["surface_reelle_bati"], r["id_parcelle"], r["lot1_numero"], r.get("lot1_surface_carrez", "")))
                 if r["latitude"] and r["longitude"]:
                     m["lat"], m["lng"] = float(r["latitude"]), float(r["longitude"])
             elif t == "Local industriel. commercial ou assimilé":
                 m["other"] = True
+            elif t == "Dépendance":
+                m["dep"] = True
         log(f"  {name} : {n} lignes")
     out = []
     for m in muts.values():
         if m["nature"] != "Vente" or m["other"] or len(m["locs"]) != 1 or len(m["parc"]) > 2 or m["lat"] is None:
             continue
-        t, surf, _, _ = next(iter(m["locs"]))
+        t, surf, _, _, carrez = next(iter(m["locs"]))
         try: surf, val = float(surf), float(m["val"])
         except ValueError: continue
+        # surface Carrez (celle des annonces) quand elle existe et reste cohérente avec la surface fiscale
+        flags = 1 if m["dep"] else 0
+        try:
+            cz = float(str(carrez).replace(",", "."))
+            if surf > 0 and 0.6 * surf <= cz <= 1.3 * surf: surf, flags = cz, flags | 2
+        except ValueError:
+            pass
         if surf < 9 or val <= 0: continue
         ppm = val / surf
         if not 1000 <= ppm <= 35000: continue
         y, mo = int(m["date"][:4]), int(m["date"][5:7])
-        out.append((m["lat"], m["lng"], round(ppm), month_idx(y, mo), round(surf), 0 if t == "Appartement" else 1))
+        out.append((m["lat"], m["lng"], round(ppm), month_idx(y, mo), round(surf), 0 if t == "Appartement" else 1, flags,
+                    m["com"], m["nom"]))
     log("DVF : ventes retenues", len(out))
     return out
 
@@ -348,8 +359,54 @@ def quantiles(vals, qs=(0.1, 0.3, 0.5, 0.7, 0.9)):
     return [round(v[min(len(v) - 1, int(q * len(v)))], 3) for q in qs]
 
 # =====================================================================
+def short_commune(code, nom):
+    if code.startswith("751") and len(code) == 5:
+        n = int(code[3:]); return f"Paris {n}{'er' if n == 1 else 'e'}"
+    return nom
+
+def median(v):
+    v = sorted(v); n = len(v)
+    return (v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2) if n else None
+
+def price_index(sales):
+    """Indice trimestriel par département (médiane des appartements, lissée sur 3 trimestres), base 1 au dernier trimestre."""
+    byq = defaultdict(list)
+    for s in sales:
+        if s[5] == 0: byq[(s[7][:2], s[3] // 3)].append(s[2])
+    out = {}
+    for d in DEPTS:
+        qs = sorted(q for dd, q in byq if dd == d)
+        if not qs: continue
+        raw = {q: median(byq[(d, q)]) for q in qs if len(byq[(d, q)]) >= 30}
+        sm = {}
+        for q in range(qs[0], qs[-1] + 1):
+            vals = [raw[k] for k in (q - 1, q, q + 1) if k in raw]
+            if vals: sm[q] = sum(vals) / len(vals)
+        last = max(sm)
+        out[d] = {"q0": min(sm), "v": [round(sm.get(q, sm[last]) / sm[last], 4) for q in range(min(sm), last + 1)]}
+    return out
+
+def adj_factor(index, dept, month):
+    ix = index.get(dept)
+    if not ix: return 1.0
+    k = min(max(month // 3 - ix["q0"], 0), len(ix["v"]) - 1)
+    return 1 / ix["v"][k]
+
 def main():
     sales = dvf_sales()
+    index = price_index(sales)
+    log("Indice des prix :", json.dumps({d: [ix["v"][0], ix["v"][-5] if len(ix["v"]) > 4 else None] for d, ix in index.items()}))
+    communes, com_idx = [], {}
+    last_m = max(s[3] for s in sales)
+    agg = defaultdict(list)
+    for s in sales:
+        if s[7] not in com_idx:
+            com_idx[s[7]] = len(communes); communes.append([s[7], short_commune(s[7], s[8]), None, 0])
+        if s[5] == 0 and s[3] > last_m - 12 and not s[6] & 1:
+            agg[s[7]].append(s[2] * adj_factor(index, s[7][:2], s[3]))
+    for c in communes:
+        v = agg.get(c[0], [])
+        if len(v) >= 20: c[2], c[3] = round(median(v) / 10) * 10, len(v)
     poi_el, park_el = osm_elements()
     pois = osm_pois(poi_el)
     parks = osm_parks(park_el)
@@ -369,10 +426,10 @@ def main():
                 t = tile_of(lat, lng)
                 if t:
                     a, b = offs(lat, lng, t); tiles[t]["g"] += [a, b, k]
-    for lat, lng, ppm, mi, surf, typ in sales:
+    for lat, lng, ppm, mi, surf, typ, flags, com, _ in sales:
         t = tile_of(lat, lng)
         if t:
-            a, b = offs(lat, lng, t); tiles[t]["v"] += [a, b, ppm, mi, surf, typ]
+            a, b = offs(lat, lng, t); tiles[t]["v"] += [a, b, ppm, mi, surf, typ, flags, com_idx[com]]
 
     # Calibration : indicateurs mesurés là où des appartements se vendent
     pidx = Index([(lat, lng, c) for lat, lng, c, _ in pois])
@@ -392,7 +449,9 @@ def main():
             json.dump(t, fh, separators=(",", ":"), ensure_ascii=False)
     first = min(s[3] for s in sales)
     meta = {
-        "version": date.today().isoformat(),
+        "version": datetime.now().strftime("%Y-%m-%dT%H%M"),
+        "index": index,
+        "communes": communes,
         "grid": {"s": S, "w": W, "n": N, "e": E, "dlat": DLAT, "dlng": DLNG, "ni": NI, "nj": NJ},
         "tiles": sorted(f"{i}_{j}" for i, j in tiles),
         "dvf": {"first": first, "last": last},
