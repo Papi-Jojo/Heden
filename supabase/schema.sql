@@ -12,10 +12,13 @@ create table if not exists public.profiles (
   modified     boolean not null default false,
   budget       numeric,
   criteria     jsonb not null default '[]'::jsonb,
+  half_points  boolean not null default false,          -- notes au demi-point
   updated_at   timestamptz not null default now()
 );
 
 -- ---------- Cartes : une carte perso par compte, plus des cartes partagées ----------
+alter table public.profiles add column if not exists half_points boolean not null default false;
+
 create table if not exists public.maps (
   id         uuid primary key default gen_random_uuid(),
   owner      uuid not null references auth.users(id) on delete cascade,

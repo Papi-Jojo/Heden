@@ -204,6 +204,12 @@ main{position:relative;min-height:0;grid-row:2}
 .scale button{height:44px;border:1px solid var(--trait-fort);background:var(--calcaire);border-radius:var(--rayon-s);font-weight:650;font-size:15px;font-variant-numeric:tabular-nums;color:var(--ardoise-2)}
 .scale button:hover{border-color:var(--ardoise)}
 .scale button[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:var(--on-score)}
+.scale--half{grid-template-columns:repeat(6,1fr) 46px}
+.scale button.half{font-size:14px;color:var(--ardoise-2)}
+.scale button.half[aria-pressed="true"]{background:var(--email-doux);border-color:var(--email);color:var(--email)}
+.scale button:disabled{opacity:.45;cursor:not-allowed}
+.halfrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.halfrow .hint2{margin:0}
 .scale button.is-est{background:color-mix(in srgb,var(--c) 32%,var(--calcaire));border:1.5px dashed var(--c);color:var(--ardoise)}
 .scale button.est-mark{position:relative}
 .scale button.est-mark::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 0 1.5px var(--calcaire)}
@@ -463,6 +469,7 @@ const zoneId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
   : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); });
 const clone = o => JSON.parse(JSON.stringify(o));
 const fmtInt = n => Math.round(n).toLocaleString("fr-FR");
+const fmtNote = v => Number.isInteger(v) ? String(v) : v.toLocaleString("fr-FR", {maximumFractionDigits: 1});
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtDate = d => { try { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", {day:"numeric", month:"short", year:"numeric"}); } catch(e) { return d; } };
 const HEART = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.8 4.5c2.1 0 3.6 1.1 5.2 3 1.6-1.9 3.1-3 5.2-3 3.8 0 5.9 3.9 4.4 7.3C19.5 16.4 12 21 12 21z"/></svg>';
@@ -1196,7 +1203,7 @@ function renderRating() {
         ${cs.map(c => `<div class="crit" data-c="${esc(c.id)}">
             <div class="crit__top"><span class="crit__name">${esc(c.name)}</span><span class="crit__w num">poids ${Math.round(c.weight / wsum * 100)} %</span></div>
             ${c.desc ? `<div class="crit__desc">${esc(c.desc)}</div>` : ""}
-            <div class="scale">${[0, 1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" style="--c:${colorFor(n * 20)}">${n}</button>`).join("")}</div>
+            <div class="scale${state.profile.halfPoints ? " scale--half" : ""}">${[0, 1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" style="--c:${colorFor(n * 20)}">${n}</button>`).join("")}${state.profile.halfPoints ? `<button type="button" class="half" data-half aria-label="Ajouter un demi-point">+½</button>` : ""}</div>
             <div class="crit__est" hidden></div>
           </div>`).join("")}
       </div>
@@ -1227,11 +1234,18 @@ function renderRating() {
   $("#zfav").onclick = e => { draft.fav = !draft.fav; e.currentTarget.setAttribute("aria-pressed", String(draft.fav)); };
   $$(".crit", panel).forEach(row => {
     const id = row.dataset.c;
-    $$(".scale button", row).forEach(b => b.onclick = () => {
-      const n = +b.dataset.v;
-      if (draft.ratings[id] === n) delete draft.ratings[id]; else draft.ratings[id] = n;
+    $$(".scale button[data-v]", row).forEach(b => b.onclick = () => {
+      const n = +b.dataset.v, u = userVal(draft, id);
+      if (u !== undefined && Math.floor(u) === n) delete draft.ratings[id]; else draft.ratings[id] = n;
       paintCrits(); updateScoreBox();
     });
+    const hb = row.querySelector("[data-half]");
+    if (hb) hb.onclick = () => {
+      const u = userVal(draft, id), base = u !== undefined ? u : estScore(draft, id);
+      if (base === undefined || base >= 5) return;
+      draft.ratings[id] = Number.isInteger(base) ? base + .5 : Math.floor(base);
+      paintCrits(); updateScoreBox();
+    };
     row.querySelector(".crit__est").onclick = e => {
       if (!e.target.closest("[data-reset]")) return;
       delete draft.ratings[id]; paintCrits(); updateScoreBox();
@@ -1264,12 +1278,21 @@ function paintCrits() {
   let any = false;
   $$(".crit", panel).forEach(row => {
     const id = row.dataset.c, u = userVal(draft, id), e = estScore(draft, id), why = estWhy(draft, id);
-    $$(".scale button", row).forEach(b => {
-      const n = +b.dataset.v;
-      b.setAttribute("aria-pressed", String(u === n));
+    const sel = u === undefined ? undefined : Math.floor(u);
+    $$(".scale button[data-v]", row).forEach(b => {
+      const n = +b.dataset.v, on = sel === n;
+      b.setAttribute("aria-pressed", String(on));
+      b.textContent = on && u !== n ? fmtNote(u) : n;
+      b.style.setProperty("--c", colorFor((on ? u : n) * 20));
       b.classList.toggle("is-est", u === undefined && e === n);
       b.classList.toggle("est-mark", u !== undefined && e === n && u !== n);
     });
+    const hb = row.querySelector("[data-half]");
+    if (hb) {
+      const base = u !== undefined ? u : e;
+      hb.disabled = base === undefined || base >= 5;
+      hb.setAttribute("aria-pressed", String(u !== undefined && !Number.isInteger(u)));
+    }
     const box = row.querySelector(".crit__est");
     if (e === undefined && !why) { box.hidden = true; return; }
     any = any || e !== undefined;
@@ -1353,7 +1376,7 @@ function renderDetail() {
           return `<div class="bd${est ? " bd--est" : ""}"${est ? ` title="${esc(estWhy(z, c.id))}"` : ""}>
             <span class="n">${esc(c.name)}<small class="num">${Math.round(c.weight / wsum * 100)} %${est ? ", estimé" : ""}</small></span>
             <span class="bar"><i style="width:${typeof v === "number" ? v * 20 : 0}%;--c:${traitFor(typeof v === "number" ? v * 20 : null)}"></i></span>
-            <span class="v num">${typeof v === "number" ? v : "–"}</span></div>`;
+            <span class="v num">${typeof v === "number" ? fmtNote(v) : "–"}</span></div>`;
         }).join("")}
       </div>
       <dl class="meta">
@@ -1581,6 +1604,10 @@ function renderProfile() {
             <button class="x" type="button" aria-label="Retirer ${esc(c.name)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>`).join("")}
       </div>
+      <div class="halfrow">
+        <button class="chip" id="halfP" type="button" aria-pressed="${!!p.halfPoints}">Notes au demi-point</button>
+        <span class="hint2">Ajoute un bouton +½ à chaque critère pour noter 3,5 par exemple.</span>
+      </div>
       <div class="totals"><span class="num" id="wtot">Total des poids : ${wsum}${wsum === 100 ? "" : " (ramené à 100 %)"}</span></div>
       <div class="addrow">
         <select id="addSel" aria-label="Ajouter un critère">
@@ -1604,6 +1631,7 @@ function renderProfile() {
 
   bindAccount();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
+  $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); toast(p.halfPoints ? "Notes au demi-point activées" : "Notes au demi-point désactivées"); };
   $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
   $$(".preset").forEach(b => b.onclick = () => {
     const pr = PRESETS.find(x => x.id === b.dataset.p);
@@ -1746,7 +1774,7 @@ function ratingRow(z) {
 }
 function profileRow() {
   const p = state.profile;
-  return {id: cloud.user.id, display_name: p.name || "", preset_id: p.presetId || null, modified: !!p.modified, budget: p.budget ?? null, criteria: p.criteria || []};
+  return {id: cloud.user.id, display_name: p.name || "", preset_id: p.presetId || null, modified: !!p.modified, budget: p.budget ?? null, criteria: p.criteria || [], half_points: !!p.halfPoints};
 }
 function snapshot() {
   const zones = {};
@@ -1903,7 +1931,7 @@ async function cloudRefresh(force) {
   }
   let pushProfile = false;
   if (prof && Array.isArray(prof.criteria) && prof.criteria.length) {
-    state.profile = {name: prof.display_name || "", presetId: prof.preset_id || null, modified: !!prof.modified, budget: prof.budget == null ? null : Number(prof.budget), criteria: prof.criteria};
+    state.profile = {name: prof.display_name || "", presetId: prof.preset_id || null, modified: !!prof.modified, budget: prof.budget == null ? null : Number(prof.budget), criteria: prof.criteria, halfPoints: !!prof.half_points};
   } else pushProfile = true;   // compte neuf : on garde le profil de l'appareil
   const examples = state.zones.filter(z => z.example);
   state.zones = (rows || []).map(zoneFromRow).concat(examples);
