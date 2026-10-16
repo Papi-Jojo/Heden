@@ -116,6 +116,16 @@ main{position:relative;min-height:0;grid-row:2}
 .zone-badge i{width:11px;height:11px;border-radius:50%;background:var(--c);flex:none}
 .zone-badge svg{color:var(--laiton-vif)}
 .map--far .zone-badge{display:none}
+.liveprice{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--trait);border-radius:var(--rayon-m)}
+.liveprice .label{flex:1 1 auto}
+.liveprice b{font-family:var(--display);font-size:18px;font-weight:700}
+.liveprice .hint2{margin:0}
+.sortrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--zinc)}
+.sortrow span{margin-right:2px}
+.chip--sm{height:30px;padding:0 11px;font-size:12.5px}
+.zprice{font-weight:650;color:var(--ardoise-2)}
+.zone-badge .zb-p{display:none;font-style:normal;font-weight:600;color:var(--ardoise-2);padding-left:7px;margin-left:2px;border-left:1px solid var(--trait)}
+.map--near .zone-badge .zb-p{display:inline}
 
 /* ---------- Panneau ---------- */
 .panel{display:flex;flex-direction:column;min-height:0;background:var(--calcaire);border-right:1px solid var(--trait);z-index:700}
@@ -224,6 +234,25 @@ main{position:relative;min-height:0;grid-row:2}
 .price__big{font-family:var(--display);font-variation-settings:"wdth" 100;font-size:26px;line-height:32px;font-weight:700;color:var(--ardoise)}
 .price__sub{margin:0;font-size:13.5px;line-height:19px;color:var(--ardoise-2)}
 .price__src{margin:2px 0 0;font-size:12px;color:var(--zinc)}
+.price__top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.conf{font-size:11.5px;font-weight:650;padding:2px 8px;border-radius:var(--rayon-s);border:1px solid var(--trait-fort);color:var(--ardoise-2);white-space:nowrap}
+.conf--2{border-color:var(--ardoise-2);color:var(--ardoise)}
+.conf--0{border-style:dashed;color:var(--zinc)}
+.pbar{position:relative;height:22px;margin:10px 0 2px}
+.pbar__rng{position:absolute;top:9px;height:4px;border-radius:var(--pilule);background:var(--enduit)}
+.pbar__iqr{position:absolute;top:6px;height:10px;border-radius:var(--pilule);background:var(--trait-fort)}
+.pbar__med{position:absolute;top:2px;width:3px;height:18px;margin-left:-1.5px;border-radius:2px;background:var(--ardoise)}
+.pbar__bud{position:absolute;top:-2px;height:26px;margin-left:-1px;border-left:2px dashed var(--ardoise-2)}
+.pbar__seen{position:absolute;top:6px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);background:var(--calcaire);border:2px solid var(--ardoise)}
+.pbar__leg{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--zinc)}
+.pbar__leg span:nth-child(2){text-align:center}
+.pbar__keys{display:flex;gap:14px;font-size:11.5px;color:var(--zinc)}
+.pbar__keys span{display:inline-flex;align-items:center;gap:6px}
+.k-bud{width:0;height:12px;border-left:2px dashed var(--ardoise-2)}
+.k-seen{width:8px;height:8px;transform:rotate(45deg);border:2px solid var(--ardoise)}
+.price__facts{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:13.5px;line-height:19px;color:var(--ardoise-2)}
+.price__facts li{padding-left:12px;position:relative}
+.price__facts li::before{content:"";position:absolute;left:0;top:8px;width:4px;height:4px;border-radius:50%;background:var(--zinc)}
 
 .plaque{display:inline-flex;align-self:flex-start;max-width:100%;padding:3px;border-radius:4px;background:var(--email)}
 .plaque span{display:block;min-width:0;padding:6px 12px 5px;border:1.5px solid var(--on-email);border-radius:2px;color:var(--on-email);font-family:var(--display);font-variation-settings:"wdth" 75;font-size:14px;line-height:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -575,7 +604,7 @@ const fmtArea = m2 => m2 >= 10000 ? (m2 / 10000).toLocaleString("fr-FR", {maximu
 const walkAround = per => Math.max(1, Math.round(per / 80));
 state.zones.forEach(finishZoneGeometry);
 let draft = null, draftLayers = null;
-let ui = {mode: "list", sheet: "peek"};
+let ui = {mode: "list", sheet: "peek", sort: (() => { try { return localStorage.getItem("heden.sort") || "note"; } catch (e) { return "note"; } })()};
 let selectedId = null;
 
 /* Note d'un critère : celle de la personne si elle l'a donnée, sinon l'estimation */
@@ -648,7 +677,9 @@ function loadTile(key) {
       for (let k = 0; k < t.p.length; k += 3) out.pois.push({lat: la0 + t.p[k] / 1e5, lng: ln0 + t.p[k + 1] / 1e5, c: t.p[k + 2], name: ""});
       for (const s of t.s) out.pois.push({lat: la0 + s[0] / 1e5, lng: ln0 + s[1] / 1e5, c: s[2], name: s[3]});
       for (let k = 0; k < t.g.length; k += 3) out.parks.push({lat: la0 + t.g[k] / 1e5, lng: ln0 + t.g[k + 1] / 1e5, k: t.g[k + 2]});
-      for (let k = 0; k < t.v.length; k += 6) out.sales.push({lat: la0 + t.v[k] / 1e5, lng: ln0 + t.v[k + 1] / 1e5, p: t.v[k + 2], m: t.v[k + 3], s: t.v[k + 4], t: t.v[k + 5]});
+      const st = dataStore.meta.index ? 8 : 6;
+      for (let k = 0; k < t.v.length; k += st) out.sales.push({lat: la0 + t.v[k] / 1e5, lng: ln0 + t.v[k + 1] / 1e5, p: t.v[k + 2], m: t.v[k + 3], s: t.v[k + 4], t: t.v[k + 5],
+        f: st === 8 ? t.v[k + 6] : 0, c: st === 8 ? t.v[k + 7] : -1});
       return out;
     }).catch(() => ({pois: [], parks: [], sales: []})));
   }
@@ -732,21 +763,45 @@ async function estimate(points) {
   const big = pk.filter(p => p.a >= 30000).sort((a, b) => b.a - a.a)[0];
   why.verts = pk.length ? [parkTxt(pk[0]), big && big !== pk[0] ? parkTxt(big) : null].filter(Boolean).join(", ") : "Aucun parc ni square à moins de 800 m";
 
-  // Prix des ventes d'appartements sur les 24 derniers mois
+  // Prix des ventes d'appartements sur les 24 derniers mois, ramenés au niveau du dernier trimestre
   let prix = null;
-  const last = meta.dvf.last, recent = sales.filter(x => x.t === 0 && x.m > last - 24);
-  let scope = null, sel = recent.filter(x => inPoly(x.lat, x.lng, points));
-  if (sel.length >= 12) scope = 0;
-  else for (const r of [150, 300, 500]) { sel = recent.filter(x => distM(c, x) <= req + r); if (sel.length >= 12) { scope = r; break; } }
-  if (scope !== null) {
-    const ps = sel.map(x => x.p).sort((a, b) => a - b);
-    const a1 = sel.filter(x => x.m > last - 12).map(x => x.p).sort((a, b) => a - b), a0 = sel.filter(x => x.m <= last - 12).map(x => x.p).sort((a, b) => a - b);
-    prix = {med: Math.round(quant(ps, .5) / 10) * 10, q1: Math.round(quant(ps, .25) / 10) * 10, q3: Math.round(quant(ps, .75) / 10) * 10,
-      n: ps.length, r: scope, from: last - 23, to: last,
-      trend: a1.length >= 8 && a0.length >= 8 ? Math.round((quant(a1, .5) / quant(a0, .5) - 1) * 100) : null};
+  const last = meta.dvf.last, apps = sales.filter(x => x.t === 0 && x.m > last - 24);
+  const pools = [[0, x => inPoly(x.lat, x.lng, points)], [150, x => distM(c, x) <= req + 150], [300, x => distM(c, x) <= req + 300], [500, x => distM(c, x) <= req + 500]];
+  let pick = null;
+  for (const [r, test] of pools) {
+    const all = apps.filter(test), clean = all.filter(x => !(x.f & 1));
+    if (clean.length >= 12) { pick = {r, sel: clean, dep: false}; break; }
+    if (all.length >= 12) { pick = {r, sel: all, dep: true}; break; }
+  }
+  if (pick) {
+    const ps = pick.sel.map(x => x.p * adjFactor(meta, x)).sort((a, b) => a - b), n = ps.length;
+    const r10 = v => Math.round(v / 10) * 10;
+    const counts = {}; pick.sel.forEach(x => { if (x.c >= 0) counts[x.c] = (counts[x.c] || 0) + 1; });
+    const ci = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    const com = ci !== undefined && meta.communes ? meta.communes[ci] : null;
+    const med = r10(quant(ps, .5));
+    const sect = com ? sectorTrend(meta, com[0].slice(0, 2)) : null;
+    let conf = n >= 30 ? 2 : n >= 15 ? 1 : 0;
+    if (pick.r >= 300) conf = Math.min(conf, 1);
+    prix = {med, q1: r10(quant(ps, .25)), q3: r10(quant(ps, .75)), p10: r10(quant(ps, .1)), p90: r10(quant(ps, .9)),
+      n, r: pick.r, from: last - 23, to: last, conf, dep: pick.dep, adj: !!meta.index,
+      carrez: Math.round(pick.sel.filter(x => x.f & 2).length / n * 100),
+      com: com && com[2] ? {name: com[1], med: com[2], delta: Math.round((med / com[2] - 1) * 100)} : null, sect};
   }
   return {v: meta.version, g: geomKey(points), s, why, prix};
 }
+const SECTORS = {"75": "Paris", "92": "Hauts-de-Seine", "93": "Seine-Saint-Denis", "94": "Val-de-Marne"};
+function adjFactor(meta, x) {
+  if (!meta.index || !meta.communes || x.c < 0) return 1;
+  const ix = meta.index[String(meta.communes[x.c][0]).slice(0, 2)]; if (!ix) return 1;
+  const k = Math.min(Math.max(Math.floor(x.m / 3) - ix.q0, 0), ix.v.length - 1);
+  return 1 / ix.v[k];
+}
+function sectorTrend(meta, dept) {
+  const ix = meta.index && meta.index[dept]; if (!ix || ix.v.length < 5) return null;
+  return {name: SECTORS[dept] || dept, trend: Math.round((1 / ix.v[ix.v.length - 5] - 1) * 100)};
+}
+const CONF = [["Peu de ventes", "conf--0"], ["Indicatif", "conf--1"], ["Fiable", "conf--2"]];
 function estScore(z, id, budget = state.profile.budget) {
   const e = z.est; if (!e) return undefined;
   if (id === "prix") {
@@ -885,7 +940,7 @@ applyBase();
 
 /* Les contrôles posés sur la carte (recherche, Plan/Satellite, position, consigne) ne doivent jamais poser de point */
 document.querySelectorAll("#map .map-top, #map .fab-col, #map .hint").forEach(el => { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); });
-function updateFar() { map.getContainer().classList.toggle("map--far", map.getZoom() < 13); }
+function updateFar() { const zm = map.getZoom(); map.getContainer().classList.toggle("map--far", zm < 13); map.getContainer().classList.toggle("map--near", zm >= 15); }
 map.on("zoomend", updateFar); updateFar();
 
 /* Zones enregistrées */
@@ -904,7 +959,7 @@ function renderZones() {
     });
     const badge = L.marker([z.lat, z.lng], {
       icon: L.divIcon({className: "", iconSize: null,
-        html: `<span class="zone-badge" style="--c:${col}"><i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}</span>`}),
+        html: `<span class="zone-badge" style="--c:${col}"><i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}${zonePrice(z) ? `<em class="zb-p">${fmtInt(zonePrice(z))}&#8239;€/m²</em>` : ""}</span>`}),
       keyboard: false
     });
     const onClick = e => { if (ui.mode === "placing") { addPoint(e.latlng); return; } openDetail(z.id); };
@@ -1066,8 +1121,14 @@ window.addEventListener("pointerup", endSheetDrag);
 window.addEventListener("pointercancel", endSheetDrag);
 panel.addEventListener("click", e => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); } }, true);
 
+/* Tri de la liste : note, prix, ou note rapportée au prix */
+const SORTS = [["note", "Note"], ["prix", "Prix"], ["qp", "Note / prix"]];
+const valueOf = (s, pr) => s.score != null && pr ? s.score / (pr / 10000) : null;
 function sortedZones() {
-  return state.zones.map(z => ({z, s: zoneScore(z)})).sort((a, b) => {
+  const mode = ui.sort || "note";
+  return state.zones.map(z => ({z, s: zoneScore(z), pr: zonePrice(z)})).sort((a, b) => {
+    if (mode === "prix") return (a.pr ?? Infinity) - (b.pr ?? Infinity);
+    if (mode === "qp") return (valueOf(b.s, b.pr) ?? -1) - (valueOf(a.s, a.pr) ?? -1);
     const oa = overBudget(a.z), ob = overBudget(b.z);
     if (oa !== ob) return oa ? 1 : -1;
     return (b.s.score ?? -1) - (a.s.score ?? -1);
@@ -1100,13 +1161,14 @@ function renderList() {
           <div class="legend__bar"></div>
           <div class="legend__ticks num"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
         </div>
+        ${n > 1 ? `<div class="sortrow" role="group" aria-label="Trier les zones"><span>Trier par</span>${SORTS.map(([k, l]) => `<button type="button" class="chip chip--sm" data-sort="${k}" aria-pressed="${(ui.sort || "note") === k}">${l}</button>`).join("")}</div>` : ""}
         <div class="zlist">
-          ${items.map(({z, s}) => `
+          ${items.map(({z, s, pr}) => `
             <button class="zrow" type="button" data-id="${z.id}">
               <span class="score-chip ${s.score == null ? "none" : ""}" style="--c:${colorFor(s.score)}">${s.score == null ? "–" : s.score}</span>
               <div>
                 <div class="t">${esc(z.name || "Sans nom")}</div>
-                <div class="m">${esc(placeLabel(z))}${z.author ? `, par ${esc(z.author)}` : ""}${isShared() ? esc(duoLine(z)) : ""}</div>
+                <div class="m">${pr ? `<span class="zprice num">${fmtInt(pr)}&#8239;€/m²</span>${placeLabel(z) ? ", " : ""}` : ""}${esc(placeLabel(z))}${z.author ? `, par ${esc(z.author)}` : ""}${isShared() ? esc(duoLine(z)) : ""}</div>
               </div>
               <span class="tags">
                 ${anyFav(z) ? `<span class="heart" title="Coup de cœur">${HEART}</span>` : ""}
@@ -1136,6 +1198,7 @@ function renderList() {
   $$("[data-map]", panel).forEach(b => b.onclick = e => { e.stopPropagation(); switchMap(b.dataset.map); });
   const gl = $("#goLogin"); if (gl) gl.onclick = () => setTab("profile");
   $$(".zrow", panel).forEach(r => r.onclick = () => openDetail(r.dataset.id, true));
+  $$("[data-sort]", panel).forEach(b => b.onclick = () => { ui.sort = b.dataset.sort; try { localStorage.setItem("heden.sort", ui.sort); } catch (e) {} renderList(); applySheet(); });
   const ex = $("#loadEx"); if (ex) ex.onclick = loadExamples;
   const dx = $("#dropEx"); if (dx) dx.onclick = () => { state.zones = state.zones.filter(z => !z.example); save(); renderZones(); renderPanel(); };
 }
@@ -1171,6 +1234,7 @@ function renderPlacing() {
         <div><b class="num">${area ? fmtArea(area) : "–"}</b><span>surface</span></div>
         <div><b class="num">${n >= 2 ? "≈ " + walkAround(per) + " min" : "–"}</b><span>pour en faire le tour</span></div>
       </div>
+      <div class="liveprice" id="livePrice" hidden></div>
       <div class="draw-actions">
         ${closed
           ? `<button class="btn btn--sm" id="delPt" type="button" ${selVertex == null || n <= 3 ? "disabled" : ""}>Retirer le point sélectionné</button>`
@@ -1197,6 +1261,18 @@ function renderPlacing() {
     renderPanel();
     requestAnimationFrame(fitDraft);
   };
+  paintLivePrice();
+  if (n >= 3) ensureEstimate(draft, () => { if (ui.mode === "placing") paintLivePrice(); });
+}
+function paintLivePrice() {
+  const el = $("#livePrice"); if (!el || !draft) return;
+  if (draft.points.length < 3) { el.hidden = true; return; }
+  el.hidden = false;
+  const fresh = draft.est && draft.est.g === geomKey(draft.points);
+  const p = fresh && draft.est.prix;
+  el.innerHTML = !fresh ? `<span class="label">Prix des ventes ici</span><b>…</b>`
+    : p ? `<span class="label">Prix des ventes ici</span><b class="num">${fmtInt(p.med)}&#8239;€/m²</b><span class="conf ${CONF[p.conf][1]}">${CONF[p.conf][0]}</span>`
+    : `<span class="label">Prix des ventes ici</span><span class="hint2">Trop peu de ventes autour</span>`;
 }
 
 function cancelDraft() {
@@ -1352,6 +1428,8 @@ function paintCrits() {
       : u === e ? `Comme l’estimation : ${esc(why)}.`
       : `Estimation ${e} : ${esc(why)}. <button type="button" class="linkbtn" data-reset>Revenir à l’estimation</button>`;
   });
+  const zp = $("#zprice");
+  if (zp && draft.est && draft.est.prix) zp.placeholder = "Médiane " + fmtInt(draft.est.prix.med);
   const src = $("#estSrc");
   if (src) { src.hidden = !any; src.textContent = "Les notes en pointillés sont estimées d’après les ventes DVF et OpenStreetMap, en comparant ce coin aux autres quartiers de Paris et de la petite couronne. Elles comptent dans la note tant que vous ne les changez pas : touchez une autre note pour la remplacer."; }
 }
@@ -1442,7 +1520,7 @@ function renderDetail() {
       </div>
       <dl class="meta">
         ${z.date ? `<dt>Visite</dt><dd>${esc(fmtDate(z.date))}${z.moment ? ", " + esc(z.moment.toLowerCase()) : ""}</dd>` : ""}
-        ${z.price ? `<dt>Prix observé</dt><dd class="num">${fmtInt(z.price)} €/m²</dd>` : ""}
+        ${z.price && !(z.est && z.est.prix) ? `<dt>Prix observé</dt><dd class="num">${fmtInt(z.price)} €/m²</dd>` : ""}
         <dt>Surface</dt><dd class="num">${fmtArea(z.area || polyArea(z.points))}, environ ${walkAround(z.perimeter || polyPerimeter(z.points))} min pour en faire le tour à pied</dd>
         ${z.author ? `<dt>Notée par</dt><dd>${esc(z.author)}</dd>` : ""}
       </dl>
@@ -1470,14 +1548,31 @@ function priceHTML(z) {
   const p = z.est && z.est.prix;
   if (!p) return z.est ? `<div class="price"><span class="label">Prix des ventes</span><p class="price__sub">Trop peu de ventes d’appartements autour de cette zone pour estimer un prix.</p></div>` : "";
   const where = p.r ? `à moins de ${p.r} m de la zone` : "dans la zone";
-  const tr = p.trend == null ? "" : Math.abs(p.trend) < 1 ? ", stable sur un an" : `, ${p.trend > 0 ? "+" : "−"}${Math.abs(p.trend)} % sur un an`;
-  const lo = p.q1, hi = p.q3, span = Math.max(1, hi - lo), b = state.profile.budget;
+  const b = state.profile.budget, seen = z.price > 0 ? z.price : null;
+  const conf = CONF[p.conf ?? (p.n >= 30 ? 2 : p.n >= 15 ? 1 : 0)];
+  const lo0 = p.p10 ?? p.q1, hi0 = p.p90 ?? p.q3;
+  const lo = Math.min(lo0, b > 0 ? b : Infinity, seen || Infinity) * .97, hi = Math.max(hi0, b > 0 ? b : 0, seen || 0) * 1.03;
+  const pos = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + "%";
+  const facts = [];
+  if (p.com) facts.push(`${esc(p.com.name)} : ${fmtInt(p.com.med)}&#8239;€/m², ${Math.abs(p.com.delta) < 3 ? "la zone est dans la moyenne" : `la zone est ${Math.abs(p.com.delta)} % plus ${p.com.delta > 0 ? "chère" : "abordable"}`}`);
+  if (p.sect && p.sect.trend != null) facts.push(`${esc(p.sect.name)} : ${Math.abs(p.sect.trend) < 1 ? "prix stables" : `${p.sect.trend > 0 ? "+" : "−"}${Math.abs(p.sect.trend)} %`} sur un an`);
+  if (b > 0) facts.push(`Votre budget de ${fmtInt(b)}&#8239;€/m² couvre ${b >= p.q3 ? "plus des trois quarts" : b >= p.med ? "plus de la moitié" : b >= p.q1 ? "entre un quart et la moitié" : "moins d’un quart"} des ventes`);
+  if (seen) facts.push(`Prix observé : ${fmtInt(seen)}&#8239;€/m², ${Math.round((seen / p.med - 1) * 100) >= 0 ? "+" : "−"}${Math.abs(Math.round((seen / p.med - 1) * 100))} % par rapport à la médiane`);
   return `<div class="price">
-    <span class="label">Prix des ventes d’appartements</span>
+    <div class="price__top"><span class="label">Prix des ventes d’appartements</span><span class="conf ${conf[1]}">${conf[0]}</span></div>
     <div class="price__big num">${fmtInt(p.med)}&#8239;€/m²</div>
-    <p class="price__sub num">Prix médian de ${plural(p.n, "vente", "ventes")} ${where}, de ${monthLabel(p.from)} à ${monthLabel(p.to)}${tr}.</p>
-    <p class="price__sub num">La moitié des ventes entre ${fmtInt(lo)} et ${fmtInt(hi)}&#8239;€/m²${b > 0 ? `. Votre budget : ${fmtInt(b)}&#8239;€/m², ${b >= p.med ? "au-dessus du prix médian" : "en dessous du prix médian"}` : ""}.</p>
-    <p class="price__src">Source : DVF, ventes enregistrées par l’administration fiscale.</p>
+    <p class="price__sub num">Médiane de ${plural(p.n, "vente", "ventes")} ${where}${p.adj ? ", ramenées aux prix de " + monthLabel(p.to) : ""}.</p>
+    <div class="pbar" aria-hidden="true">
+      <span class="pbar__rng" style="left:${pos(lo0)};right:calc(100% - ${pos(hi0)})"></span>
+      <span class="pbar__iqr" style="left:${pos(p.q1)};right:calc(100% - ${pos(p.q3)})"></span>
+      <span class="pbar__med" style="left:${pos(p.med)}"></span>
+      ${b > 0 ? `<span class="pbar__bud" style="left:${pos(b)}"></span>` : ""}
+      ${seen ? `<span class="pbar__seen" style="left:${pos(seen)}"></span>` : ""}
+    </div>
+    <div class="pbar__leg num"><span>${fmtInt(lo0)}</span><span>la moitié des ventes entre ${fmtInt(p.q1)} et ${fmtInt(p.q3)}</span><span>${fmtInt(hi0)}</span></div>
+    ${b > 0 || seen ? `<div class="pbar__keys">${b > 0 ? `<span><i class="k-bud"></i>votre budget</span>` : ""}${seen ? `<span><i class="k-seen"></i>prix observé</span>` : ""}</div>` : ""}
+    ${facts.length ? `<ul class="price__facts">${facts.map(f => `<li>${f}</li>`).join("")}</ul>` : ""}
+    <p class="price__src num">DVF, ventes signées de ${monthLabel(p.from)} à ${monthLabel(p.to)}${p.adj && p.carrez != null ? `. Surface Carrez pour ${p.carrez} % d’entre elles` : ""}${p.dep ? `. Comprend des ventes avec cave ou parking` : ""}.</p>
   </div>`;
 }
 function verdict(s) {
