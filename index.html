@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Îlot</title>
+<title>Heden</title>
 <meta name="description" content="Notez les coins de Paris que vous visitez et repérez ceux qui vous correspondent.">
 <meta name="theme-color" content="#f3f4f5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#131517" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Îlot">
+<meta name="apple-mobile-web-app-title" content="Heden">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2315171a'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%237cb342' stroke-width='5'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,6 +81,15 @@ main{position:relative;min-height:0}
 
 /* Marqueurs */
 .handle{border-radius:50%;background:#fff;border:2px solid #15171a;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.handle--vertex{width:20px!important;height:20px!important;margin:-10px 0 0 -10px!important;cursor:grab}
+.handle--first{width:24px!important;height:24px!important;margin:-12px 0 0 -12px!important;border:3px solid #1f3a6e}
+.handle--sel{background:#15171a;border-color:#fff}
+.handle--mid{width:14px!important;height:14px!important;margin:-7px 0 0 -7px!important;background:rgba(31,58,110,.65);border:1.5px solid #fff;cursor:copy}
+.draw-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.draw-stats div{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.draw-stats b{display:block;font-size:17px;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
+.draw-stats span{font-size:12px;color:var(--muted)}
+.draw-actions{display:flex;flex-wrap:wrap;gap:8px}
 .handle--center{width:18px!important;height:18px!important;margin:-9px 0 0 -9px!important;background:#15171a;border-color:#fff}
 .handle--edge{width:24px!important;height:24px!important;margin:-12px 0 0 -12px!important;cursor:ew-resize;display:grid;place-items:center}
 .handle--edge::after{content:"";width:8px;height:8px;border-radius:50%;background:#15171a}
@@ -241,7 +250,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 <body>
 <div id="app">
   <header class="topbar">
-    <div class="brand"><b>Îlot</b><span>Les coins de Paris qui vous ressemblent</span></div>
+    <div class="brand"><b>Heden</b><span>Paris, coin par coin</span></div>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-tab="map" aria-selected="true">Carte</button>
       <button class="tab" role="tab" data-tab="profile" aria-selected="false">Profil</button>
@@ -383,6 +392,43 @@ let state = load() || defaultState();
 if (!state.profile || !Array.isArray(state.zones)) state = defaultState();
 
 const crit = () => state.profile.criteria;
+
+/* Géométrie des zones : projection locale en mètres (suffisante à l'échelle d'un quartier) */
+function toXY(p, lat0) { return [p[1] * 111320 * Math.cos(lat0 * Math.PI / 180), p[0] * 110540]; }
+function polyArea(pts) {
+  if (!pts || pts.length < 3) return 0;
+  const xy = pts.map(p => toXY(p, pts[0][0])); let a = 0;
+  for (let i = 0; i < xy.length; i++) { const [x1, y1] = xy[i], [x2, y2] = xy[(i + 1) % xy.length]; a += x1 * y2 - x2 * y1; }
+  return Math.abs(a / 2);
+}
+function polyPerimeter(pts, closed = true) {
+  if (!pts || pts.length < 2) return 0;
+  const xy = pts.map(p => toXY(p, pts[0][0])); let d = 0;
+  const n = closed ? xy.length : xy.length - 1;
+  for (let i = 0; i < n; i++) { const [x1, y1] = xy[i], [x2, y2] = xy[(i + 1) % xy.length]; d += Math.hypot(x2 - x1, y2 - y1); }
+  return d;
+}
+function polyCenter(pts) {
+  const lat0 = pts[0][0], k = 111320 * Math.cos(lat0 * Math.PI / 180);
+  const xy = pts.map(p => toXY(p, lat0)); let a = 0, cx = 0, cy = 0;
+  for (let i = 0; i < xy.length; i++) { const [x1, y1] = xy[i], [x2, y2] = xy[(i + 1) % xy.length]; const f = x1 * y2 - x2 * y1; a += f; cx += (x1 + x2) * f; cy += (y1 + y2) * f; }
+  if (Math.abs(a) < 1e-6) { const m = pts.reduce((s, p) => [s[0] + p[0], s[1] + p[1]], [0, 0]); return [m[0] / pts.length, m[1] / pts.length]; }
+  return [cy / (3 * a) / 110540, cx / (3 * a) / k];
+}
+function circlePoints(lat, lng, r, n = 12) {
+  const out = [];
+  for (let i = 0; i < n; i++) { const t = 2 * Math.PI * i / n; out.push([lat + r * Math.sin(t) / 110540, lng + r * Math.cos(t) / (111320 * Math.cos(lat * Math.PI / 180))]); }
+  return out;
+}
+function finishZoneGeometry(z) {
+  if (!Array.isArray(z.points) && typeof z.lat === "number" && typeof z.radius === "number") z.points = circlePoints(z.lat, z.lng, z.radius);
+  if (Array.isArray(z.points) && z.points.length >= 3) { const c = polyCenter(z.points); z.lat = c[0]; z.lng = c[1]; z.area = polyArea(z.points); z.perimeter = polyPerimeter(z.points); }
+  delete z.radius;
+  return z;
+}
+const fmtArea = m2 => m2 >= 10000 ? (m2 / 10000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " ha" : fmtInt(m2) + " m²";
+const walkAround = per => Math.max(1, Math.round(per / 80));
+state.zones.forEach(finishZoneGeometry);
 let draft = null, draftLayers = null;
 let ui = {mode: "list", collapsed: true};
 let selectedId = null;
@@ -474,8 +520,8 @@ function renderZones() {
     const {score} = scoreOf(z);
     const col = colorFor(score);
     const out = overBudget(z);
-    const circle = L.circle([z.lat, z.lng], {
-      radius: z.radius, color: col, weight: selectedId === z.id ? 3.5 : 2, opacity: .95,
+    const circle = L.polygon(z.points, {
+      color: col, weight: selectedId === z.id ? 3.5 : 2, opacity: .95,
       fillColor: col, fillOpacity: out ? .1 : (selectedId === z.id ? .42 : .3),
       dashArray: out ? "5 6" : null, bubblingMouseEvents: false
     });
@@ -484,7 +530,7 @@ function renderZones() {
         html: `<span class="zone-badge" style="--c:${col}"><i></i>${score == null ? "–" : score}${z.fav ? HEART : ""}</span>`}),
       keyboard: false
     });
-    const onClick = e => { if (ui.mode === "placing") { placeAt(e.latlng); return; } openDetail(z.id); };
+    const onClick = e => { if (ui.mode === "placing") { addPoint(e.latlng); return; } openDetail(z.id); };
     circle.on("click", onClick); badge.on("click", onClick);
     circle.addTo(zoneLayer); badge.addTo(zoneLayer);
   }
@@ -492,41 +538,66 @@ function renderZones() {
 
 /* Zone en cours (brouillon) : centre + poignée de rayon */
 const draftColor = () => base === "sat" ? "#ffffff" : (dark.matches ? "#eceef0" : "#15171a");
-function edgePoint(lat, lng, r) { return L.latLng(lat, lng + r / (111320 * Math.cos(lat * Math.PI / 180))); }
-function clearDraftLayers() { if (draftLayers) { Object.values(draftLayers).forEach(l => map.removeLayer(l)); draftLayers = null; } }
+let draftShape = null, selVertex = null;
+function clearDraftLayers() { if (draftLayers) { draftLayers.forEach(l => map.removeLayer(l)); draftLayers = null; draftShape = null; } }
+function handleIcon(cls, size) { return L.divIcon({className: "handle " + cls, iconSize: [size, size]}); }
 function drawDraft() {
   clearDraftLayers();
-  if (!draft || draft.lat == null) return;
-  const c = draftColor();
-  const circle = L.circle([draft.lat, draft.lng], {radius: draft.radius, color: c, weight: 2, dashArray: "6 6", fillColor: c, fillOpacity: .08, interactive: false}).addTo(map);
-  const center = L.marker([draft.lat, draft.lng], {draggable: true, icon: L.divIcon({className: "handle handle--center", iconSize: [18, 18]}), title: "Déplacer la zone"}).addTo(map);
-  const edge = L.marker(edgePoint(draft.lat, draft.lng, draft.radius), {draggable: true, icon: L.divIcon({className: "handle handle--edge", iconSize: [24, 24]}), title: "Étirer la zone"}).addTo(map);
-  center.on("drag", e => {
-    const p = e.target.getLatLng(); draft.lat = p.lat; draft.lng = p.lng;
-    circle.setLatLng(p); edge.setLatLng(edgePoint(p.lat, p.lng, draft.radius));
-  });
-  edge.on("drag", e => {
-    const r = Math.max(50, Math.min(2000, map.distance([draft.lat, draft.lng], e.target.getLatLng())));
-    draft.radius = Math.round(r); circle.setRadius(draft.radius); syncRadiusUI();
-  });
-  edge.on("dragend", () => edge.setLatLng(edgePoint(draft.lat, draft.lng, draft.radius)));
-  draftLayers = {circle, center, edge};
-}
-function setDraftRadius(r) {
-  draft.radius = r;
-  if (draftLayers) { draftLayers.circle.setRadius(r); draftLayers.edge.setLatLng(edgePoint(draft.lat, draft.lng, r)); }
-  syncRadiusUI();
-}
-function placeAt(latlng) {
   if (!draft) return;
-  const first = draft.lat == null;
-  draft.lat = latlng.lat; draft.lng = latlng.lng;
-  if (first && map.getZoom() < 15) map.setView(latlng, 15, {animate: true});
-  drawDraft();
-  if (first) { setHint(null); renderPanel(); }
+  const pts = draft.points, c = draftColor(), editing = ui.mode === "placing", layers = [];
+  if (pts.length >= 2) {
+    const style = {color: c, weight: 2, dashArray: "6 6", interactive: false};
+    draftShape = (draft.closed || !editing) ? L.polygon(pts, Object.assign({fillColor: c, fillOpacity: .12}, style)) : L.polyline(pts, style);
+    layers.push(draftShape.addTo(map));
+  }
+  if (editing && draft.closed) {
+    pts.forEach((p, i) => {
+      const q = pts[(i + 1) % pts.length];
+      const m = L.marker([(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], {draggable: true, keyboard: false, icon: handleIcon("handle--mid", 14), title: "Tirer pour ajouter un point"}).addTo(map);
+      let idx = null;
+      m.on("dragstart", () => { idx = i + 1; const ll = m.getLatLng(); draft.points.splice(idx, 0, [ll.lat, ll.lng]); });
+      m.on("drag", () => { const ll = m.getLatLng(); draft.points[idx] = [ll.lat, ll.lng]; draftShape && draftShape.setLatLngs(draft.points); });
+      m.on("dragend", () => { selVertex = idx; drawDraft(); renderPanel(); });
+      m.on("click", () => { const ll = m.getLatLng(); draft.points.splice(i + 1, 0, [ll.lat, ll.lng]); selVertex = i + 1; drawDraft(); renderPanel(); });
+      layers.push(m);
+    });
+  }
+  if (editing) {
+    pts.forEach((p, i) => {
+      const first = i === 0 && !draft.closed && pts.length >= 3;
+      const v = L.marker(p, {draggable: true, keyboard: false, title: first ? "Fermer la zone" : "Déplacer ce point",
+        icon: handleIcon("handle--vertex" + (first ? " handle--first" : "") + (selVertex === i ? " handle--sel" : ""), first ? 24 : 20)}).addTo(map);
+      v.on("drag", () => { const ll = v.getLatLng(); draft.points[i] = [ll.lat, ll.lng]; draftShape && draftShape.setLatLngs(draft.points); });
+      v.on("dragend", () => { selVertex = i; drawDraft(); renderPanel(); });
+      v.on("click", () => { if (first) { closeShape(); return; } selVertex = selVertex === i ? null : i; drawDraft(); renderPanel(); });
+      v.on("contextmenu", e => { if (e.originalEvent) L.DomEvent.preventDefault(e.originalEvent); removeVertex(i); });
+      layers.push(v);
+    });
+  }
+  draftLayers = layers;
+}
+function addPoint(latlng) {
+  if (!draft) return;
+  if (draft.closed) { selVertex = null; drawDraft(); renderPanel(); return; }
+  if (!draft.points.length && map.getZoom() < 15) map.setView(latlng, 15, {animate: true});
+  draft.points.push([latlng.lat, latlng.lng]);
+  setHint(draft.points.length < 3 ? "Continuez à poser les points du contour" : "Touchez le premier point pour fermer la zone");
+  drawDraft(); renderPanel();
+}
+function closeShape() {
+  if (!draft || draft.points.length < 3) return;
+  draft.closed = true; selVertex = null;
+  setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un");
+  drawDraft(); renderPanel();
+}
+function removeVertex(i) {
+  if (!draft) return;
+  if (draft.closed && draft.points.length <= 3) return toast("Une zone garde au moins 3 points");
+  draft.points.splice(i, 1); selVertex = null;
+  drawDraft(); renderPanel();
 }
 map.on("click", e => {
-  if (ui.mode === "placing") placeAt(e.latlng);
+  if (ui.mode === "placing") addPoint(e.latlng);
   else if (ui.mode === "detail") { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); }
 });
 
@@ -536,15 +607,7 @@ map.on("click", e => {
 const panel = $("#panel");
 
 function setHint(t) { const h = $("#hint"); h.hidden = !t; if (t) h.textContent = t; }
-function walkMin(r) { return Math.max(1, Math.round(r / 80)); }
-function areaHa(r) { return (Math.PI * r * r / 10000); }
-function syncRadiusUI() {
-  const b = $("#rv"), s = $("#rs"), sub = $("#rsub");
-  if (b) b.textContent = fmtInt(draft.radius) + " m";
-  if (s && +s.value !== draft.radius) s.value = draft.radius;
-  if (sub) sub.textContent = `≈ ${walkMin(draft.radius)} min à pied du centre · ${areaHa(draft.radius).toLocaleString("fr-FR", {maximumFractionDigits: 1})} ha`;
-}
-function placeLabel(z) { return [z.place, z.radius ? `rayon ${fmtInt(z.radius)} m` : ""].filter(Boolean).join(" · "); }
+function placeLabel(z) { return [z.place, z.area ? fmtArea(z.area) : ""].filter(Boolean).join(" · "); }
 
 function renderPanel() {
   panel.dataset.mode = ui.mode;
@@ -607,7 +670,7 @@ function renderList() {
         <div class="empty">
           <ol>
             <li><span>Choisissez vos critères et leur poids dans l’onglet <b>Profil</b>.</span></li>
-            <li><span>Appuyez sur <b>+ Zone</b>, touchez la carte, puis étirez le cercle sur le morceau de quartier visité.</span></li>
+            <li><span>Appuyez sur <b>+ Zone</b>, puis touchez la carte point par point pour dessiner le contour du morceau de quartier visité.</span></li>
             <li><span>Notez chaque critère de 0 à 5 : la zone prend sa couleur, du rouge au vert.</span></li>
           </ol>
           <div><button class="link" id="loadEx" type="button">Voir 3 zones d’exemple</button></div>
@@ -623,45 +686,56 @@ function renderList() {
 
 function startNew() {
   selectedId = null;
-  draft = {id: null, lat: null, lng: null, radius: 250, name: "", place: "", date: today(), moment: "", ratings: {}, price: null, fav: false, comment: ""};
+  draft = {id: null, points: [], closed: false, name: "", place: "", date: today(), moment: "", ratings: {}, price: null, fav: false, comment: ""};
   ui.mode = "placing";
-  setHint("Touchez la carte au centre du coin visité");
+  selVertex = null;
+  setHint("Touchez la carte pour poser les points du contour");
   renderZones(); renderPanel();
 }
 
 function renderPlacing() {
-  const placed = draft.lat != null;
+  const n = draft.points.length, closed = draft.closed;
+  const area = n >= 3 ? polyArea(draft.points) : 0;
+  const per = polyPerimeter(draft.points, closed || n >= 3);
+  const sub = closed ? "Glissez un point pour modeler la zone. Tirez un point bleu pour en ajouter un. Clic droit ou appui long sur un point pour le retirer."
+    : n < 3 ? "Touchez la carte pour poser les points du contour, dans l’ordre."
+    : "Touchez le premier point pour fermer la zone, ou validez directement.";
   panel.innerHTML = `
     <div class="grip"></div>
     <div class="panel__head">
       <div class="grow">
         <h2>${draft.id ? "Ajuster la zone" : "Nouvelle zone"}</h2>
-        <div class="sub">${placed ? "Glissez le point noir pour déplacer, le point blanc pour étirer." : "Touchez la carte pour poser le centre."}</div>
+        <div class="sub">${sub}</div>
       </div>
     </div>
     <div class="panel__body">
-      ${placed ? `
-      <div class="radius">
-        <span class="label">Rayon</span>
-        <div class="radius__val"><b class="num" id="rv"></b><span id="rsub" class="num"></span></div>
-        <input type="range" id="rs" min="50" max="1500" step="10" value="${draft.radius}" aria-label="Rayon de la zone">
-        <div class="chips">${[150, 250, 400, 700].map(r => `<button class="chip" type="button" data-r="${r}">${r} m</button>`).join("")}</div>
-      </div>` : `<p class="label" style="margin:0">En attente d’un point sur la carte</p>`}
+      <div class="draw-stats">
+        <div><b class="num">${n}</b><span>point${n > 1 ? "s" : ""}</span></div>
+        <div><b class="num">${area ? fmtArea(area) : "–"}</b><span>surface</span></div>
+        <div><b class="num">${n >= 2 ? "≈ " + walkAround(per) + " min" : "–"}</b><span>pour en faire le tour</span></div>
+      </div>
+      <div class="draw-actions">
+        ${closed
+          ? `<button class="btn btn--sm" id="delPt" type="button" ${selVertex == null || n <= 3 ? "disabled" : ""}>Retirer le point sélectionné</button>`
+          : `<button class="btn btn--sm" id="undoPt" type="button" ${n ? "" : "disabled"}>Annuler le dernier point</button>`}
+        <button class="btn btn--sm btn--ghost" id="resetPt" type="button" ${n ? "" : "disabled"}>Recommencer</button>
+      </div>
     </div>
     <div class="panel__foot">
       <button class="btn" id="cancel" type="button">Annuler</button>
-      <button class="btn btn--primary btn--block" id="confirm" type="button" ${placed ? "" : "disabled"}>Valider la zone</button>
+      <button class="btn btn--primary btn--block" id="confirm" type="button" ${n >= 3 ? "" : "disabled"}>Valider la zone</button>
     </div>`;
-  if (placed) {
-    syncRadiusUI();
-    $("#rs").oninput = e => setDraftRadius(+e.target.value);
-    $$("[data-r]", panel).forEach(b => b.onclick = () => setDraftRadius(+b.dataset.r));
-  }
+  const u = $("#undoPt"); if (u) u.onclick = () => { draft.points.pop(); setHint(draft.points.length ? "Continuez à poser les points du contour" : "Touchez la carte pour poser les points du contour"); drawDraft(); renderPanel(); };
+  const d = $("#delPt"); if (d) d.onclick = () => { if (selVertex != null) removeVertex(selVertex); };
+  $("#resetPt").onclick = () => { draft.points = []; draft.closed = false; selVertex = null; setHint("Touchez la carte pour poser les points du contour"); drawDraft(); renderPanel(); };
   $("#cancel").onclick = cancelDraft;
   $("#confirm").onclick = () => {
+    if (draft.points.length < 3) return;
+    draft.closed = true; selVertex = null;
+    finishZoneGeometry(draft);
     setHint(null);
     ui.mode = "rating";
-    fitDraft();
+    fitDraft(); drawDraft();
     if (!draft.place || !draft.name) reverseGeocode(draft);
     renderPanel();
   };
@@ -669,12 +743,12 @@ function renderPlacing() {
 
 function cancelDraft() {
   const back = draft && draft.id;
-  draft = null; clearDraftLayers(); setHint(null);
+  draft = null; selVertex = null; clearDraftLayers(); setHint(null);
   if (back) { ui.mode = "detail"; selectedId = back; } else ui.mode = "list";
   renderZones(); renderPanel();
 }
 function fitDraft() {
-  const b = L.latLng(draft.lat, draft.lng).toBounds(draft.radius * 2.6);
+  const b = L.latLngBounds(draft.points).pad(0.35);
   map.fitBounds(b, {paddingBottomRight: [0, isDesktop() ? 0 : Math.round(innerHeight * .5)], maxZoom: 17});
 }
 
@@ -687,7 +761,7 @@ function renderRating() {
     <div class="panel__head">
       <div class="grow">
         <h2>Noter la zone</h2>
-        <div class="sub">Rayon ${fmtInt(draft.radius)} m · ${cs.length} critères de votre profil</div>
+        <div class="sub">${draft.area ? fmtArea(draft.area) + " · " : ""}${cs.length} critères de votre profil</div>
       </div>
     </div>
     <div class="panel__body">
@@ -731,7 +805,7 @@ function renderRating() {
       </div>
     </div>
     <div class="panel__foot">
-      <button class="btn" id="back" type="button">Ajuster le cercle</button>
+      <button class="btn" id="back" type="button">Ajuster le tracé</button>
       <button class="btn btn--primary btn--block" id="saveZ" type="button">Enregistrer</button>
     </div>`;
   updateScoreBox();
@@ -753,7 +827,7 @@ function renderRating() {
       updateScoreBox();
     });
   });
-  $("#back").onclick = () => { ui.mode = "placing"; renderPanel(); };
+  $("#back").onclick = () => { ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); drawDraft(); renderPanel(); };
   $("#saveZ").onclick = commitDraft;
 }
 
@@ -765,14 +839,14 @@ function updateScoreBox() {
     <div class="big ${s.score == null ? "none" : ""}" style="--c:${col}">${s.score == null ? "–" : s.score}</div>
     <div><strong>${s.score == null ? "Pas encore de note" : "Note sur 100"}</strong>
     <p class="num">${s.rated} / ${s.total} critères notés${overBudget(draft) ? " · au-dessus de votre budget" : ""}</p></div>`;
-  if (draftLayers) {
+  if (draftShape) {
     const c = s.score == null ? draftColor() : col;
-    draftLayers.circle.setStyle({color: c, fillColor: c, fillOpacity: s.score == null ? .08 : .25});
+    draftShape.setStyle({color: c, fillColor: c, fillOpacity: s.score == null ? .12 : .3});
   }
 }
 
 function commitDraft() {
-  const z = clone(draft); delete z.nameTouched;
+  const z = finishZoneGeometry(clone(draft)); delete z.nameTouched; delete z.closed;
   z.name = (z.name || "").trim() || z.place || "Zone sans nom";
   z.updatedAt = Date.now();
   if (z.id) {
@@ -792,7 +866,7 @@ function commitDraft() {
 function openDetail(id, fly) {
   const z = state.zones.find(x => x.id === id); if (!z) return;
   selectedId = id; ui.mode = "detail";
-  if (fly) map.flyToBounds(L.latLng(z.lat, z.lng).toBounds(z.radius * 3), {maxZoom: 17, duration: .6, paddingBottomRight: [0, isDesktop() ? 0 : Math.round(innerHeight * .45)]});
+  if (fly) map.flyToBounds(L.latLngBounds(z.points).pad(0.4), {maxZoom: 17, duration: .6, paddingBottomRight: [0, isDesktop() ? 0 : Math.round(innerHeight * .45)]});
   renderZones(); renderPanel();
 }
 
@@ -831,7 +905,7 @@ function renderDetail() {
       <dl class="meta">
         ${z.date ? `<dt>Visite</dt><dd>${esc(fmtDate(z.date))}${z.moment ? " · " + esc(z.moment) : ""}</dd>` : ""}
         ${z.price ? `<dt>Prix observé</dt><dd class="num">${fmtInt(z.price)} €/m²</dd>` : ""}
-        <dt>Surface</dt><dd class="num">rayon ${fmtInt(z.radius)} m · ≈ ${walkMin(z.radius)} min à pied du centre</dd>
+        <dt>Surface</dt><dd class="num">${fmtArea(z.area || polyArea(z.points))} · ≈ ${walkAround(z.perimeter || polyPerimeter(z.points))} min pour en faire le tour</dd>
         ${z.author ? `<dt>Notée par</dt><dd>${esc(z.author)}</dd>` : ""}
       </dl>
       ${z.comment ? `<div class="note">${esc(z.comment)}</div>` : ""}
@@ -842,8 +916,8 @@ function renderDetail() {
       <button class="btn btn--primary btn--block" id="edit" type="button">Modifier les notes</button>
     </div>`;
   $("#close").onclick = () => { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); };
-  $("#edit").onclick = () => { draft = clone(z); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
-  $("#adj").onclick = () => { draft = clone(z); ui.mode = "placing"; renderZones(); drawDraft(); renderPanel(); };
+  $("#edit").onclick = () => { draft = Object.assign(clone(z), {closed: true}); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
+  $("#adj").onclick = () => { draft = Object.assign(clone(z), {closed: true}); selVertex = null; ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); renderZones(); drawDraft(); renderPanel(); };
   const del = $("#del");
   del.onclick = () => {
     if (!del.classList.contains("armed")) { del.classList.add("armed"); del.textContent = "Confirmer"; setTimeout(() => { if (del.isConnected) { del.classList.remove("armed"); del.textContent = "Supprimer"; } }, 3500); return; }
@@ -880,7 +954,7 @@ async function reverseGeocode(d) {
       d.name = street + (a.quarter && a.quarter !== street ? ` (${a.quarter})` : "");
       const inp = $("#zname"); if (inp && !inp.value) inp.value = d.name;
     }
-    const sub = $(".panel__head .sub"); if (sub && ui.mode === "rating" && place) sub.textContent = `${place} · rayon ${fmtInt(d.radius)} m`;
+    const sub = $(".panel__head .sub"); if (sub && ui.mode === "rating" && place) sub.textContent = `${place}${d.area ? " · " + fmtArea(d.area) : ""}`;
   } catch (e) { /* hors ligne : on garde la saisie manuelle */ }
 }
 let searchTimer = null;
@@ -920,7 +994,7 @@ $("#locate").onclick = () => {
     const ll = L.latLng(p.coords.latitude, p.coords.longitude);
     if (!L.latLngBounds(BOUNDS).pad(0.25).contains(ll)) return toast("Vous êtes hors de la zone couverte");
     map.flyTo(ll, 16, {duration: .6});
-    if (ui.mode === "placing") placeAt(ll);
+    if (ui.mode === "placing") addPoint(ll);
   }, () => toast("Position refusée ou introuvable"), {enableHighAccuracy: true, timeout: 8000});
 };
 
@@ -1046,10 +1120,10 @@ function renderProfile() {
 }
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({app: "ilot", version: 1, exportedAt: new Date().toISOString(), profile: state.profile, zones: state.zones}, null, 2)], {type: "application/json"});
+  const blob = new Blob([JSON.stringify({app: "heden", version: 1, exportedAt: new Date().toISOString(), profile: state.profile, zones: state.zones}, null, 2)], {type: "application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `ilot-${(state.profile.name || "zones").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${today()}.json`;
+  a.download = `heden-${(state.profile.name || "zones").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${today()}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
@@ -1060,7 +1134,10 @@ $("#importFile").addEventListener("change", async e => {
     if (!j || !Array.isArray(j.zones)) throw new Error("format");
     let added = 0, updated = 0;
     for (const z of j.zones) {
-      if (typeof z.lat !== "number" || typeof z.lng !== "number" || typeof z.radius !== "number") continue;
+      const okPoly = Array.isArray(z.points) && z.points.length >= 3 && z.points.every(p => Array.isArray(p) && typeof p[0] === "number" && typeof p[1] === "number");
+      const okCircle = typeof z.lat === "number" && typeof z.lng === "number" && typeof z.radius === "number";
+      if (!okPoly && !okCircle) continue;
+      finishZoneGeometry(z);
       z.ratings = z.ratings && typeof z.ratings === "object" ? z.ratings : {};
       const i = state.zones.findIndex(x => x.id === z.id);
       if (i < 0) { state.zones.push(Object.assign({id: uid()}, z)); added++; }
@@ -1070,24 +1147,24 @@ $("#importFile").addEventListener("change", async e => {
     j.zones.forEach(z => Object.keys(z.ratings || {}).forEach(k => { if (!crit().some(c => c.id === k)) unknown.add(k); }));
     save(); renderProfile();
     toast(`${added} zone${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}${updated ? `, ${updated} mise${updated > 1 ? "s" : ""} à jour` : ""}`);
-  } catch (err) { toast("Fichier illisible : choisissez un export Îlot (.json)"); }
+  } catch (err) { toast("Fichier illisible : choisissez un export Heden (.json)"); }
 });
 
 /* =========================================================
    Exemples (clairement marqués) et divers
    ========================================================= */
 function loadExamples() {
-  const mk = (name, place, lat, lng, radius, r, extra) => Object.assign({
-    id: uid(), example: true, name, place, lat, lng, radius, date: today(), moment: "Semaine, soir",
+  const mk = (name, place, points, r, extra) => finishZoneGeometry(Object.assign({
+    id: uid(), example: true, name, place, points, date: today(), moment: "Semaine, soir",
     ratings: r, price: null, fav: false, comment: "Zone d’exemple, à supprimer.", author: "Exemple", createdAt: Date.now(), updatedAt: 0
-  }, extra || {});
+  }, extra || {}));
   state.zones.push(
-    mk("Exemple · Canal Saint-Martin", "Paris 10e", 48.8712, 2.3646, 260, {transports:4,prix:3,vie_sociale:5,securite:4,commerces:5,nuisances:2,verts:3,bati:4}, {fav: true}),
-    mk("Exemple · Batignolles", "Paris 17e", 48.8873, 2.3195, 320, {transports:4,prix:3,vie_sociale:4,securite:5,commerces:4,nuisances:4,verts:5,bati:4}),
-    mk("Exemple · Porte de la Chapelle", "Paris 18e", 48.8975, 2.3593, 300, {transports:3,prix:4,vie_sociale:1,securite:1,commerces:2,nuisances:1,verts:1,bati:1})
+    mk("Exemple · Canal Saint-Martin", "Paris 10e", [[48.8737,2.3628],[48.8728,2.3690],[48.8689,2.3672],[48.8694,2.3619]], {transports:4,prix:3,vie_sociale:5,securite:4,commerces:5,nuisances:2,verts:3,bati:4}, {fav: true}),
+    mk("Exemple · Batignolles", "Paris 17e", [[48.8900,2.3154],[48.8897,2.3221],[48.8866,2.3236],[48.8846,2.3192],[48.8861,2.3146]], {transports:4,prix:3,vie_sociale:4,securite:5,commerces:4,nuisances:4,verts:5,bati:4}),
+    mk("Exemple · Porte de la Chapelle", "Paris 18e", [[48.8996,2.3561],[48.8992,2.3627],[48.8956,2.3622],[48.8958,2.3565]], {transports:3,prix:4,vie_sociale:1,securite:1,commerces:2,nuisances:1,verts:1,bati:1})
   );
   save(); ui.collapsed = false;
-  map.flyToBounds(L.latLngBounds(state.zones.filter(z => z.example).map(z => [z.lat, z.lng])).pad(0.4), {duration: .6});
+  map.flyToBounds(L.latLngBounds(state.zones.filter(z => z.example).flatMap(z => z.points)).pad(0.3), {duration: .6});
   renderZones(); renderPanel();
 }
 
@@ -1102,7 +1179,7 @@ window.addEventListener("resize", () => { panel.dataset.collapsed = String(ui.mo
 /* Démarrage */
 renderZones();
 setTab(/profil/.test(location.hash) ? "profile" : "map");
-window.__ilot = {state: () => state, scoreOf, colorFor};
+window.__heden = {state: () => state, scoreOf, colorFor};
 })();
 </script>
 </body>
