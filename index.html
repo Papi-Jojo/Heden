@@ -110,6 +110,7 @@ main{position:relative;min-height:0}
 .panel__head h2{margin:0;font-family:var(--display);font-variation-settings:"wdth" 112;font-size:20px;line-height:26px;font-weight:650;letter-spacing:-.005em;text-wrap:balance}
 .panel__head .sub{font-size:13.5px;line-height:19px;color:var(--ardoise-2);margin-top:4px}
 .panel__head .grow{flex:1;min-width:0}
+.sub--court{display:none}
 .panel__body{flex:1;overflow:auto;padding:18px 20px 22px;display:flex;flex-direction:column;gap:20px;overscroll-behavior:contain}
 .panel__foot{display:flex;gap:8px;padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--trait);background:var(--calcaire)}
 .grip{display:none}
@@ -257,7 +258,13 @@ main{position:relative;min-height:0}
   #view-map{display:block}
   #map{position:absolute;inset:0}
   .panel{position:absolute;left:0;right:0;bottom:0;max-height:70%;border-right:0;border-radius:var(--rayon-l) var(--rayon-l) 0 0;box-shadow:var(--ombre-feuille)}
-  .panel[data-mode="rating"],.panel[data-mode="detail"]{max-height:82%}
+  .panel[data-mode="rating"],.panel[data-mode="detail"]{max-height:64%}
+  .panel[data-mode="placing"] .sub--long,.panel[data-mode="placing"] .draw-stats{display:none}
+  .panel[data-mode="placing"] .sub--court{display:block}
+  .panel[data-mode="placing"] .panel__head{padding:22px 16px 10px;border-bottom:0}
+  .panel[data-mode="placing"] .panel__head h2{font-size:18px;line-height:22px}
+  .panel[data-mode="placing"] .panel__body{padding:0 16px 10px;gap:0;flex:none}
+  .panel[data-mode="placing"] .panel__foot{padding-top:10px}
   .panel__head{padding-top:24px}
   .grip{display:block;position:absolute;top:9px;left:50%;width:38px;height:4px;margin-left:-19px;border-radius:var(--pilule);background:var(--trait-fort);opacity:.6}
   .panel[data-collapsed="true"] .panel__body,.panel[data-collapsed="true"] .panel__foot{display:none}
@@ -678,7 +685,8 @@ function removeVertex(i) {
 }
 map.on("click", e => {
   if (ui.mode === "placing") addPoint(e.latlng);
-  else if (ui.mode === "detail") { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); }
+  /* un clic sur la carte, hors zone existante, commence une nouvelle zone */
+  else if (ui.mode === "list" || ui.mode === "detail") { startNew(); addPoint(e.latlng); }
 });
 
 /* =========================================================
@@ -750,7 +758,7 @@ function renderList() {
         <div class="empty">
           <ol>
             <li><span>Choisissez vos critères et leur poids dans l’onglet <b>Profil</b>.</span></li>
-            <li><span>Appuyez sur <b>+ Zone</b>, puis touchez la carte point par point pour dessiner le contour du morceau de quartier visité.</span></li>
+            <li><span>Touchez la carte pour poser le premier point d’une zone, puis continuez point par point autour du morceau de quartier visité.</span></li>
             <li><span>Notez chaque critère de 0 à 5 : la zone prend sa couleur, du rouge au vert.</span></li>
           </ol>
           <div><button class="link" id="loadEx" type="button">Voir 3 zones d’exemple</button></div>
@@ -785,7 +793,8 @@ function renderPlacing() {
     <div class="panel__head">
       <div class="grow">
         <h2>${draft.id ? "Ajuster la zone" : "Nouvelle zone"}</h2>
-        <div class="sub">${sub}</div>
+        <div class="sub sub--long">${sub}</div>
+        <div class="sub sub--court num">${n} point${n > 1 ? "s" : ""}${area ? ", " + fmtArea(area) : ""}${n && n < 3 ? ", encore " + (3 - n) + " au minimum" : ""}</div>
       </div>
     </div>
     <div class="panel__body">
@@ -815,9 +824,10 @@ function renderPlacing() {
     finishZoneGeometry(draft);
     setHint(null);
     ui.mode = "rating";
-    fitDraft(); drawDraft();
+    drawDraft();
     if (!draft.place || !draft.name) reverseGeocode(draft);
     renderPanel();
+    requestAnimationFrame(fitDraft);
   };
 }
 
@@ -828,8 +838,8 @@ function cancelDraft() {
   renderZones(); renderPanel();
 }
 function fitDraft() {
-  const b = L.latLngBounds(draft.points).pad(0.35);
-  map.fitBounds(b, {paddingBottomRight: [0, isDesktop() ? 0 : Math.round(innerHeight * .5)], maxZoom: 17});
+  const b = L.latLngBounds(draft.points).pad(0.25);
+  map.fitBounds(b, {paddingTopLeft: [0, isDesktop() ? 0 : 70], paddingBottomRight: [0, isDesktop() ? 0 : panel.offsetHeight], maxZoom: 17});
 }
 
 function renderRating() {
