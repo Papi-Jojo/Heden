@@ -56,6 +56,8 @@ create table if not exists public.zones (
   updated_at timestamptz not null default now()
 );
 create index if not exists zones_map_idx on public.zones(map_id);
+-- Estimations objectives calculées par l'appli (prix DVF, lieux OpenStreetMap)
+alter table public.zones add column if not exists estimates jsonb;
 
 -- ---------- Notes : une par personne et par zone (prépare la carte à deux) ----------
 create table if not exists public.ratings (

@@ -24,6 +24,18 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else "data"
 
 def log(*a): print(*a, flush=True)
 
+CACHE = os.environ.get("HEDEN_CACHE", ".cache-donnees")
+
+def cached(name, fetch):
+    """Garde une copie des téléchargements (relances plus rapides)."""
+    path = os.path.join(CACHE, name)
+    if os.path.exists(path):
+        return open(path, "rb").read()
+    raw = fetch()
+    os.makedirs(CACHE, exist_ok=True)
+    open(path, "wb").write(raw)
+    return raw
+
 def get(url, data=None, tries=4, timeout=900):
     for k in range(tries):
         try:
@@ -57,7 +69,8 @@ def dvf_sales():
         years = sorted(set(int(y) for y in re.findall(r'href="(\d{4})/"', get(base).decode())))
         years = years[-3:]
         log("DVF, années :", years)
-        sources = [(f"{y}/{d}", lambda y=y, d=d: get(f"{base}{y}/departements/{d}.csv.gz")) for y in years for d in DEPTS]
+        sources = [(f"{y}/{d}", lambda y=y, d=d: cached(f"dvf-{y}-{d}.csv.gz", lambda: get(f"{base}{y}/departements/{d}.csv.gz")))
+                   for y in years for d in DEPTS]
     muts = {}
     for name, fetch in sources:
         raw = fetch()
@@ -128,7 +141,7 @@ def overpass(q, env):
         url = OVERPASS[k % len(OVERPASS)]
         try:
             log("Overpass :", url)
-            return json.loads(get(url, urllib.parse.urlencode({"data": q}).encode(), tries=1))
+            return json.loads(cached(env.lower() + ".json", lambda: get(url, urllib.parse.urlencode({"data": q}).encode(), tries=1)))
         except Exception as e:
             last = e; time.sleep(30)
     raise RuntimeError(f"Overpass indisponible : {last}")
@@ -259,7 +272,7 @@ GROUPS = {
     "vie_sociale": ({10, 11, 12}, 400),
     "nuit": ({12, 13}, 400),
     "culture": ({20, 21, 22, 23, 24}, 800),
-    "ecoles": ({30, 31, 32, 33}, 500),
+    "ecoles": ({30, 31, 32, 33, 35}, 500),
     "sante": ({4, 40, 41, 42, 43}, 500),
     "velo": ({50}, 400),
 }
