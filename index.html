@@ -2108,6 +2108,15 @@ async function leaveSharedMap(mapId) {
   toast("Vous avez quitté la carte");
   rerenderAll();
 }
+async function deleteSharedMap(mapId) {
+  if (cloud.mapId === mapId) await switchMap(cloud.personalMapId);
+  const {error} = await cloud.client.from("maps").delete().eq("id", mapId);
+  if (error) { toast("Impossible de supprimer la carte pour le moment"); return; }
+  await loadMaps();
+  if (cloud.invite && cloud.invite.mapId === mapId) cloud.invite = null;
+  toast("Carte supprimée, avec ses zones et ses notes");
+  rerenderAll();
+}
 function inviteHTML(inv) {
   return `<div class="invite">
     <span class="label">Invitation, valable 14 jours</span>
@@ -2135,7 +2144,11 @@ function sharedHTML() {
         <button class="btn btn--sm" type="button" data-act="open" ${cloud.mapId === m.id ? "disabled" : ""}>${cloud.mapId === m.id ? "Carte affichée" : "Ouvrir la carte"}</button>
         <button class="btn btn--sm" type="button" data-act="invite">Inviter</button>
         <button class="btn btn--sm btn--ghost btn--danger" type="button" data-act="leave">Quitter</button>
+        ${m.owner === cloud.user.id ? `<button class="btn btn--sm btn--danger" type="button" data-act="delete">Supprimer la carte</button>` : ""}
       </div>
+      <p class="hint2">${m.owner === cloud.user.id
+        ? "Quitter vous retire de la carte, qui reste à votre binôme. Supprimer l’efface pour vous deux, avec ses zones et ses notes. Votre carte perso n’est jamais touchée."
+        : "Quitter vous retire de la carte : elle reste à votre binôme, avec vos notes. Votre carte perso n’est jamais touchée."}</p>
     </div>`).join("")}
     <form class="inline-form" id="newMapForm">
       <div class="field"><label class="label" for="newMapName">${shared.length ? "Créer une autre carte commune" : "Créer une carte commune"}</label>
@@ -2176,9 +2189,10 @@ function bindShared() {
         const link = inviteLink(cloud.invite.code);
         if (act === "share" && navigator.share) { try { await navigator.share({title: "Heden", text: "Rejoignez ma carte sur Heden pour noter les quartiers ensemble.", url: link}); } catch (err) {} return; }
         try { await navigator.clipboard.writeText(link); toast("Lien copié"); } catch (err) { window.prompt("Copiez ce lien :", link); }
-      } else if (act === "leave") {
-        if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Confirmer : quitter la carte"; setTimeout(() => { if (b.isConnected) { b.classList.remove("armed"); b.textContent = "Quitter"; } }, 3500); return; }
-        leaveSharedMap(id);
+      } else if (act === "leave" || act === "delete") {
+        const label = b.textContent;
+        if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = act === "leave" ? "Confirmer : quitter" : "Confirmer : tout supprimer"; setTimeout(() => { if (b.isConnected) { b.classList.remove("armed"); b.textContent = label; } }, 3500); return; }
+        if (act === "leave") leaveSharedMap(id); else deleteSharedMap(id);
       }
     };
   });
