@@ -1,4 +1,4 @@
-"""Refonte Heden : applique la nouvelle direction (lin, mousse, galets) à index.html -> fichier cible."""
+"""Refonte Heden : applique la nouvelle direction (amande, café, galets) à index.html -> fichier cible."""
 import sys
 import os
 SP = os.path.dirname(os.path.abspath(__file__)) + "/"
@@ -11,16 +11,16 @@ def rep(a, b, c=1):
     s = s.replace(a, b)
 
 # 1. tête : polices, couleurs du navigateur, icône
-rep('family=Archivo:wdth,wght@62..125,400..800&family=Figtree', 'family=Gloock&family=Archivo:wdth,wght@62..125,400..800&family=Figtree')
-rep('<meta name="theme-color" content="#F8F5F0" media="(prefers-color-scheme: light)">', '<meta name="theme-color" content="#FBF9EE" media="(prefers-color-scheme: light)">')
-rep('<meta name="theme-color" content="#221F1B" media="(prefers-color-scheme: dark)">', '<meta name="theme-color" content="#1C251A" media="(prefers-color-scheme: dark)">')
+rep('family=Archivo:wdth,wght@62..125,400..800&family=Figtree', 'family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Archivo:wdth,wght@62..125,400..800&family=Figtree')
+rep('<meta name="theme-color" content="#F8F5F0" media="(prefers-color-scheme: light)">', '<meta name="theme-color" content="#F8F2EC" media="(prefers-color-scheme: light)">')
+rep('<meta name="theme-color" content="#221F1B" media="(prefers-color-scheme: dark)">', '<meta name="theme-color" content="#271D16" media="(prefers-color-scheme: dark)">')
 i = s.index('<link rel="icon" href="data:image/svg+xml,'); j = s.index('>', i)
-s = s[:i] + """<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 5c4 0 7.5 1.6 18 7.7 9.6 5.6 10.8 8.4 10.8 19.3s-1.2 13.7-10.8 19.3C39.5 57.4 36 59 32 59s-7.5-1.6-18-7.7C4.4 45.7 3.2 42.9 3.2 32s1.2-13.7 10.8-19.3C24.5 6.6 28 5 32 5z' fill='%232E3A26'/%3E%3Cpath d='M35.2 36.4c2.9-4.2 9.7-5.3 13.4-2 3.3 3 2.6 8.7-1.3 11.6-4 3-10 2.9-12.6-.4-2-2.5-1.5-6.4.5-9.2z' fill='%23D4EA63'/%3E%3Cpath d='M17.5 22.8c1.8-4.6 7.9-6.5 12-4.6 3.7 1.7 4.5 6.5 2.2 9.9-2.6 3.9-8.1 5.2-11.8 3.4-2.8-1.4-3.5-5.1-2.4-8.7z' fill='%23F4F0DB'/%3E%3C/svg%3E">""" + s[j+1:]
+s = s[:i] + """<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 5c4 0 7.5 1.6 18 7.7 9.6 5.6 10.8 8.4 10.8 19.3s-1.2 13.7-10.8 19.3C39.5 57.4 36 59 32 59s-7.5-1.6-18-7.7C4.4 45.7 3.2 42.9 3.2 32s1.2-13.7 10.8-19.3C24.5 6.6 28 5 32 5z' fill='%233B2A1E'/%3E%3Cpath d='M35.2 36.4c2.9-4.2 9.7-5.3 13.4-2 3.3 3 2.6 8.7-1.3 11.6-4 3-10 2.9-12.6-.4-2-2.5-1.5-6.4.5-9.2z' fill='%23DDB892'/%3E%3Cpath d='M17.5 22.8c1.8-4.6 7.9-6.5 12-4.6 3.7 1.7 4.5 6.5 2.2 9.9-2.6 3.9-8.1 5.2-11.8 3.4-2.8-1.4-3.5-5.1-2.4-8.7z' fill='%23F8F2EC'/%3E%3C/svg%3E">""" + s[j+1:]
 
 # 2. styles de la refonte, après les styles existants
 css = open(SP + "refonte.css").read()
 rep('@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}\n</style>',
-    '#map,.leaflet-container{background:#EFEAD2}\n' + css + '\n@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}\n</style>')
+    '#map,.leaflet-container{background:#EEE4D9}\n' + css + '\n@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}\n</style>')
 
 # 3. logo : un îlot de galets
 i = s.index('<div class="brand">'); j = s.index('<b>heden</b>', i)
@@ -35,9 +35,9 @@ rep('const TRAIT_JOUR = [[0,[158,58,39]],[25,[154,77,27]],[50,[125,94,14]],[75,[
     'const TRAIT_JOUR = [[0,[150,62,40]],[25,[148,84,34]],[50,[122,98,22]],[75,[84,108,40]],[100,[44,92,46]]];')
 rep('const TRAIT_NUIT = [[0,[230,139,115]],[25,[235,162,106]],[50,[230,194,107]],[75,[183,201,123]],[100,[140,199,174]]];',
     'const TRAIT_NUIT = [[0,[232,146,118]],[25,[236,170,112]],[50,[232,204,114]],[75,[198,214,120]],[100,[150,204,128]]];')
-# 5. fond de carte lin et sauge
+# 5. fond de carte amande
 rep('const MAPTONES = {fond: "#F3EEE5", rue: "#FFFDF9", bord: "#E2DACD", bati: "#E6DFD3", eau: "#CCD7E0", vert: "#DCE3CD", libelle: "#6B655D", halo: "#F7F3EC", limite: "#C3B9AC"};',
-    'const MAPTONES = {fond: "#EFEAD2", rue: "#FBF9EE", bord: "#DCD5B6", bati: "#E5DFC3", eau: "#C7D3C2", vert: "#D2DCB5", libelle: "#56604B", halo: "#F4F0DB", limite: "#B9B393"};')
+    'const MAPTONES = {fond: "#EEE4D9", rue: "#FAF5EF", bord: "#DCCBB9", bati: "#E5D7C8", eau: "#C9D2D8", vert: "#DDD6C1", libelle: "#664530", halo: "#F5EEE6", limite: "#BFA58C"};')
 
 # 6. zones dessinées en formes souples (lissage d'affichage, les points restent ceux tracés)
 rep('''function renderZones() {
