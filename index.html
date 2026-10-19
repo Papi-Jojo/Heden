@@ -102,10 +102,23 @@ main{position:relative;min-height:0;grid-row:2}
 .fab-col{position:absolute;z-index:600;right:14px;bottom:128px;display:flex;flex-direction:column;gap:8px}
 .icon-btn{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--trait);background:var(--calcaire);border-radius:50%;box-shadow:var(--ombre-flottant);color:var(--ardoise)}
 .icon-btn[aria-pressed="true"]{color:var(--laiton)}
-.walkbar{position:absolute;z-index:650;left:14px;top:72px;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 14px;border-radius:var(--pilule);background:var(--calcaire);border:1px solid var(--trait);box-shadow:var(--ombre-flottant);max-width:calc(100% - 84px);white-space:nowrap}
+.walkbar{position:absolute;z-index:650;left:14px;top:72px;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 16px;border-radius:var(--pilule);background:var(--calcaire);border:1px solid var(--trait);box-shadow:var(--ombre-flottant);max-width:calc(100% - 84px);white-space:nowrap}
 .walkbar__dot{width:10px;height:10px;border-radius:50%;background:#A07B33;box-shadow:0 0 0 4px rgba(160,123,51,.18);flex:none}
-.walkbar__t{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.walkbar__t{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.walkbar__t b{font-size:14.5px;font-weight:700;white-space:nowrap}
+.walkbar__t small{font-size:11.5px;color:var(--zinc);white-space:nowrap}
 .walkbar .x{width:34px;height:34px}
+.walkbar__cam{position:relative;flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--trait-fort);color:var(--ardoise);cursor:pointer}
+.walkbar__cam b{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--laiton-vif);color:var(--calcaire);font-size:11px;line-height:18px;text-align:center}
+.wph{display:block;width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;overflow:hidden;border:2px solid var(--calcaire);box-shadow:0 1px 4px rgba(38,35,31,.35)}
+.wph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph__x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(20,18,15,.6);color:#fff;font-size:15px;line-height:24px;padding:0}
+.ph-empty{flex:1;display:flex;align-items:center;gap:14px;min-height:84px;padding:12px 16px;border:1px dashed var(--trait-fort);border-radius:var(--rayon-m);color:var(--ardoise-2);cursor:pointer}
+.ph-empty span{display:flex;flex-direction:column;gap:2px}
+.ph-empty b{font-size:14.5px;color:var(--ardoise)}
+.ph-empty small{font-size:12.5px;color:var(--zinc)}
+.ph-empty:hover,.ph--add:hover{border-color:var(--ardoise)}
+.zrow__ph{width:40px;height:40px;border-radius:var(--rayon-s);object-fit:cover;border:1px solid var(--trait)}
 body.walking .hint{display:none}
 body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:none}
 .me{position:absolute;width:18px;height:18px;transform:translate(-50%,-50%);pointer-events:none}
@@ -145,7 +158,7 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
 .photos__head{display:flex;align-items:baseline;gap:8px}
 .photos__head .num{font-size:12.5px;color:var(--zinc)}
 .photos__strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scroll-snap-type:x proximity}
-.ph{flex:none;width:84px;height:84px;border-radius:var(--rayon-m);border:1px solid var(--trait);background:var(--enduit);overflow:hidden;padding:0;position:relative;scroll-snap-align:start;cursor:pointer}
+.ph{flex:0 0 calc((100% - 24px) / 4);max-width:96px;aspect-ratio:1;height:auto;border-radius:var(--rayon-m);border:1px solid var(--trait);background:var(--enduit);overflow:hidden;padding:0;position:relative;scroll-snap-align:start;cursor:pointer}
 .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .ph--cover::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 2px var(--ardoise)}
 .ph--add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-style:dashed;border-color:var(--trait-fort);background:none;color:var(--ardoise-2);font-size:12px;font-weight:600}
@@ -369,6 +382,23 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
 .duo__row .heart{color:var(--laiton-vif)}
 .duo__c{margin:-2px 0 0;font-size:13.5px;color:var(--ardoise-2);white-space:pre-wrap}
 .duo__h{margin:2px 0 0;font-size:12px;color:var(--zinc)}
+.duo__more{align-self:flex-start;font-size:13px}
+.duo__tbl{overflow-x:auto;margin:2px -2px 0}
+.duo__tbl table{width:100%;border-collapse:collapse;font-size:13.5px}
+.duo__tbl th{text-align:right;font-weight:600;color:var(--ardoise-2);padding:6px 4px;border-bottom:1px solid var(--trait);white-space:nowrap}
+.duo__tbl th:first-child,.duo__tbl td:first-child{text-align:left;padding-left:2px}
+.duo__tbl td{padding:7px 4px;border-bottom:1px solid var(--trait);text-align:right;white-space:nowrap}
+.duo__tbl td:first-child{white-space:normal;color:var(--ardoise)}
+.duo__tbl td i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px}
+.duo__tbl td.est{color:var(--zinc)}
+.duo__tbl td.est i{opacity:.5}
+.duo__tbl td.na{color:var(--zinc)}
+.duo__leg{margin:6px 0 0;font-size:11.5px;color:var(--zinc)}
+.twin{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--rayon-m);background:var(--pierre);font-size:13.5px;color:var(--ardoise-2)}
+.twin span{flex:1}
+.mapsw__n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--email);color:var(--on-email);font-size:11px;font-weight:700;line-height:1}
+.mapsw button[aria-pressed="true"] .mapsw__n{background:var(--on-email);color:var(--email)}
+.tag--new{border-color:var(--email);color:var(--email);background:var(--email-doux)}
 .mapcard{display:flex;flex-direction:column;gap:12px;padding:14px 16px;border:1px solid var(--trait);border-radius:var(--rayon-m);background:var(--calcaire);margin-bottom:12px}
 .mapcard b{font-family:var(--display);font-variation-settings:"wdth" 100;font-size:16px}
 .mapcard .hint2{margin:2px 0 0}
@@ -645,7 +675,7 @@ function save() {
   if (cloud.user) scheduleSync();
 }
 /* état de la synchronisation : rempli par le module Supabase plus bas */
-let cloud = {client: null, user: null, mapId: null, personalMapId: null, maps: [], people: {}, channel: null, invite: null, names: {}, synced: null, status: "local", timer: null, busy: false, again: false, lastSync: null, error: "", pendingEmail: "", step: "email"};
+let cloud = {client: null, user: null, mapId: null, personalMapId: null, maps: [], people: {}, channel: null, invite: null, twins: {}, unseen: {}, names: {}, synced: null, status: "local", timer: null, busy: false, again: false, lastSync: null, error: "", pendingEmail: "", step: "email"};
 let state = load() || defaultState();
 if (!state.profile || !Array.isArray(state.zones)) state = defaultState();
 
@@ -1255,6 +1285,8 @@ function renderList() {
                 <div class="m">${pr ? `<span class="zprice num">${fmtInt(pr)}&#8239;€/m²</span>${placeLabel(z) ? ", " : ""}` : ""}${esc(placeLabel(z))}${z.author ? `, par ${esc(z.author)}` : ""}${isShared() ? esc(duoLine(z)) : ""}</div>
               </div>
               <span class="tags">
+                ${coverOf(z) && photoUrl(coverOf(z).thumb) ? `<img class="zrow__ph" src="${esc(photoUrl(coverOf(z).thumb))}" alt="">` : ""}
+                ${isNew(z) ? `<span class="tag tag--new">Nouveau</span>` : ""}
                 ${anyFav(z) ? `<span class="heart" title="Coup de cœur">${HEART}</span>` : ""}
                 ${overBudget(z) ? `<span class="tag tag--alerte">Hors budget</span>` : ""}
                 
@@ -1318,7 +1350,7 @@ function renderPlacing() {
         <div><b class="num">${area ? fmtArea(area) : "–"}</b><span>surface</span></div>
         <div><b class="num">${n >= 2 ? "≈ " + walkAround(per) + " min" : "–"}</b><span>pour en faire le tour</span></div>
       </div>
-      ${draft.walk ? `<p class="hint2 num">Tracée d’après ${draft.walk.len < 1000 ? fmtInt(Math.round(draft.walk.len / 10) * 10) + " m" : (draft.walk.len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"} de marche en ${draft.walk.min} min${draft.walk.rec ? ", dont une partie reconstituée (tirets gris) pendant une coupure du suivi" : ""}. Le parcours reste affiché pour vous aider à ajuster.</p>` : ""}
+      ${draft.walk ? `<p class="hint2 num">Tracée d’après ${draft.walk.len < 1000 ? fmtInt(Math.round(draft.walk.len / 10) * 10) + " m" : (draft.walk.len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"} de marche en ${draft.walk.min} min${draft.pendingPhotos && draft.pendingPhotos.length ? `, avec ${draft.pendingPhotos.length} photo${draft.pendingPhotos.length > 1 ? "s" : ""} qui seront ajoutées à la zone` : ""}${draft.walk.rec ? ", dont une partie reconstituée (tirets gris) pendant une coupure du suivi" : ""}. Le parcours reste affiché pour vous aider à ajuster.</p>` : ""}
       <div class="liveprice" id="livePrice" hidden></div>
       <div class="draw-actions">
         ${closed
@@ -1364,7 +1396,9 @@ function paintLivePrice() {
 
 function cancelDraft() {
   const back = draft && draft.id;
+  const hadWalk = draft && draft.walk;
   draft = null; selVertex = null; clearDraftLayers(); clearWalkTrace(); setHint(null);
+  if (hadWalk) walkPhotosClear();
   if (back) { ui.mode = "detail"; selectedId = back; } else ui.mode = "list";
   renderZones(); renderPanel();
 }
@@ -1409,6 +1443,10 @@ function renderRating() {
       <div class="field">
         <span class="label">Moment de la visite</span>
         <div class="chips" id="zmoment">${MOMENTS.map(m => `<button class="chip" type="button" aria-pressed="${draft.moment === m}">${m}</button>`).join("")}</div>
+      </div>
+      <div class="field">
+        <span class="label">Photos</span>
+        <div class="photos__strip" id="draftPhotos"></div>
       </div>
       <div class="field" style="gap:14px">
         <span class="label">Critères, de 0 (rédhibitoire) à 5 (excellent)</span>
@@ -1464,7 +1502,7 @@ function renderRating() {
       delete draft.ratings[id]; paintCrits(); updateScoreBox();
     };
   });
-  paintCrits();
+  paintCrits(); paintDraftPhotos();
   ensureEstimate(draft, () => { if (ui.mode === "rating") { paintCrits(); updateScoreBox(); } });
   $("#back").onclick = () => { ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); drawDraft(); renderPanel(); };
   $("#saveZ").onclick = commitDraft;
@@ -1479,8 +1517,8 @@ async function confirmCancelDraft() {
   if (lose && !(await askConfirm(orig
     ? {title: "Annuler vos modifications ?", text: "Le tracé, les notes et les commentaires modifiés ne seront pas enregistrés. La zone reste comme avant.", ok: "Annuler les modifications", cancel: "Continuer", danger: true}
     : draft.walk
-      ? {title: "Abandonner la zone de votre balade ?", text: "La zone proposée et le parcours seront effacés.", ok: "Abandonner", cancel: "Continuer", danger: true}
-      : {title: "Abandonner cette zone ?", text: ui.mode === "rating" ? "Le tracé et les notes saisies seront perdus." : "Les points déjà posés seront effacés.", ok: "Abandonner", cancel: "Continuer", danger: true}))) return;
+      ? {title: "Abandonner la zone de votre balade ?", text: draft.pendingPhotos && draft.pendingPhotos.length ? "La zone proposée, le parcours et les photos de la balade seront effacés." : "La zone proposée et le parcours seront effacés.", ok: "Abandonner", cancel: "Continuer", danger: true}
+      : {title: "Abandonner cette zone ?", text: ui.mode === "rating" ? `Le tracé${draft.pendingPhotos && draft.pendingPhotos.length ? ", les photos" : ""} et les notes saisies seront perdus.` : "Les points déjà posés seront effacés.", ok: "Abandonner", cancel: "Continuer", danger: true}))) return;
   const wasNew = !orig;
   cancelDraft();
   if (lose) toast(wasNew ? "Zone abandonnée" : "Modifications annulées");
@@ -1536,6 +1574,7 @@ function updateScoreBox() {
 }
 
 function commitDraft() {
+  const pendRaw = draft.pendingPhotos || []; delete draft.pendingPhotos; delete draft.preparing;
   const z = finishZoneGeometry(clone(draft)); delete z.nameTouched; delete z.closed; delete z.walk;
   z.name = (z.name || "").trim() || z.place || "Zone sans nom";
   z.updatedAt = Date.now();
@@ -1551,13 +1590,18 @@ function commitDraft() {
   draft = null; clearDraftLayers(); clearWalkTrace();
   selectedId = z.id; ui.mode = "detail";
   renderZones(); renderPanel();
+  const pend = pendRaw;
+  const saved = state.zones.find(x => x.id === z.id);
   toast(storageOk ? "Zone enregistrée" : "Zone ajoutée (non sauvegardée : stockage bloqué)");
   refreshEstimates();
+  if (pend.length && saved && cloud.user) uploadPhotos(saved, pend, {done: pend.length > 1 ? `Zone enregistrée avec ses ${pend.length} photos` : "Zone enregistrée avec sa photo"}).then(() => walkPhotosClear());
+  else if (pend.length) walkPhotosClear();
 }
 
 function openDetail(id, fly) {
   const z = state.zones.find(x => x.id === id); if (!z) return;
   selectedId = id; ui.mode = "detail";
+  if (isNew(z)) markSeen(z.id);
   if (fly) map.flyToBounds(L.latLngBounds(z.points).pad(0.4), {maxZoom: 17, duration: .6, paddingBottomRight: [0, isDesktop() ? 0 : Math.round(innerHeight * .45)]});
   renderZones(); renderPanel();
 }
@@ -1571,7 +1615,8 @@ function renderDetail() {
   const big = duo ? zs : s;
   const partners = duo ? partnerScores(z) : [];
   const waiting = duo ? curMap().members.filter(m => m.userId !== cloud.user.id && !partners.some(p => p.userId === m.userId)) : [];
-  const copyTargets = !duo && cloud.user ? cloud.maps.filter(m => m.kind === "partagee") : [];
+  const copyTargets = !duo && cloud.user && !z.link && !z.example ? cloud.maps.filter(m => m.kind === "partagee") : [];
+  const linkedMap = !duo && z.link ? cloud.maps.find(m => m.kind === "partagee") : null;
   panel.innerHTML = `
     <div class="grip"></div>
     <div class="panel__head">
@@ -1587,15 +1632,16 @@ function renderDetail() {
         <div><strong>${big.score == null ? "Pas encore de note" : verdict(big.score)}</strong>
         <p class="num">${duo ? (zs.joint ? "Note commune, moyenne de vos deux notes" : hasRated(z) ? "Votre note, en attendant celle de votre binôme" : partners.length ? `Note de ${esc(partners[0].name)}, en attendant la vôtre` : "Estimation, personne n’a encore noté") : `${s.rated} sur ${s.total} critères notés${s.estimated ? `, dont ${s.estimated} estimé${s.estimated > 1 ? "s" : ""}` : ""}`}</p>${z.fav ? `<p style="color:var(--laiton);font-weight:600;margin-top:2px"><span class="heart">${HEART}</span> Coup de cœur</p>` : ""}</div>
       </div>
+      ${photosHTML(z)}
       ${overBudget(z) ? `<div class="banner banner--alerte">${z.price > 0 ? "Prix observé" : "Prix estimé"} de ${fmtInt(zonePrice(z))} €/m², au-dessus de votre budget de ${fmtInt(state.profile.budget)} €/m².</div>` : ""}
       ${duo ? `<div class="duo">
         <div class="duo__row"><span>Vous</span>${hasRated(z) ? `<b class="num" style="--c:${colorFor(s.score)}"><i></i>${s.score ?? "–"}</b>` : `<em>Pas encore noté</em>`}${z.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
         ${partners.map(p => `<div class="duo__row"><span>${esc(p.name)}</span><b class="num" style="--c:${colorFor(p.s.score)}"><i></i>${p.s.score ?? "–"}</b>${p.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
           ${p.comment ? `<p class="duo__c">${esc(p.name)} : ${esc(p.comment)}</p>` : ""}`).join("")}
         ${waiting.map(m => `<div class="duo__row"><span>${esc(personName(m.userId))}</span><em>Pas encore noté</em></div>`).join("")}
-        <p class="duo__h">Chacun note avec son propre profil. Le détail ci-dessous montre vos critères.</p>
+        ${partners.length ? `<button type="button" class="link duo__more" id="duoMore" aria-expanded="false">Voir les notes de chacun, critère par critère</button><div class="duo__tbl" id="duoTbl" hidden>${duoTable(z, partners)}</div>` : ""}
+        <p class="duo__h">${twinOf(z) ? "Vos notes, commentaires et photos sont aussi sur votre carte perso. " : ""}Chacun note avec son propre profil.</p>
       </div>` : ""}
-      ${photosHTML(z)}
       ${priceHTML(z)}
       ${!s.complete && s.total ? `<div class="banner">Note partielle : ${s.total - s.rated} critère${s.total - s.rated > 1 ? "s" : ""} de votre profil n’${s.total - s.rated > 1 ? "ont" : "a"} pas encore été noté${s.total - s.rated > 1 ? "s" : ""}.</div>` : ""}
       <div class="breakdown">
@@ -1615,26 +1661,46 @@ function renderDetail() {
         ${z.author ? `<dt>Notée par</dt><dd>${esc(z.author)}</dd>` : ""}
       </dl>
       ${z.comment ? `<div class="note">${esc(z.comment)}</div>` : ""}
-      ${copyTargets.length ? `<div class="datarow">${copyTargets.map(m => `<button class="btn btn--sm" data-copy="${m.id}" type="button">Copier sur « ${esc(m.name)} »</button>`).join("")}</div>` : ""}
+      ${linkedMap || z.link ? `<div class="twin"><span>Aussi sur la carte commune${linkedMap ? ` « ${esc(linkedMap.name)} »` : ""}, avec les mêmes notes et photos.</span><button class="link" type="button" id="openTwin">Voir</button></div>` : ""}
+      ${copyTargets.length ? `<div class="datarow">${copyTargets.map(m => `<button class="btn btn--sm" data-copy="${m.id}" type="button">Ajouter à « ${esc(m.name)} »</button>`).join("")}</div>` : ""}
       <div><button class="btn btn--sm btn--danger" id="del" type="button">${duo ? "Supprimer la zone pour vous deux" : "Supprimer la zone"}</button></div>
     </div>
     <div class="panel__foot">
       <button class="btn" id="adj" type="button">Ajuster le tracé</button>
-      <button class="btn btn--primary btn--block" id="edit" type="button">Modifier les notes</button>
+      <button class="btn btn--primary btn--block" id="edit" type="button">${duo && !hasRated(z) ? "Ajouter ma note" : "Modifier les notes"}</button>
     </div>`;
   $("#close").onclick = () => { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); };
   $("#edit").onclick = () => { draft = Object.assign(clone(z), {closed: true}); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
   $("#adj").onclick = () => { draft = Object.assign(clone(z), {closed: true}); selVertex = null; ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); renderZones(); drawDraft(); renderPanel(); };
   $$("[data-copy]", panel).forEach(b => b.onclick = () => copyToMap(z, b.dataset.copy, b));
+  const ot = $("#openTwin"); if (ot) ot.onclick = () => openTwin(z);
+  const dm = $("#duoMore");
+  if (dm) dm.onclick = () => { const t = $("#duoTbl"), open = t.hidden; t.hidden = !open; dm.setAttribute("aria-expanded", String(open)); dm.textContent = open ? "Masquer le détail" : "Voir les notes de chacun, critère par critère"; };
   paintPhotos(); bindAccount(panel);
   const del = $("#del");
   del.onclick = async () => {
     if (!(await askConfirm({title: `Supprimer « ${z.name || "cette zone"} » ?`, text: duo ? "La zone disparaît pour vous deux, avec les notes et les photos de chacun." : "La zone, ses notes et ses photos seront effacées.", ok: "Supprimer", danger: true}))) return;
-    const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id) : [];
+    const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id && (p.zoneId || z.id) === z.id) : [];
     if (mine.length) cloud.client.storage.from("photos").remove(mine.flatMap(p => [p.path, p.thumb])).catch(() => {});
     state.zones = state.zones.filter(x => x.id !== z.id); save();
     selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); toast("Zone supprimée");
   };
+}
+/* Notes de chacun, critère par critère (chacun avec ses propres critères) */
+function duoTable(z, partners) {
+  const people = [{name: "Vous", ratings: z.ratings, criteria: crit(), budget: state.profile.budget},
+    ...partners.map(p => { const o = (z.others || []).find(x => x.userId === p.userId) || {}, pp = cloud.people[p.userId] || {};
+      return {name: p.name, ratings: o.ratings || {}, criteria: pp.criteria && pp.criteria.length ? pp.criteria : crit(), budget: pp.budget}; })];
+  const rows = [];
+  people.forEach(pe => pe.criteria.forEach(c => { if (c.weight > 0 && !rows.some(r => r.id === c.id)) rows.push({id: c.id, name: c.name}); }));
+  const cell = (pe, id) => {
+    if (!pe.criteria.some(c => c.id === id && c.weight > 0)) return `<td class="na">·</td>`;
+    const {v, est} = critValFor(z, id, pe.ratings, pe.budget);
+    return typeof v === "number" ? `<td class="num${est ? " est" : ""}"><i style="--c:${colorFor(v * 20)}"></i>${fmtNote(v)}</td>` : `<td class="na">–</td>`;
+  };
+  return `<table><thead><tr><th>Critère</th>${people.map(pe => `<th>${esc(pe.name)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td>${people.map(pe => cell(pe, r.id)).join("")}</tr>`).join("")}</tbody></table>
+    <p class="duo__leg">En gris : valeur estimée, pas encore notée. Point : critère absent de ce profil.</p>`;
 }
 function priceHTML(z) {
   const p = z.est && z.est.prix;
@@ -1774,7 +1840,45 @@ $("#locate").onclick = () => startGeo(true);
    Balade : on trace le parcours, puis on propose une zone
    ========================================================= */
 const WALK_KEY = "heden.walk";
-const walk = {on: false, pts: [], start: 0, line: null, wake: null, timer: null, trace: null};
+const walkDB = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open("heden", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("walkphotos", {keyPath: "id"});
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const run = (mode, fn) => open().then(db => new Promise((res, rej) => {
+    const t = db.transaction("walkphotos", mode), q = fn(t.objectStore("walkphotos"));
+    t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error);
+  }));
+  return {put: v => run("readwrite", st => st.put(v)), all: () => run("readonly", st => st.getAll()), clear: () => run("readwrite", st => st.clear())};
+})();
+function walkPhotosClear() {
+  (walk.photos || []).forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) {} });
+  walk.photos = []; if (walk.photoLayer) { map.removeLayer(walk.photoLayer); walk.photoLayer = null; }
+  walkDB.clear().catch(() => {});
+}
+function drawWalkPhotos() {
+  if (!walk.photoLayer) walk.photoLayer = L.layerGroup().addTo(map);
+  walk.photoLayer.clearLayers();
+  (walk.photos || []).forEach(p => { if (p.lat != null) L.marker([p.lat, p.lng], {icon: L.divIcon({className: "", iconSize: null, html: `<span class="wph"><img src="${esc(p.url)}" alt=""></span>`}), interactive: false, keyboard: false}).addTo(walk.photoLayer); });
+}
+async function addWalkPhotos(files) {
+  files = [...files].filter(isImage); if (!files.length) return;
+  walk.preparing = (walk.preparing || 0) + files.length; paintWalk();
+  for (const f of files) {
+    try {
+      const pr = await preparePhoto(f), pos = geo.last || {};
+      const item = {id: zoneId(), t: Date.now(), lat: pos.lat ?? null, lng: pos.lng ?? null, full: pr.full, th: pr.th, url: pr.url};
+      walk.photos.push(item);
+      walkDB.put({id: item.id, t: item.t, lat: item.lat, lng: item.lng, full: item.full, th: item.th}).catch(() => {});
+    } catch (err) { console.warn(err); }
+    walk.preparing--;
+  }
+  drawWalkPhotos(); paintWalk();
+  toast(files.length > 1 ? `${files.length} photos gardées pour la zone` : "Photo gardée : elle sera ajoutée à la zone");
+}
+const walk = {on: false, pts: [], start: 0, line: null, wake: null, timer: null, trace: null, photos: [], photoLayer: null, preparing: 0};
 const walkLen = pts => pts.reduce((a, p, i) => i ? a + distM({lat: pts[i - 1][0], lng: pts[i - 1][1]}, {lat: p[0], lng: p[1]}) : 0, 0);
 function walkSave() { try { localStorage.setItem(WALK_KEY, JSON.stringify({on: walk.on, pts: walk.pts, start: walk.start})); } catch (e) {} }
 async function keepAwake() {
@@ -1839,15 +1943,19 @@ function paintWalk() {
   if (!walk.on) { bar.hidden = true; return; }
   const min = Math.max(0, Math.round((Date.now() - walk.start) / 60000)), len = walkLen(walk.pts);
   bar.hidden = false;
-  bar.innerHTML = `<i class="walkbar__dot"></i>
-    <span class="walkbar__t num">${walk.filling ? "Reconstitution du parcours…" : walk.pts.length ? `${min} min, ${len < 1000 ? fmtInt(Math.round(len / 10) * 10) + " m" : (len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"}` : "Recherche du signal GPS…"}</span>
+  const dist = len < 1000 ? fmtInt(Math.round(len / 10) * 10) + " m" : (len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km";
+  bar.innerHTML = `<span class="walkbar__t num">${walk.filling ? "<b>Reconstitution…</b>" : walk.pts.length ? `<b>${dist}</b><small>${min} min de balade</small>` : "<b>Signal GPS…</b>"}</span>
+    <label class="walkbar__cam" title="Prendre une photo" aria-label="Prendre une photo">${cloud.user ? `<input type="file" accept="image/*" capture="environment" multiple hidden>` : ""}<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${walk.photos.length || walk.preparing ? `<b class="num">${walk.photos.length + (walk.preparing || 0)}</b>` : ""}</label>
     <button class="btn btn--sm btn--primary" type="button" id="walkEnd">Terminer</button>
     <button class="x" type="button" id="walkCancel" aria-label="Abandonner la balade"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
   $("#walkEnd").onclick = finishWalk;
+  const cam = bar.querySelector(".walkbar__cam"), ci = cam.querySelector("input");
+  if (ci) ci.onchange = e => { const f = e.target.files; if (f && f.length) addWalkPhotos(f); e.target.value = ""; };
+  else cam.onclick = () => openAuth("Connectez-vous pour prendre des photos pendant vos balades et les garder avec la zone.");
   const cx = $("#walkCancel");
   cx.onclick = async () => {
-    if (!(await askConfirm({title: "Abandonner la balade ?", text: "Le parcours enregistré sera effacé, aucune zone ne sera proposée.", ok: "Abandonner", cancel: "Continuer la balade", danger: true}))) return;
-    stopWalk(); toast("Balade abandonnée");
+    if (!(await askConfirm({title: "Abandonner la balade ?", text: walk.photos.length ? `Le parcours et les ${walk.photos.length} photo${walk.photos.length > 1 ? "s" : ""} prise${walk.photos.length > 1 ? "s" : ""} seront effacés.` : "Le parcours enregistré sera effacé, aucune zone ne sera proposée.", ok: "Abandonner", cancel: "Continuer la balade", danger: true}))) return;
+    stopWalk(); walkPhotosClear(); toast("Balade abandonnée");
   };
 }
 function onWalkPos(pt) {
@@ -1872,6 +1980,7 @@ geo.listeners.add(onWalkPos);
 function startWalk() {
   if (ui.mode === "placing" || ui.mode === "rating") return toast("Terminez d’abord la zone en cours");
   if (!startGeo(true)) return;
+  walkPhotosClear();
   Object.assign(walk, {on: true, pts: [], start: Date.now()});
   walkSave(); keepAwake(); drawWalk(); paintWalk();
   clearInterval(walk.timer); walk.timer = setInterval(paintWalk, 30000);
@@ -1910,7 +2019,7 @@ async function walkToZone(pts) {
   return shape.geometry.coordinates[0].slice(0, -1).map(([x, y]) => [y, x]);
 }
 async function finishWalk() {
-  for (let k = 0; walk.filling && k < 40; k++) await new Promise(r => setTimeout(r, 250));
+  for (let k = 0; (walk.filling || walk.preparing) && k < 60; k++) await new Promise(r => setTimeout(r, 250));
   const pts = walk.pts, len = walkLen(pts);
   if (pts.length < 4 || len < 120) return toast("Balade trop courte pour proposer une zone : marchez au moins 150 m");
   const btn = $("#walkEnd"); if (btn) { btn.disabled = true; btn.textContent = "Calcul…"; }
@@ -1921,6 +2030,7 @@ async function finishWalk() {
   stopWalk(true);
   startNew();
   draft.points = poly; draft.closed = true; draft.walk = {len: Math.round(len), min: minutes, rec: pts.some(p => p[3])};
+  draft.pendingPhotos = walk.photos.map(p => ({full: p.full, th: p.th, url: p.url}));
   finishZoneGeometry(draft);
   setHint("Zone proposée d’après votre balade : ajustez les points, puis validez");
   drawDraft(); renderPanel();
@@ -1934,6 +2044,7 @@ try {
   if (w && w.on && Date.now() - w.start < 6 * 3600e3) {
     Object.assign(walk, {on: true, pts: w.pts || [], start: w.start});
     startGeo(false); keepAwake(); drawWalk(); paintWalk();
+    walkDB.all().then(all => { walk.photos = (all || []).sort((a, b) => a.t - b.t).map(p => Object.assign(p, {url: URL.createObjectURL(p.th.blob)})); drawWalkPhotos(); paintWalk(); }).catch(() => {});
     walk.timer = setInterval(paintWalk, 30000);
     setTimeout(() => toast("Balade reprise là où vous l’aviez laissée"), 800);
   }
@@ -2377,6 +2488,7 @@ async function syncNow() {
     const dels = Object.keys(prev.zones).filter(id => !cur.zones[id]);
     if (zUp.length) { const {error} = await c.from("zones").upsert(zUp); if (error) throw error; }
     if (rUp.length) { const {error} = await c.from("ratings").upsert(rUp); if (error) throw error; }
+    await syncTwins(rUp);
     if (dels.length) { const {error} = await c.from("zones").delete().in("id", dels); if (error) throw error; }
     cloud.synced = cur; cloud.lastSync = new Date();
     try { localStorage.setItem("heden.cache." + cloud.user.id, JSON.stringify({state, synced: cloud.synced, mapId: cloud.mapId})); } catch (e) {}
@@ -2396,7 +2508,7 @@ function zoneFromRow(row) {
   const rs = row.ratings || [];
   const mine = rs.find(r => r.user_id === me) || {};
   return finishZoneGeometry({
-    id: row.id, mapId: row.map_id, createdBy: row.created_by, name: row.name, place: row.place, points: row.points, est: row.estimates || null, cover: row.cover_photo || null,
+    id: row.id, mapId: row.map_id, createdBy: row.created_by, name: row.name, place: row.place, points: row.points, est: row.estimates || null, cover: row.cover_photo || null, link: row.link_zone || null,
     ratings: mine.ratings || {}, fav: !!mine.fav, comment: mine.comment || "", date: mine.visit_date || "", moment: mine.moment || "",
     price: mine.price == null ? null : Number(mine.price),
     author: row.created_by === me ? (state.profile.name || "") : (cloud.names[row.created_by] || ""),
@@ -2484,31 +2596,44 @@ async function compressImage(file, max, q) {
   return {blob, w: cv.width, h: cv.height};
 }
 const uploads = new Map();   // zone id -> nombre de photos en cours d'envoi
-async function uploadPhotos(z, files) {
-  files = [...files].filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|heic|webp)$/i.test(f.name));
-  if (!files.length || !cloud.user) return;
+/* Photo prête à envoyer : version 1600 px et vignette 360 px, préparées sur le téléphone */
+async function preparePhoto(f) {
+  const [full, th] = await Promise.all([compressImage(f, 1600, .82), compressImage(f, 360, .72)]);
+  return {full, th, url: URL.createObjectURL(th.blob)};
+}
+const isImage = f => /^image\//.test(f.type) || /\.(jpe?g|png|heic|webp)$/i.test(f.name || "");
+async function uploadPhotos(z, items, opts = {}) {
+  items = [...items].filter(it => it.full || isImage(it));
+  if (!items.length || !cloud.user) return 0;
   if (hasPending()) await syncNow();
-  if (!cloud.synced || !cloud.synced.zones[z.id]) { toast("Zone pas encore enregistrée dans votre compte : réessayez dans un instant"); return; }
-  uploads.set(z.id, (uploads.get(z.id) || 0) + files.length); paintPhotos();
+  const target = photoZoneId(z);
+  if (!z.link && (!cloud.synced || !cloud.synced.zones[z.id])) { toast("Zone pas encore enregistrée dans votre compte : réessayez dans un instant"); return 0; }
+  uploads.set(z.id, (uploads.get(z.id) || 0) + items.length); paintPhotos();
   const st = cloud.client.storage.from("photos"); let ok = 0;
-  for (const f of files) {
+  for (const it of items) {
+    let row = null;
     try {
-      const [full, th] = await Promise.all([compressImage(f, 1600, .82), compressImage(f, 360, .72)]);
-      const id = zoneId(), base = `${cloud.user.id}/${z.id}/${id}`;
-      let r = await st.upload(base + ".jpg", full.blob, {contentType: "image/jpeg", upsert: false}); if (r.error) throw r.error;
-      r = await st.upload(base + "_t.jpg", th.blob, {contentType: "image/jpeg", upsert: false}); if (r.error) throw r.error;
-      const row = {id, zone_id: z.id, user_id: cloud.user.id, path: base + ".jpg", thumb: base + "_t.jpg", width: full.w, height: full.h};
-      r = await cloud.client.from("zone_photos").insert(row); if (r.error) throw r.error;
+      const {full, th} = it.full ? it : await preparePhoto(it);
+      const id = zoneId(), base = `${cloud.user.id}/${target}/${id}`;
+      row = {id, zone_id: target, user_id: cloud.user.id, path: base + ".jpg", thumb: base + "_t.jpg", width: full.w, height: full.h};
+      let r = await cloud.client.from("zone_photos").insert(row); if (r.error) { row = null; throw r.error; }
+      r = await st.upload(row.path, full.blob, {contentType: "image/jpeg", upsert: false}); if (r.error) throw r.error;
+      r = await st.upload(row.thumb, th.blob, {contentType: "image/jpeg", upsert: false}); if (r.error) throw r.error;
       photoUrls.set(row.thumb, {url: URL.createObjectURL(th.blob), exp: Date.now() + 5 * 3600e3});
       photoUrls.set(row.path, {url: URL.createObjectURL(full.blob), exp: Date.now() + 5 * 3600e3});
-      (z.photos = z.photos || []).push({id, path: row.path, thumb: row.thumb, userId: cloud.user.id, w: full.w, h: full.h, at: new Date().toISOString()});
+      (z.photos = z.photos || []).push({id, zoneId: target, path: row.path, thumb: row.thumb, userId: cloud.user.id, w: full.w, h: full.h, at: new Date().toISOString()});
       ok++;
-    } catch (err) { console.warn("Heden : envoi photo", err); }
+    } catch (err) {
+      console.warn("Heden : envoi photo", err);
+      if (row) { cloud.client.from("zone_photos").delete().eq("id", row.id).then(() => {}, () => {}); }
+    }
     uploads.set(z.id, uploads.get(z.id) - 1); paintPhotos();
   }
   uploads.delete(z.id);
-  save(); renderZones(); paintPhotos();
-  toast(ok === files.length ? (ok > 1 ? `${ok} photos ajoutées` : "Photo ajoutée") : ok ? `${ok} photo${ok > 1 ? "s" : ""} sur ${files.length} ajoutée${ok > 1 ? "s" : ""}` : "Envoi impossible pour le moment");
+  save(); renderZones(); paintPhotos(); if (ui.mode === "list") renderList();
+  const n = items.length;
+  toast(ok === n ? (opts.done || (ok > 1 ? `${ok} photos ajoutées` : "Photo ajoutée")) : ok ? `${ok} photo${ok > 1 ? "s" : ""} sur ${n} ajoutée${ok > 1 ? "s" : ""}` : "Envoi des photos impossible pour le moment");
+  return ok;
 }
 async function deletePhoto(z, ph) {
   try {
@@ -2534,14 +2659,34 @@ function paintPhotos() {
     <div class="photos__strip">
       ${ps.map((p, i) => { const u = photoUrl(p.thumb); return `<button type="button" class="ph${cover && cover.id === p.id ? " ph--cover" : ""}" data-i="${i}" aria-label="Voir la photo ${i + 1}">${u ? `<img src="${esc(u)}" alt="" loading="lazy">` : ""}</button>`; }).join("")}
       ${Array.from({length: pending}, () => `<span class="ph ph--wait"><i></i></span>`).join("")}
-      <label class="ph ph--add"><input type="file" accept="image/*" multiple hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Ajouter</span></label>
-    </div>
-    ${ps.length ? "" : `<p class="hint2">Gardez quelques photos du coin pour vous souvenir de l’ambiance : façades, rue, square.</p>`}`;
+      ${ps.length || pending ? `<label class="ph ph--add"><input type="file" accept="image/*" multiple hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Ajouter</span></label>` : `<label class="ph-empty"><input type="file" accept="image/*" multiple hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Ajouter des photos du coin</b><small>Façades, rue, square : de quoi vous souvenir de l’ambiance</small></span></label>`}
+    </div>`;
   box.querySelector("input").onchange = e => { const f = e.target.files; if (f && f.length) uploadPhotos(z, f); e.target.value = ""; };
   $$("[data-i]", box).forEach(b => b.onclick = () => openViewer(z, +b.dataset.i));
   const miss = ps.map(p => p.thumb).filter(t => !photoUrl(t));
   if (miss.length) signUrls(miss).then(okk => { if (okk) paintPhotos(); });
 }
+/* Photos dans le panneau de notation : envoyées tout de suite pour une zone existante, gardées en attente pour une nouvelle */
+function paintDraftPhotos() {
+  const box = $("#draftPhotos"); if (!box || !draft) return;
+  if (!cloudReady) { box.closest(".field").hidden = true; return; }
+  if (!cloud.user) { box.innerHTML = `<p class="hint2"><button class="link" type="button" data-auth>Connectez-vous</button> pour garder des photos de vos visites.</p>`; bindAccount(box); return; }
+  const zone = draft.id && state.zones.find(x => x.id === draft.id);
+  const have = zone ? (zone.photos || []) : [], pend = draft.pendingPhotos || [], wait = zone ? uploads.get(zone.id) || 0 : 0;
+  box.innerHTML = `${have.map(p => { const u = photoUrl(p.thumb); return `<span class="ph">${u ? `<img src="${esc(u)}" alt="">` : ""}</span>`; }).join("")}
+    ${pend.map((p, i) => `<span class="ph"><img src="${esc(p.url)}" alt=""><button class="ph__x" type="button" data-rm="${i}" aria-label="Retirer cette photo">×</button></span>`).join("")}
+    ${Array.from({length: wait + (draft.preparing || 0)}, () => `<span class="ph ph--wait"><i></i></span>`).join("")}
+    <label class="ph ph--add"><input type="file" accept="image/*" multiple hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Ajouter</span></label>`;
+  box.querySelector("input").onchange = async e => {
+    const files = [...e.target.files].filter(isImage); e.target.value = "";
+    if (!files.length) return;
+    if (zone) { await uploadPhotos(zone, files); paintDraftPhotos(); return; }
+    draft.preparing = (draft.preparing || 0) + files.length; paintDraftPhotos();
+    for (const f of files) { try { (draft.pendingPhotos = draft.pendingPhotos || []).push(await preparePhoto(f)); } catch (err) { console.warn(err); } draft.preparing--; paintDraftPhotos(); }
+  };
+  $$("[data-rm]", box).forEach(b => b.onclick = () => { draft.pendingPhotos.splice(+b.dataset.rm, 1); paintDraftPhotos(); });
+}
+
 /* Visionneuse plein écran */
 const viewer = {z: null, i: 0};
 function openViewer(z, i) {
@@ -2588,6 +2733,59 @@ async function paintViewer() {
   if (!photoUrl(p.path)) { await signUrls([p.path]); if (viewer.z === z && z.photos[viewer.i] === p) img.src = photoUrl(p.path) || img.src; }
 }
 
+/* ---------- Zones jumelles : une zone notée sur la carte commune existe aussi sur la carte perso ----------
+   Même note, même commentaire, mêmes photos des deux côtés. La forme de chaque zone reste modifiable séparément. */
+const twinOf = z => z.link || cloud.twins[z.id] || null;
+const photoZoneId = z => z.link || z.id;        // les photos d'une zone jumelle sont rangées sur la zone commune
+async function loadTwins() {
+  if (!cloud.personalMapId) return;
+  const {data} = await cloud.client.from("zones").select("id, link_zone").eq("map_id", cloud.personalMapId);
+  cloud.twins = {};
+  (data || []).forEach(r => { if (r.link_zone) cloud.twins[r.link_zone] = r.id; });
+}
+async function syncTwins(rUp) {
+  const c = cloud.client, me = cloud.user.id, now = new Date().toISOString();
+  const mirror = [];
+  for (const r of rUp) {
+    const z = state.zones.find(x => x.id === r.zone_id), t = z && twinOf(z);
+    if (t) mirror.push(Object.assign({}, r, {zone_id: t}));
+  }
+  if (mirror.length) { const {error} = await c.from("ratings").upsert(mirror); if (error) console.warn("Heden : note jumelle", error); }
+  if (!isShared() || !cloud.personalMapId) return;
+  for (const z of state.zones) {               // noter une zone de la carte commune la fait apparaître sur la carte perso
+    if (z.example || !(hasRated(z) || z.createdBy === me) || cloud.twins[z.id] || !(cloud.synced && cloud.synced.zones[z.id]) && !rUp.some(r => r.zone_id === z.id)) continue;
+    const id = zoneId();
+    const row = Object.assign(zoneRow(z), {id, map_id: cloud.personalMapId, created_by: me, link_zone: z.id, updated_at: now});
+    let {error} = await c.from("zones").upsert(row);
+    if (!error) ({error} = await c.from("ratings").upsert(Object.assign(ratingRow(z), {zone_id: id, updated_at: now})));
+    if (error) { console.warn("Heden : zone jumelle", error); continue; }
+    cloud.twins[z.id] = id;
+  }
+}
+/* Nouveautés : zones ajoutées par le binôme et pas encore ouvertes (mémorisé sur cet appareil) */
+const seenKey = () => "heden.seen." + cloud.user.id;
+function seenSet() { try { return new Set(JSON.parse(localStorage.getItem(seenKey()) || "[]")); } catch (e) { return new Set(); } }
+function markSeen(id) {
+  const st = seenSet(); if (st.has(id)) return;
+  st.add(id); try { localStorage.setItem(seenKey(), JSON.stringify([...st].slice(-2000))); } catch (e) {}
+  Object.values(cloud.unseen).forEach(u => u.delete(id));
+}
+async function loadUnseen() {
+  const shared = cloud.maps.filter(m => m.kind === "partagee"); cloud.unseen = {};
+  if (!shared.length) return;
+  const {data} = await cloud.client.from("zones").select("id, map_id, created_by").in("map_id", shared.map(m => m.id));
+  const st = seenSet();
+  (data || []).forEach(r => { if (r.created_by !== cloud.user.id && !st.has(r.id)) (cloud.unseen[r.map_id] = cloud.unseen[r.map_id] || new Set()).add(r.id); });
+}
+const isNew = z => isShared() && !!(cloud.unseen[cloud.mapId] && cloud.unseen[cloud.mapId].has(z.id));
+async function openTwin(z) {
+  const t = z.link; const m = cloud.maps.find(x => x.kind === "partagee" && x.id !== cloud.mapId) ;
+  const {data} = await cloud.client.from("zones").select("id, map_id").eq("id", t).maybeSingle();
+  if (!data) return toast("Cette zone n’est plus sur la carte commune");
+  await switchMap(data.map_id);
+  if (state.zones.some(x => x.id === t)) openDetail(t, true);
+}
+
 /* ---------- Cartes : perso et partagées ---------- */
 async function loadPeople(ids) {
   const {data: ps} = await cloud.client.from("profiles").select("id, display_name, criteria, budget, half_points").in("id", ids);
@@ -2605,6 +2803,7 @@ async function loadMaps() {
     .sort((a, b) => (a.kind === "perso" ? 0 : 1) - (b.kind === "perso" ? 0 : 1) || String(a.createdAt).localeCompare(String(b.createdAt)));
   const ids = [...new Set(cloud.maps.flatMap(m => m.members.map(x => x.userId)))].filter(id => id !== me);
   if (ids.length) await loadPeople(ids);
+  await Promise.all([loadTwins(), loadUnseen()]);
 }
 const mapLabel = m => m.kind === "perso" ? "Ma carte" : m.name;
 function membersLabel(m) {
@@ -2618,7 +2817,7 @@ function duoLine(z) {
 function mapSwitchHTML() {
   if (!cloud.user || cloud.maps.length < 2) return "";
   return `<div class="mapsw" role="group" aria-label="Carte affichée">${cloud.maps.map(m =>
-    `<button type="button" data-map="${m.id}" aria-pressed="${m.id === cloud.mapId}">${esc(mapLabel(m))}</button>`).join("")}</div>`;
+    `<button type="button" data-map="${m.id}" aria-pressed="${m.id === cloud.mapId}">${esc(mapLabel(m))}${cloud.unseen[m.id] && cloud.unseen[m.id].size ? `<b class="mapsw__n num" aria-label="${cloud.unseen[m.id].size} nouvelle${cloud.unseen[m.id].size > 1 ? "s" : ""} zone${cloud.unseen[m.id].size > 1 ? "s" : ""}">${cloud.unseen[m.id].size}</b>` : ""}</button>`).join("")}</div>`;
 }
 let stashedExamples = [];
 function resetForMap(id) {
@@ -2666,9 +2865,15 @@ async function copyToMap(z, mapId, btn) {
   try {
     const id = zoneId(), now = new Date().toISOString();
     const row = Object.assign(zoneRow(z), {id, map_id: mapId, created_by: cloud.user.id, updated_at: now});
+    if (hasPending()) await syncNow();
     let {error} = await cloud.client.from("zones").upsert(row); if (error) throw error;
     ({error} = await cloud.client.from("ratings").upsert(Object.assign(ratingRow(z), {zone_id: id, updated_at: now}))); if (error) throw error;
-    toast(`Zone copiée sur « ${m.name} »`);
+    const mine = (z.photos || []).filter(p => p.userId === cloud.user.id && (p.zoneId || z.id) === z.id);
+    if (mine.length) { const r = await cloud.client.from("zone_photos").update({zone_id: id}).in("id", mine.map(p => p.id)); if (!r.error) mine.forEach(p => p.zoneId = id); }
+    await cloud.client.from("zones").update({link_zone: id}).eq("id", z.id);
+    z.link = id; cloud.twins[id] = z.id; save();
+    if (ui.mode === "detail" && selectedId === z.id) renderPanel();
+    toast(`Zone ajoutée à « ${m.name} » : vos notes et photos y sont reliées`);
   } catch (err) { console.warn(err); toast("Copie impossible pour le moment. Réessayez plus tard."); }
   if (btn) btn.disabled = false;
 }
@@ -2697,8 +2902,20 @@ async function joinWithCode(code) {
   toast(`Vous avez rejoint « ${m ? m.name : "la carte"} »`);
   return true;
 }
+async function unlinkMap(mapId) {
+  const c = cloud.client, me = cloud.user.id;
+  const {data} = await c.from("zones").select("id").eq("map_id", mapId);
+  const pairs = (data || []).map(r => [r.id, cloud.twins[r.id]]).filter(([, t]) => t);
+  for (const [sh, pe] of pairs) {
+    await c.from("zone_photos").update({zone_id: pe}).eq("zone_id", sh).eq("user_id", me);
+    await c.from("zones").update({link_zone: null}).eq("id", pe);
+    delete cloud.twins[sh];
+    const local = state.zones.find(z => z.id === pe); if (local) local.link = null;
+  }
+}
 async function leaveSharedMap(mapId) {
   if (cloud.mapId === mapId) await switchMap(cloud.personalMapId);
+  try { await unlinkMap(mapId); } catch (e) { console.warn(e); }
   const {error} = await cloud.client.rpc("leave_map", {m: mapId});
   if (error) { toast("Impossible de quitter la carte pour le moment"); return; }
   await loadMaps();
@@ -2708,6 +2925,7 @@ async function leaveSharedMap(mapId) {
 }
 async function deleteSharedMap(mapId) {
   if (cloud.mapId === mapId) await switchMap(cloud.personalMapId);
+  try { await unlinkMap(mapId); } catch (e) { console.warn(e); }
   const {error} = await cloud.client.from("maps").delete().eq("id", mapId);
   if (error) { toast("Impossible de supprimer la carte pour le moment"); return; }
   await loadMaps();
@@ -2818,13 +3036,20 @@ async function cloudRefresh(force) {
     state.profile = {name: prof.display_name || "", presetId: prof.preset_id || null, modified: !!prof.modified, budget: prof.budget == null ? null : Number(prof.budget), criteria: prof.criteria, halfPoints: !!prof.half_points};
   } else pushProfile = true;   // compte neuf : on garde le profil de l'appareil
   const examples = cloud.mapId === cloud.personalMapId ? state.zones.filter(z => z.example) : [];
-  const zoneIds = (rows || []).map(r => r.id), byZone = {};
+  const zoneIds = [...new Set((rows || []).flatMap(r => r.link_zone ? [r.id, r.link_zone] : [r.id]))], byZone = {};
   if (zoneIds.length) {
     const {data: ph} = await c.from("zone_photos").select("*").in("zone_id", zoneIds);
     (ph || []).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
-      .forEach(x => (byZone[x.zone_id] = byZone[x.zone_id] || []).push({id: x.id, path: x.path, thumb: x.thumb, userId: x.user_id, w: x.width, h: x.height, at: x.created_at}));
+      .forEach(x => (byZone[x.zone_id] = byZone[x.zone_id] || []).push({id: x.id, zoneId: x.zone_id, path: x.path, thumb: x.thumb, userId: x.user_id, w: x.width, h: x.height, at: x.created_at}));
   }
-  state.zones = (rows || []).map(r => Object.assign(zoneFromRow(r), {photos: byZone[r.id] || []})).concat(examples);
+  const before = new Set(state.zones.map(z => z.id));
+  state.zones = (rows || []).map(r => Object.assign(zoneFromRow(r), {photos: [...(byZone[r.id] || []), ...(r.link_zone ? byZone[r.link_zone] || [] : [])]})).concat(examples);
+  if (isShared()) {
+    const st = seenSet(), u = cloud.unseen[cloud.mapId] = new Set();
+    state.zones.forEach(z => { if (z.createdBy && z.createdBy !== me && !st.has(z.id)) u.add(z.id); });
+    const fresh = before.size ? state.zones.filter(z => !before.has(z.id) && u.has(z.id)) : [];
+    if (fresh.length) setTimeout(() => toast(fresh.length > 1 ? `${fresh.length} nouvelles zones de ${personName(fresh[0].createdBy)}` : `${personName(fresh[0].createdBy)} a ajouté « ${fresh[0].name || "une zone"} »`), 300);
+  }
   signCovers();
   cloud.synced = snapshot();
   if (pushProfile) cloud.synced.profile = null;
