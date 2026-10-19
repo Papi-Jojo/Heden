@@ -2,6 +2,7 @@
 
 1. **Créer le projet** : supabase.com → New project. Nom : `heden`. Région : Paris (eu-west-3) ou Francfort. Notez le mot de passe de la base quelque part, il ne servira pas au site.
 2. **Créer les tables** : SQL Editor → New query → coller tout le contenu de `schema.sql` → Run. Le message attendu est « Success. No rows returned ».
+   Puis, de la même façon, `photos.sql` : il crée la table des photos et l’espace de stockage privé « photos » avec ses règles d’accès.
 3. **Adresses autorisées** : Authentication → URL Configuration.
    - Site URL : `https://papi-jojo.github.io/Heden/`
    - Redirect URLs : ajouter `https://papi-jojo.github.io/Heden/**`

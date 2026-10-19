@@ -101,6 +101,17 @@ main{position:relative;min-height:0;grid-row:2}
 .seg button[aria-pressed="true"]{background:var(--ardoise);color:var(--pierre)}
 .fab-col{position:absolute;z-index:600;right:14px;bottom:128px;display:flex;flex-direction:column;gap:8px}
 .icon-btn{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--trait);background:var(--calcaire);border-radius:50%;box-shadow:var(--ombre-flottant);color:var(--ardoise)}
+.icon-btn[aria-pressed="true"]{color:var(--laiton)}
+.walkbar{position:absolute;z-index:650;left:14px;top:72px;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 14px;border-radius:var(--pilule);background:var(--calcaire);border:1px solid var(--trait);box-shadow:var(--ombre-flottant);max-width:calc(100% - 84px);white-space:nowrap}
+.walkbar__dot{width:10px;height:10px;border-radius:50%;background:#A07B33;box-shadow:0 0 0 4px rgba(160,123,51,.18);flex:none}
+.walkbar__t{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.walkbar .x{width:34px;height:34px}
+body.walking .hint{display:none}
+body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:none}
+.me{position:absolute;width:18px;height:18px;transform:translate(-50%,-50%);pointer-events:none}
+.me b{position:absolute;inset:0;border-radius:50%;background:#A07B33;border:3px solid #F8F5F0;box-shadow:0 1px 4px rgba(38,35,31,.35)}
+.me i{position:absolute;inset:-8px;border-radius:50%;background:rgba(160,123,51,.16);border:1.5px solid rgba(160,123,51,.45)}
+.me--vague b{background:#C9B48A}
 .leaflet-bottom.leaflet-right .leaflet-control-zoom{margin:0 14px 28px 0}
 .leaflet-bar{border:1px solid var(--trait)!important;box-shadow:var(--ombre-flottant)!important;border-radius:22px!important;overflow:hidden}
 .leaflet-bar a{width:42px!important;height:40px!important;line-height:40px!important;background:var(--calcaire)!important;color:var(--ardoise)!important;border-color:var(--trait)!important;font:500 20px/40px var(--sans)!important}
@@ -127,6 +138,36 @@ main{position:relative;min-height:0;grid-row:2}
 .zprice{font-weight:650;color:var(--ardoise-2)}
 .zone-badge .zb-p{display:none;font-style:normal;font-weight:600;color:var(--ardoise-2);padding-left:7px;margin-left:2px;border-left:1px solid var(--trait)}
 .map--near .zone-badge .zb-p{display:inline}
+.zone-badge .zb-img{display:none}
+.map--near .zone-badge .zb-img{display:block;width:34px;height:34px;margin:-4px 2px -4px -4px;border-radius:50%;object-fit:cover;border:2px solid var(--calcaire);box-shadow:0 0 0 1px var(--trait)}
+.map--near .zone-badge:has(.zb-img){height:30px;padding-left:4px}
+.photos{display:flex;flex-direction:column;gap:8px}
+.photos__head{display:flex;align-items:baseline;gap:8px}
+.photos__head .num{font-size:12.5px;color:var(--zinc)}
+.photos__strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scroll-snap-type:x proximity}
+.ph{flex:none;width:84px;height:84px;border-radius:var(--rayon-m);border:1px solid var(--trait);background:var(--enduit);overflow:hidden;padding:0;position:relative;scroll-snap-align:start;cursor:pointer}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph--cover::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 2px var(--ardoise)}
+.ph--add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-style:dashed;border-color:var(--trait-fort);background:none;color:var(--ardoise-2);font-size:12px;font-weight:600}
+.ph--wait{display:grid;place-items:center;cursor:default}
+.ph--wait i{width:22px;height:22px;border-radius:50%;border:2px solid var(--trait-fort);border-top-color:var(--ardoise);animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.viewer{position:fixed;inset:0;z-index:2100;background:#14120F;color:#F8F5F0;display:flex;flex-direction:column}
+.viewer__top{display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 14px 8px}
+.viewer__n{font-size:13px;opacity:.8}
+.viewer__x{width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.1);color:inherit;display:grid;place-items:center}
+.viewer__stage{flex:1;min-height:0;position:relative;display:grid;place-items:center}
+.viewer__stage img{max-width:100%;max-height:100%;object-fit:contain}
+.viewer__nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;border:0;background:rgba(255,255,255,.08);color:inherit;font-size:30px;border-radius:var(--rayon-m)}
+.viewer__prev{left:8px}.viewer__next{right:8px}
+@media (hover:none){.viewer__nav{display:none}}
+.viewer__bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px calc(14px + env(safe-area-inset-bottom))}
+.viewer__meta{font-size:13.5px;opacity:.85}
+.viewer__acts{display:flex;gap:8px}
+.vbtn{height:38px;padding:0 14px;border-radius:var(--pilule);border:1px solid rgba(255,255,255,.3);background:none;color:inherit;font:600 13px/1 var(--sans)}
+.vbtn:disabled{opacity:.6}
+.vbtn--del{border-color:#E68B73;color:#E68B73}
+.vbtn--del.armed{background:#E68B73;color:#14120F}
 
 /* ---------- Panneau ---------- */
 .panel{display:flex;flex-direction:column;min-height:0;background:var(--calcaire);border-right:1px solid var(--trait);z-index:700}
@@ -457,7 +498,11 @@ main{position:relative;min-height:0;grid-row:2}
             <button type="button" data-base="sat" aria-pressed="false">Satellite</button>
           </div>
         </div>
+        <div class="walkbar" id="walkbar" hidden></div>
         <div class="fab-col">
+          <button class="icon-btn" id="walkBtn" type="button" title="Tracer une balade" aria-label="Tracer une balade">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"/></svg>
+          </button>
           <button class="icon-btn" id="locate" type="button" title="Ma position" aria-label="Ma position">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
           </button>
@@ -962,7 +1007,7 @@ dark.addEventListener?.("change", () => { renderZones(); if (draft) drawDraft();
 applyBase();
 
 /* Les contrôles posés sur la carte (recherche, Plan/Satellite, position, consigne) ne doivent jamais poser de point */
-document.querySelectorAll("#map .map-top, #map .fab-col, #map .hint").forEach(el => { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); });
+document.querySelectorAll("#map .map-top, #map .fab-col, #map .hint, #map .walkbar").forEach(el => { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); });
 function updateFar() { const zm = map.getZoom(); map.getContainer().classList.toggle("map--far", zm < 13); map.getContainer().classList.toggle("map--near", zm >= 15); }
 map.on("zoomend", updateFar); updateFar();
 
@@ -982,7 +1027,7 @@ function renderZones() {
     });
     const badge = L.marker([z.lat, z.lng], {
       icon: L.divIcon({className: "", iconSize: null,
-        html: `<span class="zone-badge" style="--c:${col}"><i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}${zonePrice(z) ? `<em class="zb-p">${fmtInt(zonePrice(z))}&#8239;€/m²</em>` : ""}</span>`}),
+        html: `<span class="zone-badge" style="--c:${col}">${coverOf(z) && photoUrl(coverOf(z).thumb) ? `<img class="zb-img" src="${esc(photoUrl(coverOf(z).thumb))}" alt="">` : ""}<i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}${zonePrice(z) ? `<em class="zb-p">${fmtInt(zonePrice(z))}&#8239;€/m²</em>` : ""}</span>`}),
       keyboard: false
     });
     const onClick = e => { if (ui.mode === "placing") { addPoint(e.latlng); return; } openDetail(z.id); };
@@ -1247,7 +1292,7 @@ function renderPlacing() {
     <div class="grip"></div>
     <div class="panel__head">
       <div class="grow">
-        <h2>${draft.id ? "Ajuster la zone" : "Nouvelle zone"}</h2>
+        <h2>${draft.id ? "Ajuster la zone" : draft.walk ? "Zone de votre balade" : "Nouvelle zone"}</h2>
         <div class="sub sub--long">${sub}</div>
         <div class="sub sub--court num">${n} point${n > 1 ? "s" : ""}${area ? ", " + fmtArea(area) : ""}${n && n < 3 ? ", encore " + (3 - n) + " au minimum" : ""}</div>
       </div>
@@ -1258,6 +1303,7 @@ function renderPlacing() {
         <div><b class="num">${area ? fmtArea(area) : "–"}</b><span>surface</span></div>
         <div><b class="num">${n >= 2 ? "≈ " + walkAround(per) + " min" : "–"}</b><span>pour en faire le tour</span></div>
       </div>
+      ${draft.walk ? `<p class="hint2 num">Tracée d’après ${draft.walk.len < 1000 ? fmtInt(Math.round(draft.walk.len / 10) * 10) + " m" : (draft.walk.len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"} de marche en ${draft.walk.min} min. Le parcours reste affiché en pointillés pour vous aider à ajuster.</p>` : ""}
       <div class="liveprice" id="livePrice" hidden></div>
       <div class="draw-actions">
         ${closed
@@ -1301,7 +1347,7 @@ function paintLivePrice() {
 
 function cancelDraft() {
   const back = draft && draft.id;
-  draft = null; selVertex = null; clearDraftLayers(); setHint(null);
+  draft = null; selVertex = null; clearDraftLayers(); clearWalkTrace(); setHint(null);
   if (back) { ui.mode = "detail"; selectedId = back; } else ui.mode = "list";
   renderZones(); renderPanel();
 }
@@ -1472,7 +1518,7 @@ function updateScoreBox() {
 }
 
 function commitDraft() {
-  const z = finishZoneGeometry(clone(draft)); delete z.nameTouched; delete z.closed;
+  const z = finishZoneGeometry(clone(draft)); delete z.nameTouched; delete z.closed; delete z.walk;
   z.name = (z.name || "").trim() || z.place || "Zone sans nom";
   z.updatedAt = Date.now();
   if (z.id) {
@@ -1484,7 +1530,7 @@ function commitDraft() {
     state.zones.push(z);
   }
   save();
-  draft = null; clearDraftLayers();
+  draft = null; clearDraftLayers(); clearWalkTrace();
   selectedId = z.id; ui.mode = "detail";
   renderZones(); renderPanel();
   toast(storageOk ? "Zone enregistrée" : "Zone ajoutée (non sauvegardée : stockage bloqué)");
@@ -1531,6 +1577,7 @@ function renderDetail() {
         ${waiting.map(m => `<div class="duo__row"><span>${esc(personName(m.userId))}</span><em>Pas encore noté</em></div>`).join("")}
         <p class="duo__h">Chacun note avec son propre profil. Le détail ci-dessous montre vos critères.</p>
       </div>` : ""}
+      ${photosHTML(z)}
       ${priceHTML(z)}
       ${!s.complete && s.total ? `<div class="banner">Note partielle : ${s.total - s.rated} critère${s.total - s.rated > 1 ? "s" : ""} de votre profil n’${s.total - s.rated > 1 ? "ont" : "a"} pas encore été noté${s.total - s.rated > 1 ? "s" : ""}.</div>` : ""}
       <div class="breakdown">
@@ -1560,10 +1607,13 @@ function renderDetail() {
   $("#edit").onclick = () => { draft = Object.assign(clone(z), {closed: true}); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
   $("#adj").onclick = () => { draft = Object.assign(clone(z), {closed: true}); selVertex = null; ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); renderZones(); drawDraft(); renderPanel(); };
   $$("[data-copy]", panel).forEach(b => b.onclick = () => copyToMap(z, b.dataset.copy, b));
+  paintPhotos(); bindAccount(panel);
   const del = $("#del");
   del.onclick = () => {
     const label = del.textContent;
     if (!del.classList.contains("armed")) { del.classList.add("armed"); del.textContent = "Confirmer la suppression"; setTimeout(() => { if (del.isConnected) { del.classList.remove("armed"); del.textContent = label; } }, 3500); return; }
+    const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id) : [];
+    if (mine.length) cloud.client.storage.from("photos").remove(mine.flatMap(p => [p.path, p.thumb])).catch(() => {});
     state.zones = state.zones.filter(x => x.id !== z.id); save();
     selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); toast("Zone supprimée");
   };
@@ -1662,14 +1712,158 @@ async function doSearch(q) {
 }
 document.addEventListener("click", e => { if (!e.target.closest("#search")) $("#results").hidden = true; });
 
-$("#locate").onclick = () => {
-  if (!navigator.geolocation) return toast("Géolocalisation indisponible");
-  navigator.geolocation.getCurrentPosition(p => {
-    const ll = L.latLng(p.coords.latitude, p.coords.longitude);
-    if (!L.latLngBounds(BOUNDS).pad(0.25).contains(ll)) return toast("Vous êtes hors de la zone couverte");
-    map.flyTo(ll, 16, {duration: .6});
-  }, () => toast("Position refusée ou introuvable"), {enableHighAccuracy: true, timeout: 8000});
-};
+/* =========================================================
+   Position : pastille « vous êtes ici », suivie en continu
+   ========================================================= */
+const geo = {watch: null, marker: null, acc: null, last: null, fly: false, listeners: new Set()};
+const meIcon = L.divIcon({className: "", iconSize: null, html: `<span class="me"><b></b><i></i></span>`});
+function onGeo(p) {
+  const c = p.coords, ll = L.latLng(c.latitude, c.longitude);
+  geo.last = {lat: c.latitude, lng: c.longitude, acc: c.accuracy || 50, t: p.timestamp || Date.now()};
+  if (!geo.marker) {
+    geo.acc = L.circle(ll, {radius: geo.last.acc, stroke: false, fillColor: "#A07B33", fillOpacity: .12, interactive: false}).addTo(map);
+    geo.marker = L.marker(ll, {icon: meIcon, interactive: false, keyboard: false, zIndexOffset: 1000}).addTo(map);
+  } else { geo.marker.setLatLng(ll); geo.acc.setLatLng(ll).setRadius(Math.min(geo.last.acc, 300)); }
+  geo.marker.getElement() && geo.marker.getElement().querySelector(".me").classList.toggle("me--vague", geo.last.acc > 60);
+  $("#locate").setAttribute("aria-pressed", "true");
+  if (geo.fly) {
+    geo.fly = false;
+    if (!L.latLngBounds(BOUNDS).pad(0.25).contains(ll)) toast("Vous êtes hors de la zone couverte");
+    else map.flyTo(ll, Math.max(map.getZoom(), 16), {duration: .6});
+  }
+  geo.listeners.forEach(f => f(geo.last, p));
+}
+function onGeoErr(err) {
+  if (err && err.code === 1) { toast("Position refusée : autorisez-la dans les réglages du navigateur"); stopGeo(); }
+  else if (geo.fly) { geo.fly = false; toast("Position introuvable pour le moment"); }
+}
+function startGeo(fly) {
+  if (!navigator.geolocation) { toast("Géolocalisation indisponible"); return false; }
+  geo.fly = !!fly;
+  if (geo.watch == null) geo.watch = navigator.geolocation.watchPosition(onGeo, onGeoErr, {enableHighAccuracy: true, maximumAge: 3000, timeout: 20000});
+  else if (fly && geo.last) { geo.fly = false; map.flyTo([geo.last.lat, geo.last.lng], Math.max(map.getZoom(), 16), {duration: .6}); }
+  return true;
+}
+function stopGeo() {
+  if (geo.watch != null) navigator.geolocation.clearWatch(geo.watch);
+  geo.watch = null;
+  if (geo.marker) { map.removeLayer(geo.marker); map.removeLayer(geo.acc); geo.marker = geo.acc = null; }
+  $("#locate").setAttribute("aria-pressed", "false");
+}
+$("#locate").onclick = () => startGeo(true);
+
+/* =========================================================
+   Balade : on trace le parcours, puis on propose une zone
+   ========================================================= */
+const WALK_KEY = "heden.walk";
+const walk = {on: false, pts: [], start: 0, line: null, wake: null, timer: null, trace: null};
+const walkLen = pts => pts.reduce((a, p, i) => i ? a + distM({lat: pts[i - 1][0], lng: pts[i - 1][1]}, {lat: p[0], lng: p[1]}) : 0, 0);
+function walkSave() { try { localStorage.setItem(WALK_KEY, JSON.stringify({on: walk.on, pts: walk.pts, start: walk.start})); } catch (e) {} }
+async function keepAwake() {
+  try { if (walk.on && "wakeLock" in navigator && (!walk.wake || walk.wake.released)) walk.wake = await navigator.wakeLock.request("screen"); } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") keepAwake(); });
+function drawWalk() {
+  const ll = walk.pts.map(p => [p[0], p[1]]);
+  if (!walk.line) walk.line = L.polyline(ll, {color: "#A07B33", weight: 4, opacity: .9, dashArray: "1 8", lineCap: "round", interactive: false}).addTo(map);
+  else walk.line.setLatLngs(ll);
+}
+function paintWalk() {
+  const bar = $("#walkbar"), btn = $("#walkBtn");
+  btn.setAttribute("aria-pressed", String(walk.on));
+  document.body.classList.toggle("walking", walk.on);
+  if (!walk.on) { bar.hidden = true; return; }
+  const min = Math.max(0, Math.round((Date.now() - walk.start) / 60000)), len = walkLen(walk.pts);
+  bar.hidden = false;
+  bar.innerHTML = `<i class="walkbar__dot"></i>
+    <span class="walkbar__t num">${walk.pts.length ? `Balade, ${min} min, ${len < 1000 ? fmtInt(Math.round(len / 10) * 10) + " m" : (len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"}` : "Recherche du signal GPS…"}</span>
+    <button class="btn btn--sm btn--primary" type="button" id="walkEnd">Terminer</button>
+    <button class="x" type="button" id="walkCancel" aria-label="Abandonner la balade"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+  $("#walkEnd").onclick = finishWalk;
+  const cx = $("#walkCancel");
+  cx.onclick = () => {
+    if (!cx.classList.contains("armed")) { cx.classList.add("armed"); toast("Touchez encore la croix pour abandonner la balade"); setTimeout(() => cx.isConnected && cx.classList.remove("armed"), 3500); return; }
+    stopWalk(); toast("Balade abandonnée");
+  };
+}
+function onWalkPos(pt) {
+  if (!walk.on || pt.acc > 40) return;                  // position trop imprécise : on attend la suivante
+  const last = walk.pts[walk.pts.length - 1];
+  if (last) {
+    const d = distM({lat: last[0], lng: last[1]}, pt), dt = (pt.t - last[2]) / 1000;
+    if (d < 8) return;                                  // on ne bouge pas : pas de nouveau point
+    if (dt > 0 && d / dt > 7) return;                   // saut irréaliste à pied
+  }
+  walk.pts.push([+pt.lat.toFixed(6), +pt.lng.toFixed(6), pt.t]);
+  walkSave(); drawWalk(); paintWalk();
+}
+geo.listeners.add(onWalkPos);
+function startWalk() {
+  if (ui.mode === "placing" || ui.mode === "rating") return toast("Terminez d’abord la zone en cours");
+  if (!startGeo(true)) return;
+  Object.assign(walk, {on: true, pts: [], start: Date.now()});
+  walkSave(); keepAwake(); drawWalk(); paintWalk();
+  clearInterval(walk.timer); walk.timer = setInterval(paintWalk, 30000);
+  toast("Balade lancée. Gardez l’appli ouverte : le suivi s’arrête si le téléphone se verrouille");
+}
+function stopWalk(keepTrace) {
+  walk.on = false; clearInterval(walk.timer);
+  try { walk.wake && walk.wake.release(); } catch (e) {} walk.wake = null;
+  try { localStorage.removeItem(WALK_KEY); } catch (e) {}
+  if (walk.line) { if (keepTrace) { walk.trace = walk.line; walk.line.setStyle({opacity: .55}); } else map.removeLayer(walk.line); walk.line = null; }
+  paintWalk();
+}
+function clearWalkTrace() { if (walk.trace) { map.removeLayer(walk.trace); walk.trace = null; } }
+function loadTurf() {
+  if (window.turf) return Promise.resolve(window.turf);
+  return new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/@turf/turf@7.1.0/turf.min.js"; sc.onload = () => res(window.turf); sc.onerror = rej; document.head.appendChild(sc); });
+}
+/* Parcours -> zone : une bande de 60 m autour du chemin (les deux côtés de la rue), les boucles et les pâtés contournés sont remplis */
+async function walkToZone(pts) {
+  const T = await loadTurf();
+  let co = pts.map(p => [p[1], p[0]]);
+  co = co.map((c, i) => i === 0 || i === co.length - 1 ? c : [(co[i - 1][0] + c[0] + co[i + 1][0]) / 3, (co[i - 1][1] + c[1] + co[i + 1][1]) / 3]);
+  const len = walkLen(pts), a = {lat: co[0][1], lng: co[0][0]}, b = {lat: co[co.length - 1][1], lng: co[co.length - 1][0]};
+  if (len > 250 && distM(a, b) < Math.max(80, len * .2)) co.push(co[0]);      // retour près du départ : on ferme la boucle
+  const buf = T.buffer(T.lineString(co), 30, {units: "meters"});
+  const outers = buf.geometry.type === "MultiPolygon" ? buf.geometry.coordinates.map(p => p[0]) : [buf.geometry.coordinates[0]];
+  let shape = T.polygon([outers.sort((x, y) => T.area(T.polygon([y])) - T.area(T.polygon([x])))[0]]);   // sans les trous
+  for (const tol of [.00012, .00016, .0002, .0003, .0005]) {     // ≈ 10 m et plus : des coins nets, peu de points à ajuster
+    shape = T.simplify(shape, {tolerance: tol, highQuality: true});
+    if (shape.geometry.coordinates[0].length - 1 <= 12) break;
+  }
+  return shape.geometry.coordinates[0].slice(0, -1).map(([x, y]) => [y, x]);
+}
+async function finishWalk() {
+  const pts = walk.pts, len = walkLen(pts);
+  if (pts.length < 4 || len < 120) return toast("Balade trop courte pour proposer une zone : marchez au moins 150 m");
+  const btn = $("#walkEnd"); if (btn) { btn.disabled = true; btn.textContent = "Calcul…"; }
+  let poly;
+  try { poly = await walkToZone(pts); }
+  catch (err) { console.warn(err); if (btn) { btn.disabled = false; btn.textContent = "Terminer"; } return toast("Calcul de la zone impossible pour le moment. Réessayez."); }
+  const minutes = Math.max(1, Math.round((Date.now() - walk.start) / 60000));
+  stopWalk(true);
+  startNew();
+  draft.points = poly; draft.closed = true; draft.walk = {len: Math.round(len), min: minutes};
+  finishZoneGeometry(draft);
+  setHint("Zone proposée d’après votre balade : ajustez les points, puis validez");
+  drawDraft(); renderPanel();
+  requestAnimationFrame(fitDraft);
+  if (draft.area > 600000) toast("Grande zone : pensez à la resserrer sur le coin qui vous intéresse");
+}
+$("#walkBtn").onclick = () => walk.on ? finishWalk() : startWalk();
+/* reprise d'une balade interrompue (page rechargée, appli rouverte) */
+try {
+  const w = JSON.parse(localStorage.getItem(WALK_KEY) || "null");
+  if (w && w.on && Date.now() - w.start < 6 * 3600e3) {
+    Object.assign(walk, {on: true, pts: w.pts || [], start: w.start});
+    startGeo(false); keepAwake(); drawWalk(); paintWalk();
+    walk.timer = setInterval(paintWalk, 30000);
+    setTimeout(() => toast("Balade reprise là où vous l’aviez laissée"), 800);
+  }
+} catch (e) {}
+/* si la position est déjà autorisée, la pastille s'affiche dès l'ouverture, sans rien demander */
+try { navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { if (r.state === "granted") startGeo(false); }).catch(() => {}); } catch (e) {}
 
 /* =========================================================
    Onglet profil
@@ -2001,7 +2195,7 @@ const isUuid = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 
 function zoneRow(z) {
   return {id: z.id, map_id: z.mapId || cloud.mapId, created_by: z.createdBy || cloud.user.id, name: z.name || "", place: z.place || "",
-    points: z.points, lat: z.lat ?? null, lng: z.lng ?? null, area: z.area ?? null, perimeter: z.perimeter ?? null, estimates: z.est || null};
+    points: z.points, lat: z.lat ?? null, lng: z.lng ?? null, area: z.area ?? null, perimeter: z.perimeter ?? null, estimates: z.est || null, cover_photo: z.cover || null};
 }
 function ratingRow(z) {
   return {zone_id: z.id, user_id: cloud.user.id, ratings: z.ratings || {}, fav: !!z.fav, comment: z.comment || "",
@@ -2099,7 +2293,7 @@ function zoneFromRow(row) {
   const rs = row.ratings || [];
   const mine = rs.find(r => r.user_id === me) || {};
   return finishZoneGeometry({
-    id: row.id, mapId: row.map_id, createdBy: row.created_by, name: row.name, place: row.place, points: row.points, est: row.estimates || null,
+    id: row.id, mapId: row.map_id, createdBy: row.created_by, name: row.name, place: row.place, points: row.points, est: row.estimates || null, cover: row.cover_photo || null,
     ratings: mine.ratings || {}, fav: !!mine.fav, comment: mine.comment || "", date: mine.visit_date || "", moment: mine.moment || "",
     price: mine.price == null ? null : Number(mine.price),
     author: row.created_by === me ? (state.profile.name || "") : (cloud.names[row.created_by] || ""),
@@ -2160,6 +2354,137 @@ async function cloudLoad() {
   }
 }
 
+/* ---------- Photos des zones (stockage privé, liens signés) ---------- */
+const photoUrls = new Map();
+const coverOf = z => { const ps = z.photos || []; return ps.find(p => p.id === z.cover) || ps[0] || null; };
+const photoUrl = path => { const u = photoUrls.get(path); return u && u.exp > Date.now() ? u.url : null; };
+async function signUrls(paths) {
+  const need = [...new Set(paths.filter(p => p && !photoUrl(p)))];
+  if (!need.length || !cloud.user) return false;
+  const {data, error} = await cloud.client.storage.from("photos").createSignedUrls(need, 6 * 3600);
+  if (error) { console.warn("Heden : photos", error); return false; }
+  (data || []).forEach(d => { if (d.signedUrl) photoUrls.set(d.path, {url: d.signedUrl, exp: Date.now() + 5.5 * 3600e3}); });
+  return true;
+}
+async function signCovers() {
+  const paths = state.zones.map(coverOf).filter(Boolean).map(p => p.thumb);
+  if (await signUrls(paths)) { renderZones(); if (ui.mode === "detail") paintPhotos(); }
+}
+async function compressImage(file, max, q) {
+  let img;
+  try { img = await createImageBitmap(file, {imageOrientation: "from-image"}); }
+  catch (e) { img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); }); }
+  const k = Math.min(1, max / Math.max(img.width, img.height));
+  const cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+  cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", q));
+  return {blob, w: cv.width, h: cv.height};
+}
+const uploads = new Map();   // zone id -> nombre de photos en cours d'envoi
+async function uploadPhotos(z, files) {
+  files = [...files].filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|heic|webp)$/i.test(f.name));
+  if (!files.length || !cloud.user) return;
+  if (hasPending()) await syncNow();
+  if (!cloud.synced || !cloud.synced.zones[z.id]) { toast("Zone pas encore enregistrée dans votre compte : réessayez dans un instant"); return; }
+  uploads.set(z.id, (uploads.get(z.id) || 0) + files.length); paintPhotos();
+  const st = cloud.client.storage.from("photos"); let ok = 0;
+  for (const f of files) {
+    try {
+      const [full, th] = await Promise.all([compressImage(f, 1600, .82), compressImage(f, 360, .72)]);
+      const id = zoneId(), base = `${cloud.user.id}/${z.id}/${id}`;
+      let r = await st.upload(base + ".jpg", full.blob, {contentType: "image/jpeg", upsert: false}); if (r.error) throw r.error;
+      r = await st.upload(base + "_t.jpg", th.blob, {contentType: "image/jpeg", upsert: false}); if (r.error) throw r.error;
+      const row = {id, zone_id: z.id, user_id: cloud.user.id, path: base + ".jpg", thumb: base + "_t.jpg", width: full.w, height: full.h};
+      r = await cloud.client.from("zone_photos").insert(row); if (r.error) throw r.error;
+      photoUrls.set(row.thumb, {url: URL.createObjectURL(th.blob), exp: Date.now() + 5 * 3600e3});
+      photoUrls.set(row.path, {url: URL.createObjectURL(full.blob), exp: Date.now() + 5 * 3600e3});
+      (z.photos = z.photos || []).push({id, path: row.path, thumb: row.thumb, userId: cloud.user.id, w: full.w, h: full.h, at: new Date().toISOString()});
+      ok++;
+    } catch (err) { console.warn("Heden : envoi photo", err); }
+    uploads.set(z.id, uploads.get(z.id) - 1); paintPhotos();
+  }
+  uploads.delete(z.id);
+  save(); renderZones(); paintPhotos();
+  toast(ok === files.length ? (ok > 1 ? `${ok} photos ajoutées` : "Photo ajoutée") : ok ? `${ok} photo${ok > 1 ? "s" : ""} sur ${files.length} ajoutée${ok > 1 ? "s" : ""}` : "Envoi impossible pour le moment");
+}
+async function deletePhoto(z, ph) {
+  try {
+    await cloud.client.storage.from("photos").remove([ph.path, ph.thumb]);
+    const {error} = await cloud.client.from("zone_photos").delete().eq("id", ph.id); if (error) throw error;
+    z.photos = (z.photos || []).filter(p => p.id !== ph.id);
+    if (z.cover === ph.id) z.cover = null;
+    save(); renderZones(); paintPhotos(); toast("Photo supprimée");
+    return true;
+  } catch (err) { console.warn(err); toast("Suppression impossible pour le moment"); return false; }
+}
+function photosHTML(z) {
+  if (z.example) return "";
+  if (!cloudReady) return "";
+  if (!cloud.user) return `<div class="photos"><span class="label">Photos</span><p class="hint2"><button class="link" type="button" data-auth>Connectez-vous</button> pour garder des photos de vos visites.</p></div>`;
+  return `<div class="photos" id="photos" data-z="${z.id}"></div>`;
+}
+function paintPhotos() {
+  const box = $("#photos"); if (!box) return;
+  const z = state.zones.find(x => x.id === box.dataset.z); if (!z) return;
+  const ps = z.photos || [], pending = uploads.get(z.id) || 0, cover = coverOf(z);
+  box.innerHTML = `<div class="photos__head"><span class="label">Photos</span>${ps.length ? `<span class="num">${ps.length}</span>` : ""}</div>
+    <div class="photos__strip">
+      ${ps.map((p, i) => { const u = photoUrl(p.thumb); return `<button type="button" class="ph${cover && cover.id === p.id ? " ph--cover" : ""}" data-i="${i}" aria-label="Voir la photo ${i + 1}">${u ? `<img src="${esc(u)}" alt="" loading="lazy">` : ""}</button>`; }).join("")}
+      ${Array.from({length: pending}, () => `<span class="ph ph--wait"><i></i></span>`).join("")}
+      <label class="ph ph--add"><input type="file" accept="image/*" multiple hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Ajouter</span></label>
+    </div>
+    ${ps.length ? "" : `<p class="hint2">Gardez quelques photos du coin pour vous souvenir de l’ambiance : façades, rue, square.</p>`}`;
+  box.querySelector("input").onchange = e => { const f = e.target.files; if (f && f.length) uploadPhotos(z, f); e.target.value = ""; };
+  $$("[data-i]", box).forEach(b => b.onclick = () => openViewer(z, +b.dataset.i));
+  const miss = ps.map(p => p.thumb).filter(t => !photoUrl(t));
+  if (miss.length) signUrls(miss).then(okk => { if (okk) paintPhotos(); });
+}
+/* Visionneuse plein écran */
+const viewer = {z: null, i: 0};
+function openViewer(z, i) {
+  viewer.z = z; viewer.i = i;
+  let el = $("#viewer");
+  if (!el) {
+    el = document.createElement("div"); el.id = "viewer"; el.className = "viewer"; el.hidden = true;
+    el.innerHTML = `<div class="viewer__top"><span class="viewer__n num"></span><button class="viewer__x" type="button" data-vclose aria-label="Fermer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <div class="viewer__stage"><img alt=""><button class="viewer__nav viewer__prev" type="button" data-vnav="-1" aria-label="Photo précédente">‹</button><button class="viewer__nav viewer__next" type="button" data-vnav="1" aria-label="Photo suivante">›</button></div>
+      <div class="viewer__bar"><span class="viewer__meta"></span><span class="viewer__acts"></span></div>`;
+    document.body.appendChild(el);
+    el.addEventListener("click", e => {
+      if (e.target.closest("[data-vclose]")) closeViewer();
+      const n = e.target.closest("[data-vnav]"); if (n) stepViewer(+n.dataset.vnav);
+    });
+    document.addEventListener("keydown", e => { if (el.hidden) return; if (e.key === "Escape") closeViewer(); if (e.key === "ArrowLeft") stepViewer(-1); if (e.key === "ArrowRight") stepViewer(1); });
+    let x0 = null;
+    el.querySelector(".viewer__stage").addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, {passive: true});
+    el.querySelector(".viewer__stage").addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) stepViewer(dx < 0 ? 1 : -1); });
+  }
+  el.hidden = false; paintViewer();
+}
+function closeViewer() { const el = $("#viewer"); if (el) el.hidden = true; viewer.z = null; }
+function stepViewer(d) { const n = (viewer.z.photos || []).length; if (n < 2) return; viewer.i = (viewer.i + d + n) % n; paintViewer(); }
+async function paintViewer() {
+  const el = $("#viewer"), z = viewer.z; if (!el || !z) return;
+  const ps = z.photos || []; if (!ps.length) return closeViewer();
+  viewer.i = Math.min(viewer.i, ps.length - 1);
+  const p = ps[viewer.i], img = el.querySelector("img");
+  img.src = photoUrl(p.path) || photoUrl(p.thumb) || "";
+  el.querySelector(".viewer__n").textContent = `${viewer.i + 1} / ${ps.length}`;
+  el.querySelectorAll(".viewer__nav").forEach(b => b.hidden = ps.length < 2);
+  const who = p.userId === (cloud.user && cloud.user.id) ? "Vous" : personName(p.userId);
+  el.querySelector(".viewer__meta").textContent = `${who}${p.at ? ", " + fmtDate(String(p.at).slice(0, 10)) : ""}`;
+  const isCover = coverOf(z) && coverOf(z).id === p.id, mine = cloud.user && p.userId === cloud.user.id;
+  el.querySelector(".viewer__acts").innerHTML = `${ps.length > 1 ? `<button type="button" class="vbtn" data-vcover ${isCover ? "disabled" : ""}>${isCover ? "Photo de couverture" : "Mettre en couverture"}</button>` : ""}${mine ? `<button type="button" class="vbtn vbtn--del" data-vdel>Supprimer</button>` : ""}`;
+  const cv = el.querySelector("[data-vcover]");
+  if (cv) cv.onclick = () => { z.cover = p.id; save(); renderZones(); paintPhotos(); paintViewer(); toast("Photo de couverture choisie"); };
+  const dl = el.querySelector("[data-vdel]");
+  if (dl) dl.onclick = async () => {
+    if (!dl.classList.contains("armed")) { dl.classList.add("armed"); dl.textContent = "Confirmer"; setTimeout(() => { if (dl.isConnected) { dl.classList.remove("armed"); dl.textContent = "Supprimer"; } }, 3000); return; }
+    if (await deletePhoto(z, p)) paintViewer();
+  };
+  if (!photoUrl(p.path)) { await signUrls([p.path]); if (viewer.z === z && z.photos[viewer.i] === p) img.src = photoUrl(p.path) || img.src; }
+}
+
 /* ---------- Cartes : perso et partagées ---------- */
 async function loadPeople(ids) {
   const {data: ps} = await cloud.client.from("profiles").select("id, display_name, criteria, budget, half_points").in("id", ids);
@@ -2206,7 +2531,7 @@ async function switchMap(id) {
   for (let k = 0; cloud.busy && k < 100; k++) await new Promise(r => setTimeout(r, 100));
   if (hasPending()) await syncNow();
   if (hasPending()) { toast("Vos dernières modifications ne sont pas encore envoyées : réessayez dans un instant"); return; }
-  if (draft) { draft = null; selVertex = null; clearDraftLayers(); setHint(null); }
+  if (draft) { draft = null; selVertex = null; clearDraftLayers(); clearWalkTrace(); setHint(null); }
   resetForMap(id);
   selectedId = null; ui.mode = "list";
   if (currentTab !== "map") setTab("map");
@@ -2388,7 +2713,14 @@ async function cloudRefresh(force) {
     state.profile = {name: prof.display_name || "", presetId: prof.preset_id || null, modified: !!prof.modified, budget: prof.budget == null ? null : Number(prof.budget), criteria: prof.criteria, halfPoints: !!prof.half_points};
   } else pushProfile = true;   // compte neuf : on garde le profil de l'appareil
   const examples = cloud.mapId === cloud.personalMapId ? state.zones.filter(z => z.example) : [];
-  state.zones = (rows || []).map(zoneFromRow).concat(examples);
+  const zoneIds = (rows || []).map(r => r.id), byZone = {};
+  if (zoneIds.length) {
+    const {data: ph} = await c.from("zone_photos").select("*").in("zone_id", zoneIds);
+    (ph || []).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      .forEach(x => (byZone[x.zone_id] = byZone[x.zone_id] || []).push({id: x.id, path: x.path, thumb: x.thumb, userId: x.user_id, w: x.width, h: x.height, at: x.created_at}));
+  }
+  state.zones = (rows || []).map(r => Object.assign(zoneFromRow(r), {photos: byZone[r.id] || []})).concat(examples);
+  signCovers();
   cloud.synced = snapshot();
   if (pushProfile) cloud.synced.profile = null;
   cloud.lastRefresh = Date.now(); cloud.lastSync = new Date();
@@ -2469,7 +2801,7 @@ renderZones();
 setTab(/profil/.test(location.hash) ? "profile" : "map");
 cloudInit();
 refreshEstimates();
-window.__heden = {state: () => state, scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate};
+window.__heden = {state: () => state, scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate, map};
 })();
 </script>
 </body>
