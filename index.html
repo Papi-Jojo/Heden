@@ -369,6 +369,104 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
 .wctl output{text-align:right;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
 .wctl output small{display:block;color:var(--zinc);font-size:12px;font-weight:500}
 .x{width:36px;height:36px;border-radius:50%;border:0;background:none;color:var(--zinc);display:grid;place-items:center}
+.crow--home{grid-template-columns:minmax(0,1fr) 220px}
+.crow--home .nm{display:block;font-weight:600;font-size:15px}
+.crow--home .ds{display:block;font-size:13px;line-height:18px;color:var(--ardoise-2);margin-top:2px}
+.sub3{margin:22px 0 10px;font-size:15px;font-weight:650}
+#homeSec .row2{margin-bottom:12px}
+#homeSec .chips{margin-top:4px}
+#view-annonces{overflow:auto;padding-block:36px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ann{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.ann h1{margin:0;font-family:var(--display);font-variation-settings:"wdth" 112;font-size:34px;line-height:38px;font-weight:700;text-wrap:balance}
+.ann .lead{margin:6px 0 0;font-size:15px;line-height:22px;color:var(--ardoise-2);max-width:560px}
+.ann__head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.ann__bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.seg--sm{box-shadow:none}
+.seg--sm button{display:inline-flex;align-items:center;gap:6px}
+.seg--sm button span{font-size:11.5px;opacity:.75}
+.ann__sort{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--zinc)}
+.ann__sort select{height:36px;border-radius:var(--pilule);border:1px solid var(--trait-fort);background:var(--calcaire);padding:0 12px;font:inherit;color:var(--ardoise)}
+.ann__list{display:flex;flex-direction:column;border:1px solid var(--trait);border-radius:var(--rayon-m);background:var(--calcaire);overflow:hidden}
+.ann__list:empty{display:none}
+.lcard{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 14px;border:0;border-top:1px solid var(--trait);background:none;text-align:left;width:100%;cursor:pointer}
+.lcard:first-child{border-top:0}
+.lcard:hover{background:var(--enduit)}
+.lcard--off{opacity:.55}
+.lcard__ph{width:76px;height:60px;border-radius:var(--rayon-s);overflow:hidden;background:var(--enduit);display:grid;place-items:center}
+.lcard__ph img{width:100%;height:100%;object-fit:cover}
+.lcard__ph i{width:22px;height:22px;border:2px solid var(--trait-fort);border-radius:3px 3px 4px 4px;clip-path:polygon(50% 0,100% 40%,100% 100%,0 100%,0 40%)}
+.lcard__b{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lcard__t{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcard__p{font-size:14px;font-weight:650}
+.lcard__p small{margin-left:8px;font-weight:500;color:var(--zinc)}
+.lcard__r{font-size:12.5px;color:var(--ardoise-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcard__s{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.lcard__s b{min-width:44px;height:32px;border-radius:var(--rayon-m);background:var(--c);color:var(--on-score);display:grid;place-items:center;font-size:14px}
+.lcard__s em{font-style:normal;font-size:11.5px;color:var(--zinc);white-space:nowrap}
+.ann__empty ol{margin:0;padding:0 0 0 20px;display:flex;flex-direction:column;gap:10px;font-size:14.5px;line-height:21px;color:var(--ardoise-2)}
+.ann__empty b{color:var(--ardoise)}
+.ann__empty{display:flex;flex-direction:column;gap:12px;padding:18px 20px;border:1px dashed var(--trait-fort);border-radius:var(--rayon-m)}
+.bmk{display:flex;flex-direction:column;gap:10px;padding-top:20px;border-top:1px solid var(--trait)}
+.bmk h2{margin:0;font-size:17px;font-weight:650}
+.bmk .hint2{margin:0}
+.bmk__row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bmk details summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--email)}
+.bmk details ol{margin:10px 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.ann__back{align-self:flex-start}
+.lgal{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:var(--rayon-m)}
+.lgal img{flex:none;width:min(86%,520px);aspect-ratio:4/3;object-fit:cover;border-radius:var(--rayon-m);background:var(--enduit);scroll-snap-align:start}
+.lgal--sm img{width:120px;aspect-ratio:4/3}
+.ldet__head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.ldet__head h1{font-size:26px;line-height:31px;text-wrap:balance}
+.ldet__price{margin:6px 0 2px;font-size:20px;font-weight:700}
+.ldet__price small{font-size:14px;font-weight:500;color:var(--zinc);margin-left:6px}
+.ldet__head .hint2{margin:0}
+.ldet__score{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px}
+.ldet__score b{width:68px;height:68px;border-radius:14px;background:var(--c);color:var(--on-score);display:grid;place-items:center;font-size:28px;font-weight:800}
+.ldet__score span{font-size:11.5px;color:var(--zinc)}
+.lact{display:flex;gap:8px;flex-wrap:wrap}
+.lact a.chip{text-decoration:none}
+.lsec{display:flex;flex-direction:column;gap:10px;padding-top:16px;border-top:1px solid var(--trait)}
+.lsec h2{margin:0;font-size:17px;font-weight:650}
+.mbar{display:grid;grid-template-columns:90px 1fr 34px;gap:12px;align-items:center;font-size:14px}
+.mbar .bar{height:8px;border-radius:var(--pilule);background:var(--enduit);overflow:hidden}
+.mbar .bar i{display:block;height:100%;background:var(--c);border-radius:var(--pilule)}
+.mbar b{text-align:right}
+.mbar small{grid-column:2 / -1;margin-top:-8px;font-size:12px;color:var(--zinc)}
+.lwhy{margin:4px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;font-size:14px}
+.lwhy li{padding-left:20px;position:relative}
+.lwhy--plus li::before{content:"+";position:absolute;left:2px;font-weight:700;color:#4A7A3E}
+.lwhy--minus li::before{content:"−";position:absolute;left:2px;font-weight:700;color:var(--alerte)}
+.lcrit{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px}
+.lcrit div{display:grid;grid-template-columns:minmax(0,1fr) 10px 28px;gap:8px;align-items:center;font-size:13.5px}
+.lcrit div span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcrit i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.lcrit b{text-align:right}
+.lcrit .unk{color:var(--zinc)}
+.lcrit .unk i{background:var(--enduit);box-shadow:inset 0 0 0 1px var(--trait-fort)}
+.lsheet{max-height:min(88vh,860px);overflow:auto}
+.lsheet textarea{min-height:140px;font-size:15px;padding:10px 12px;border-radius:var(--rayon-s);border:1px solid var(--trait-fort);background:var(--calcaire);font-family:inherit;resize:vertical}
+.lsheet .auth__form input{border-radius:var(--rayon-s);border:1px solid var(--trait-fort);padding:0 12px;background:var(--calcaire)}
+.lform{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 14px}
+.lf{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--ardoise-2);min-width:0}
+.lf>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lf input,.lf select{height:42px;border-radius:var(--rayon-s);border:1px solid var(--trait-fort);background:var(--calcaire);padding:0 10px;font:inherit;font-size:15px;color:var(--ardoise);width:100%;min-width:0}
+.lf em{font-style:normal;font-size:11px;font-weight:650;color:#4A7A3E;margin-left:4px}
+.lf--bool{flex-direction:row;align-items:center;gap:8px;min-height:42px}
+.lf--bool input{flex:none;width:18px;height:18px;accent-color:var(--email)}
+.lpin{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px 0 6px;transform:translate(-50%,-50%);border-radius:6px;background:var(--ardoise);color:var(--calcaire);box-shadow:0 1px 4px rgba(38,35,31,.35),inset 0 -3px 0 var(--c);font:700 11.5px/1 var(--sans);white-space:nowrap}
+.lpin em{font-style:normal}
+.lpin--kept{background:var(--email)}
+.lpin--approx{opacity:.85;border:1px dashed var(--calcaire)}
+.map--far .lpin em{display:none}
+@media (max-width:899px){
+  #view-annonces{padding-block:24px 96px}
+  .ann h1{font-size:28px;line-height:32px}
+  .crow--home{grid-template-columns:1fr}
+  .crow--home .wctl{grid-row:auto}
+  .lcrit{grid-template-columns:1fr}
+  .ldet__head h1{font-size:22px;line-height:27px}
+}
 .x.armed{color:var(--alerte);background:var(--enduit)}
 .mapsw{display:inline-flex;gap:2px;padding:3px;margin-bottom:8px;border-radius:var(--pilule);border:1px solid var(--trait);background:var(--pierre);max-width:100%;overflow-x:auto}
 .mapsw button{border:0;background:none;height:32px;padding:0 13px;border-radius:var(--pilule);font:600 13px/1 var(--sans);color:var(--ardoise-2);white-space:nowrap;cursor:pointer}
@@ -458,7 +556,7 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
   .tabs{display:none}
   .topbar{height:54px}
   .brand span{display:none}
-  .tabbar{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--trait);background:var(--calcaire);padding-bottom:env(safe-area-inset-bottom,0px);z-index:1000;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  .tabbar{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--trait);background:var(--calcaire);padding-bottom:env(safe-area-inset-bottom,0px);z-index:1000;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
   .tabbar button{border:0;background:none;height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--zinc)}
   .tabbar button[aria-selected="true"]{color:var(--email)}
   .tabbar svg{width:22px;height:22px}
@@ -525,6 +623,7 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
     <button class="acct" id="acct" type="button" hidden></button>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-tab="map" aria-selected="true">Carte</button>
+      <button class="tab" role="tab" data-tab="annonces" aria-selected="false">Annonces</button>
       <button class="tab" role="tab" data-tab="profile" aria-selected="false">Profil</button>
     </nav>
   </header>
@@ -557,6 +656,9 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
       </div>
     </section>
 
+    <section class="view" id="view-annonces" hidden>
+      <div class="ann" id="annonces"></div>
+    </section>
     <section class="view" id="view-profile" hidden>
       <div class="prof" id="prof"></div>
     </section>
@@ -565,6 +667,9 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
   <nav class="tabbar" role="tablist">
     <button role="tab" data-tab="map" aria-selected="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>Carte
+    </button>
+    <button role="tab" data-tab="annonces" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 11 12 4l8 7v9H4z"/><path d="M10 20v-5h4v5"/></svg>Annonces
     </button>
     <button role="tab" data-tab="profile" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profil
@@ -967,9 +1072,11 @@ function setTab(t) {
   $$("[data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
   $("#view-map").hidden = t !== "map";
   $("#view-profile").hidden = t !== "profile";
-  if (t === "map") { setTimeout(() => map.invalidateSize(), 0); renderZones(); renderPanel(); }
+  $("#view-annonces").hidden = t !== "annonces";
+  if (t === "map") { setTimeout(() => map.invalidateSize(), 0); renderZones(); renderPanel(); renderListingPins(); }
+  else if (t === "annonces") renderListings();
   else renderProfile();
-  try { if (!/(access_token|error_description|error_code)=/.test(location.hash)) history.replaceState(null, "", t === "profile" ? "#profil" : "#carte"); } catch (e) {}
+  try { if (!/(access_token|error_description|error_code|import)=/.test(location.hash)) history.replaceState(null, "", t === "profile" ? "#profil" : t === "annonces" ? "#annonces" : "#carte"); } catch (e) {}
 }
 $$("[data-tab]").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
 
@@ -2260,6 +2367,8 @@ function renderProfile() {
       </div>
     </section>
 
+    ${homeSectionHTML()}
+
     <section class="sec">
       <h2>Vos données</h2>
       <p class="hint2">${cloud.user ? "Vos zones sont enregistrées dans votre compte. L’export reste utile pour garder une copie ou partager un fichier." : "Les zones restent dans ce navigateur. Exportez-les pour les sauvegarder ou les envoyer à votre binôme : à l’import, ses zones s’ajoutent aux vôtres et sont notées selon votre profil."}</p>
@@ -2272,6 +2381,7 @@ function renderProfile() {
     </section>`;
 
   bindAccount($("#prof"));
+  bindHomeSection();
   bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
   $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); toast(p.halfPoints ? "Notes au demi-point activées" : "Notes au demi-point désactivées"); };
@@ -2281,7 +2391,7 @@ function renderProfile() {
     p.criteria = presetCriteria(pr); p.presetId = pr.id; p.modified = false; save(); renderProfile();
     toast(`Profil « ${pr.name} » appliqué`);
   });
-  $$(".crow").forEach(row => {
+  $$(".crow[data-i]").forEach(row => {
     const c = cs[+row.dataset.i];
     $(".nm", row).oninput = e => { c.name = e.target.value; p.modified = true; save(); };
     $(".ds", row).oninput = e => { c.desc = e.target.value; save(); };
@@ -2290,7 +2400,7 @@ function renderProfile() {
       c.weight = +rg.value; p.modified = true; save();
       $(".wv", row).textContent = c.weight;
       const tot = cs.reduce((a, x) => a + (x.weight > 0 ? x.weight : 0), 0);
-      $$(".crow").forEach(r2 => { const c2 = cs[+r2.dataset.i]; $(".ws", r2).textContent = (tot ? Math.round(Math.max(0, c2.weight) / tot * 100) : 0) + " %"; });
+      $$(".crow[data-i]").forEach(r2 => { const c2 = cs[+r2.dataset.i]; $(".ws", r2).textContent = (tot ? Math.round(Math.max(0, c2.weight) / tot * 100) : 0) + " %"; });
       $("#wtot").textContent = `Total des poids : ${tot}${tot === 100 ? "" : " (ramené à 100 %)"}`;
       $$(".preset").forEach(pb => { pb.setAttribute("aria-pressed", "false"); const t = $(".cur", pb); if (t) t.remove(); });
     };
@@ -2366,7 +2476,7 @@ function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.hidden = false; t.style.opacity = "1";
   clearTimeout(toastT); toastT = setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.hidden = true, 200); }, 2200);
 }
-document.addEventListener("keydown", e => { if (e.key === "Escape" && ui.mode === "placing") cancelDraft(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && ui.mode === "placing" && !document.querySelector(".ask")) confirmCancelDraft(); });
 window.addEventListener("resize", () => { if (!sheetDrag) applySheet(); });
 
 /* L'attribution de la carte reste visible au-dessus de la feuille mobile */
@@ -2415,23 +2525,35 @@ function ratingRow(z) {
   return {zone_id: z.id, user_id: cloud.user.id, ratings: z.ratings || {}, fav: !!z.fav, comment: z.comment || "",
     visit_date: z.date || null, moment: z.moment || "", price: z.price ?? null};
 }
+// Base pas encore migrée (supabase/annonces.sql) : on garde annonces et critères sur l'appareil
+const schemaMissing = e => !!e && (/^(PGRST20[45]|42P01|42703)$/.test(e.code || "") || /schema cache|does not exist/i.test(e.message || ""));
 function profileRow() {
   const p = state.profile;
-  return {id: cloud.user.id, display_name: p.name || "", preset_id: p.presetId || null, modified: !!p.modified, budget: p.budget ?? null, criteria: p.criteria || [], half_points: !!p.halfPoints};
+  const row = {id: cloud.user.id, display_name: p.name || "", preset_id: p.presetId || null, modified: !!p.modified, budget: p.budget ?? null, criteria: p.criteria || [], half_points: !!p.halfPoints};
+  if (!cloud.noHome) row.home = p.home || null;
+  return row;
 }
+function listingRow(f) {
+  const data = {}; Object.keys(f).forEach(k => { if (!["id", "status", "lat", "lng", "mapId", "createdBy", "url"].includes(k)) data[k] = f[k]; });
+  return {id: f.id, map_id: f.mapId || cloud.mapId, created_by: f.createdBy || cloud.user.id, url: f.url || "", status: f.status || "nouvelle", lat: f.lat ?? null, lng: f.lng ?? null, data};
+}
+const listingFromRow = r => Object.assign({}, r.data || {}, {id: r.id, mapId: r.map_id, createdBy: r.created_by, url: r.url, status: r.status, lat: r.lat, lng: r.lng});
 function snapshot() {
-  const zones = {};
+  const zones = {}, lst = {};
+  if (!cloud.noListings) for (const f of state.listings || []) if (isUuid(f.id)) lst[f.id] = JSON.stringify(listingRow(f));
   for (const z of state.zones) {
     if (z.example || !isUuid(z.id) || !Array.isArray(z.points)) continue;
     zones[z.id] = {zone: JSON.stringify(zoneRow(z)), rating: JSON.stringify(ratingRow(z))};
   }
-  return {zones, profile: JSON.stringify(profileRow())};
+  return {zones, listings: lst, profile: JSON.stringify(profileRow())};
 }
 function hasPending() {
   if (!cloud.user) return false;
   const cur = snapshot(), prev = cloud.synced || {zones: {}, profile: null};
   if (cur.profile !== prev.profile) return true;
   if (Object.keys(prev.zones).some(id => !cur.zones[id])) return true;
+  const pl = prev.listings || {};
+  if (Object.keys(pl).some(id => !cur.listings[id]) || Object.entries(cur.listings).some(([id, v]) => pl[id] !== v)) return true;
   return Object.entries(cur.zones).some(([id, v]) => !prev.zones[id] || prev.zones[id].zone !== v.zone || prev.zones[id].rating !== v.rating);
 }
 function setCloudStatus(st, err) {
@@ -2475,7 +2597,11 @@ async function syncNow() {
   const prev = cloud.synced ? JSON.parse(JSON.stringify(cloud.synced)) : {zones: {}, profile: null};
   try {
     if (cur.profile !== prev.profile) {
-      const {error} = await c.from("profiles").upsert(Object.assign(JSON.parse(cur.profile), {updated_at: new Date().toISOString()}));
+      let {error} = await c.from("profiles").upsert(Object.assign(JSON.parse(cur.profile), {updated_at: new Date().toISOString()}));
+      if (error && !cloud.noHome && schemaMissing(error)) {
+        cloud.noHome = true; cur.profile = JSON.stringify(profileRow());
+        ({error} = await c.from("profiles").upsert(Object.assign(JSON.parse(cur.profile), {updated_at: new Date().toISOString()})));
+      }
       if (error) throw error;
       prev.profile = cur.profile;
     }
@@ -2490,6 +2616,14 @@ async function syncNow() {
     if (rUp.length) { const {error} = await c.from("ratings").upsert(rUp); if (error) throw error; }
     await syncTwins(rUp);
     if (dels.length) { const {error} = await c.from("zones").delete().in("id", dels); if (error) throw error; }
+    const pl = prev.listings || {}, lUp = Object.entries(cur.listings).filter(([id, v]) => pl[id] !== v).map(([, v]) => Object.assign(JSON.parse(v), {updated_at: new Date().toISOString()}));
+    const lDel = Object.keys(pl).filter(id => !cur.listings[id]);
+    if (lUp.length) {
+      const {error} = await c.from("listings").upsert(lUp);
+      if (error && schemaMissing(error)) { cloud.noListings = true; cur.listings = {}; }
+      else if (error) throw error;
+    }
+    if (lDel.length) { const {error} = await c.from("listings").delete().in("id", lDel); if (error) throw error; }
     cloud.synced = cur; cloud.lastSync = new Date();
     try { localStorage.setItem("heden.cache." + cloud.user.id, JSON.stringify({state, synced: cloud.synced, mapId: cloud.mapId})); } catch (e) {}
     setCloudStatus("ok");
@@ -2544,6 +2678,8 @@ async function cloudLoad() {
         const copy = Object.assign({}, z, {id: isUuid(z.id) ? z.id : zoneId(), mapId, createdBy: me});
         if (!state.zones.some(x => x.id === copy.id)) state.zones.push(copy);
       }
+      const lMove = (localState.listings || []).filter(f => !f.mapId);
+      lMove.forEach(f => { f.mapId = mapId; f.createdBy = me; if (!(state.listings || []).some(x => x.id === f.id)) (state.listings = state.listings || []).push(f); });
       if (!cached) state.profile = localState.profile;
       try {
         localStorage.setItem(flag, "1");
@@ -2824,7 +2960,8 @@ function resetForMap(id) {
   if (cloud.mapId === cloud.personalMapId) stashedExamples = state.zones.filter(z => z.example);
   cloud.mapId = id;
   state.zones = id === cloud.personalMapId ? stashedExamples : [];
-  cloud.synced = {zones: {}, profile: cloud.synced ? cloud.synced.profile : null};
+  cloud.synced = {zones: {}, listings: {}, profile: cloud.synced ? cloud.synced.profile : null};
+  state.listings = [];
   try { localStorage.setItem("heden.map." + cloud.user.id, id); } catch (e) {}
 }
 async function switchMap(id) {
@@ -3021,11 +3158,14 @@ async function cloudRefresh(force) {
   if (!force && (Date.now() - (cloud.lastRefresh || 0) < 45000)) return;
   if (hasPending()) { await syncNow(); if (hasPending()) return; }
   const c = cloud.client, me = cloud.user.id;
-  const [{data: prof, error: e1}, {data: rows, error: e2}] = await Promise.all([
+  const [{data: prof, error: e1}, {data: rows, error: e2}, {data: lrows, error: e3}] = await Promise.all([
     c.from("profiles").select("*").eq("id", me).maybeSingle(),
-    c.from("zones").select("*, ratings(*)").eq("map_id", cloud.mapId)
+    c.from("zones").select("*, ratings(*)").eq("map_id", cloud.mapId),
+    c.from("listings").select("*").eq("map_id", cloud.mapId)
   ]);
   if (e1 || e2) { setCloudStatus("error", e1 || e2); return; }
+  cloud.noListings = schemaMissing(e3);
+  if (prof) cloud.noHome = !("home" in prof);
   const ids = new Set();
   (rows || []).forEach(r => { ids.add(r.created_by); (r.ratings || []).forEach(x => ids.add(x.user_id)); });
   (curMap() ? curMap().members : []).forEach(m => ids.add(m.userId));
@@ -3033,7 +3173,7 @@ async function cloudRefresh(force) {
   if (ids.size) await loadPeople([...ids]);
   let pushProfile = false;
   if (prof && Array.isArray(prof.criteria) && prof.criteria.length) {
-    state.profile = {name: prof.display_name || "", presetId: prof.preset_id || null, modified: !!prof.modified, budget: prof.budget == null ? null : Number(prof.budget), criteria: prof.criteria, halfPoints: !!prof.half_points};
+    state.profile = {name: prof.display_name || "", presetId: prof.preset_id || null, modified: !!prof.modified, budget: prof.budget == null ? null : Number(prof.budget), criteria: prof.criteria, halfPoints: !!prof.half_points, home: cloud.noHome ? (state.profile && state.profile.home) : (prof.home || (state.profile && state.profile.home) || undefined)};
   } else pushProfile = true;   // compte neuf : on garde le profil de l'appareil
   const examples = cloud.mapId === cloud.personalMapId ? state.zones.filter(z => z.example) : [];
   const zoneIds = [...new Set((rows || []).flatMap(r => r.link_zone ? [r.id, r.link_zone] : [r.id]))], byZone = {};
@@ -3044,6 +3184,12 @@ async function cloudRefresh(force) {
   }
   const before = new Set(state.zones.map(z => z.id));
   state.zones = (rows || []).map(r => Object.assign(zoneFromRow(r), {photos: [...(byZone[r.id] || []), ...(r.link_zone ? byZone[r.link_zone] || [] : [])]})).concat(examples);
+  if (lrows) {
+    // les annonces locales jamais envoyées (ajoutées hors ligne ou avant la migration) sont gardées
+    const known = (cloud.synced && cloud.synced.listings) || {}, srv = new Set(lrows.map(r => r.id));
+    const local = (state.listings || []).filter(f => !srv.has(f.id) && !known[f.id] && (!f.mapId || f.mapId === cloud.mapId));
+    state.listings = lrows.map(listingFromRow).concat(local).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  }
   if (isShared()) {
     const st = seenSet(), u = cloud.unseen[cloud.mapId] = new Set();
     state.zones.forEach(z => { if (z.createdBy && z.createdBy !== me && !st.has(z.id)) u.add(z.id); });
@@ -3061,8 +3207,9 @@ async function cloudRefresh(force) {
 
 function rerenderAll() {
   if (typeof renderZones !== "function") return;
-  renderZones();
-  if (currentTab === "map") { if (ui.mode === "list" || ui.mode === "detail") renderPanel(); }
+  renderZones(); renderListingPins();
+  if (currentTab === "annonces") renderListings();
+  else if (currentTab === "map") { if (ui.mode === "list" || ui.mode === "detail") renderPanel(); }
   else renderProfile();
   refreshEstimates();
 }
@@ -3126,9 +3273,516 @@ function cloudInit() {
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && cloud.user) cloudRefresh(false).catch(() => {}); });
 }
 
+/* =========================================================
+   Annonces : analyse par règles, score de correspondance, onglet
+   ========================================================= */
+const HOME_LIB = {
+  lumiere:    {name: "Luminosité", desc: "Exposition, logement traversant, étage"},
+  etage:      {name: "Étage et ascenseur", desc: "Les étages élevés avec ascenseur, pas de rez-de-chaussée"},
+  exterieur:  {name: "Extérieur", desc: "Balcon, loggia, terrasse ou jardin"},
+  calme:      {name: "Calme", desc: "Sur cour ou sur jardin plutôt que sur rue"},
+  etat:       {name: "État et travaux", desc: "Rénové, à rafraîchir ou gros travaux"},
+  energie:    {name: "Performance énergétique", desc: "Classe DPE, de A à G"},
+  charges:    {name: "Charges de copropriété", desc: "Rapportées à la surface, par an"},
+  agencement: {name: "Agencement", desc: "Surface par pièce, nombre de chambres"},
+  annexes:    {name: "Cave et parking", desc: "Rangements et stationnement"},
+  cachet:     {name: "Cachet de l’ancien", desc: "Parquet, moulures, cheminée, hauteur sous plafond"},
+  vue:        {name: "Vue et vis-à-vis", desc: "Vue dégagée, sans vis-à-vis"},
+  immeuble:   {name: "Immeuble et sécurité", desc: "Gardien, digicode, immeuble entretenu"}
+};
+const HOME_W = {lumiere: 15, etage: 10, exterieur: 10, calme: 10, etat: 10, energie: 10, charges: 5, agencement: 10, annexes: 5, cachet: 5, vue: 5, immeuble: 5};
+const DPE = "ABCDEFG";
+function homeProfile() {
+  const p = state.profile;
+  if (!p.home) p.home = {};
+  const h = p.home;
+  if (!h.weights) h.weights = Object.assign({}, HOME_W);
+  if (h.noGround === undefined) h.noGround = true;
+  if (h.elevatorFrom === undefined) h.elevatorFrom = 4;
+  if (h.dpeMax === undefined) h.dpeMax = "F";
+  if (!h.mix) h.mix = {logement: 45, quartier: 35, prix: 20};
+  return h;
+}
+const listings = () => (state.listings = state.listings || []);
+
+/* ---------- Lecture d'une annonce (texte, balises de la page, données structurées) ---------- */
+const numFR = s => { if (s == null) return null; const v = parseFloat(String(s).replace(/[\s  .](?=\d{3}\b)/g, "").replace(/\s/g, "").replace(",", ".")); return isFinite(v) ? v : null; };
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return ""; } };
+function parseListing(src) {
+  const meta = src.meta || {};
+  const raw = [src.title, meta["og:title"], meta["og:description"] || meta.description, src.text].filter(Boolean).join("\n").replace(/[  ]/g, " ");
+  const low = raw.toLowerCase();
+  const nodes = [];
+  (src.ld || []).forEach(s => { try { (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === "object") { nodes.push(o); Object.values(o).forEach(v => v && typeof v === "object" && walk(v)); } })(JSON.parse(s)); } catch (e) {} });
+  const pick = f => { for (const n of nodes) { try { const v = f(n); if (v != null && v !== "") return v; } catch (e) {} } return null; };
+  const f = {}, found = {};
+  const set = (k, v) => { if (v != null && v !== "" && !(typeof v === "number" && !isFinite(v))) { f[k] = v; found[k] = true; } };
+  // Prix
+  let price = numFR(pick(n => n.price ?? (n.offers && (n.offers.price ?? (Array.isArray(n.offers) && n.offers[0] && n.offers[0].price)))));
+  if (!(price >= 30000 && price <= 20e6)) {
+    const c = [...raw.matchAll(/(\d{1,3}(?:[ .]\d{3})+|\d{5,8})\s?€(?!\s*(?:\/|par)\s*(?:m|mois))/g)].map(m => numFR(m[1])).filter(v => v >= 30000 && v <= 20e6);
+    price = c.length ? c[0] : null;
+  }
+  set("price", price);
+  // Surface
+  let surf = numFR(pick(n => n.floorSize && (n.floorSize.value ?? n.floorSize)));
+  if (!(surf >= 9 && surf <= 500)) {
+    surf = null;
+    for (const m of raw.matchAll(/(\d{1,3}(?:[.,]\d{1,2})?)\s?m(?:²|2)\b/g)) {
+      const before = low.slice(Math.max(0, m.index - 28), m.index);
+      if (/terrasse|balcon|jardin|cave|parking|terrain|loggia|box|séjour|sejour|chambre|cuisine|€/.test(before)) continue;
+      const v = numFR(m[1]); if (v >= 9 && v <= 500) { surf = v; break; }
+    }
+  }
+  set("surface", surf);
+  // Pièces, chambres
+  let rooms = numFR(pick(n => n.numberOfRooms && (n.numberOfRooms.value ?? n.numberOfRooms)));
+  if (!(rooms != null && rooms >= 1 && rooms <= 15)) { const m = low.match(/(\d{1,2})\s?pi[eè]ces?\b/) || raw.match(/\b[TF](\d)\b/); rooms = m ? +m[1] : (/\bstudio\b/.test(low) ? 1 : null); }
+  set("rooms", rooms);
+  let beds = numFR(pick(n => n.numberOfBedrooms ?? n.numberOfBedroomsTotal));
+  if (!(beds != null && beds >= 0 && beds <= 10)) {
+    const WN = {une: 1, un: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6};
+    const m = low.match(/(\d{1,2}|une?|deux|trois|quatre|cinq|six)\s(?:belles?\s|grandes?\s|vraies?\s)?chambres?\b/); beds = m ? (WN[m[1]] || +m[1]) : null;
+  }
+  set("bedrooms", beds);
+  // Étage
+  let floor = null, floors = null;
+  if (/\b(rez[- ]de[- ]chauss[ée]e|rdc)\b/.test(low) && !/au-dessus du rez/.test(low)) floor = 0;
+  let m = low.match(/(\d{1,2})\s?(?:er|e|ème|eme|è)\s?(?:et\s)?(?:dernier\s)?[ée]tage/) || low.match(/[ée]tage\s*:?\s*(\d{1,2})(?:\s?\/\s?(\d{1,2}))?/);
+  if (m) { floor = +m[1]; if (m[2]) floors = +m[2]; }
+  const mf = low.match(/sur\s(\d{1,2})\s[ée]tages?/) || low.match(/immeuble de\s(\d{1,2})\s[ée]tages?/); if (mf) floors = +mf[1];
+  set("floor", floor); set("floors", floors);
+  if (/dernier [ée]tage/.test(low)) set("top", true);
+  if (/sans ascenseur|pas d['’]ascenseur/.test(low)) set("elevator", false); else if (/ascenseur/.test(low)) set("elevator", true);
+  // Extérieur
+  const ext = /terrasse/.test(low) ? "terrasse" : /jardin privatif|jardin de \d|avec jardin/.test(low) ? "jardin" : /balcon/.test(low) ? "balcon" : /loggia/.test(low) ? "loggia" : null;
+  set("outdoor", ext);
+  if (ext) { const ma = low.match(new RegExp(ext + "[^.\\n]{0,18}?(\\d{1,3})\\s?m")); if (ma) set("outdoorArea", +ma[1]); }
+  // Lumière, exposition
+  const me = low.match(/expos[ée]e?s?\s(?:plein\s)?(sud[- ]ouest|sud[- ]est|nord[- ]ouest|nord[- ]est|sud|nord|est|ouest)/);
+  if (me) set("exposure", me[1].replace(" ", "-"));
+  if (/traversant/.test(low)) set("traversant", true);
+  if (/lumineu|tr[eè]s clair|baign[ée] de lumi|ensoleill|lumi[eè]re naturelle/.test(low)) set("bright", true);
+  if (/\bsombre\b/.test(low)) set("dark", true);
+  // DPE, charges, taxe foncière
+  const md = raw.match(/(?:DPE|[Cc]lasse [ée]nergie|[Cc]onsommation [ée]nerg[ée]tique|[Pp]erformance [ée]nerg[ée]tique)[^A-Za-z\n]{0,14}\b([A-G])\b/);
+  if (md) set("dpe", md[1]);
+  const mc = low.match(/charges?(?: de copropri[ée]t[ée])?(?: annuelles| mensuelles| courantes)?\s*:?\s*(?:de\s)?(\d[\d ]{0,6})\s?€\s?(?:\/\s?|par\s)?(an|mois|année)?/);
+  if (mc) { let v = numFR(mc[1]); const unit = mc[2] || (v > 600 ? "an" : "mois"); if (/mois/.test(unit)) v *= 12; if (v > 0 && v < 30000) set("charges", Math.round(v)); }
+  const mt = low.match(/taxe fonci[eè]re\s*:?\s*(?:de\s)?(\d[\d ]{0,6})\s?€/); if (mt) set("taxe", numFR(mt[1]));
+  // Annexes, état, ambiance
+  if (/\bcaves?\b/.test(low) && !/sans cave/.test(low)) set("cave", true);
+  if (/\b(parking|box|garage|place de stationnement)\b/.test(low) && !/parking (?:public|à proximité)/.test(low)) set("parking", true);
+  const work = /(refait à neuf|entièrement rénové|entierement renove|rénové avec goût|rénovation récente|neuf\b)/.test(low) ? "neuf"
+    : /(travaux à prévoir|à rénover|a renover|gros travaux|rénovation complète à prévoir)/.test(low) ? "travaux"
+    : /(rafra[iî]chissement|à rafra[iî]chir)/.test(low) ? "rafraichir" : /(bon état|bon etat|très bon état|parfait état)/.test(low) ? "bon" : null;
+  set("works", work);
+  if (/sur cour|côté cour|au calme|très calme|sur jardin|calme absolu/.test(low)) set("quiet", true); else if (/sur rue|boulevard|avenue passante|axe passant/.test(low)) set("quiet", false);
+  const cach = (low.match(/parquet|moulures|chemin[ée]e|haussmannien|cachet|poutres|hauteur sous plafond/g) || []).length; if (cach) set("cachet", cach);
+  if (/sans vis[- ]?[àa][- ]vis|vue d[ée]gag[ée]e|vue imprenable|vue sur (?:la seine|le parc|jardin|la tour eiffel|le sacr)/.test(low)) set("view", true);
+  if (/gardien|concierge/.test(low)) set("building", "gardien"); else if (/digicode|interphone|vidéophone|visiophone/.test(low)) set("building", "securise");
+  // Lieu
+  const addr = pick(n => n.address && typeof n.address === "object" ? n.address : null) || {};
+  let pc = addr.postalCode || (raw.match(/\b(75(?:0[0-1]\d|02[0]|116)|9[234]\d{3})\b/) || [])[1] || null;
+  const ma2 = low.match(/paris\s?(\d{1,2})\s?(?:er|e|ème|eme)\b/); if (!pc && ma2) pc = "750" + String(ma2[1]).padStart(2, "0");
+  set("postcode", pc);
+  let city = addr.addressLocality || (pc && pc.startsWith("75") ? "Paris" : null);
+  if (!city && dataStore.meta && dataStore.meta.communes) {          // commune de la petite couronne citée dans le texte
+    const hit = dataStore.meta.communes.filter(c => !/^Paris/.test(c[1]) && c[1].length > 3).find(c => new RegExp("\\b" + c[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(raw));
+    if (hit) { city = hit[1]; if (!pc) set("postcode", null); }
+  }
+  set("city", city);
+  const geo = pick(n => n.geo && n.geo.latitude ? n.geo : null);
+  if (geo) { set("lat", +geo.latitude); set("lng", +geo.longitude); set("precise", true); }
+  const mm = raw.match(/[Mm][ée]tro\s+([A-ZÉÈ][\wÀ-ÿ'’\- ]{2,28}?)(?=[,.\n(]| à | et |$)/); if (mm) set("metro", mm[1].trim());
+  const mq = raw.match(/[Qq]uartier\s(?:de\s|du\s|des\s|d['’])?([A-ZÉÈ][\wÀ-ÿ'’\- ]{2,28}?)(?=[,.\n(]| à | et |$)/); if (mq) set("quartier", mq[1].trim());
+  // Photos
+  const photos = [];
+  const addP = u => { if (typeof u === "string" && /^https?:/.test(u) && !photos.includes(u) && photos.length < 12) photos.push(u); };
+  addP(meta["og:image"]); (src.imgs || []).forEach(addP);
+  const ldi = pick(n => n.image); (Array.isArray(ldi) ? ldi : [ldi]).forEach(x => addP(typeof x === "object" && x ? x.url : x));
+  f.photos = photos;
+  f.url = src.url || ""; f.source = hostOf(src.url);
+  f.found = found;
+  return f;
+}
+function listingTitle(f) {
+  const parts = [f.rooms ? (f.rooms === 1 ? "Studio" : `${f.rooms} pièces`) : "Appartement", f.surface ? `${fmtInt(f.surface)}\u00a0m²` : null];
+  const pc = f.postcode, place = pc && /^750\d\d$/.test(pc) ? arrLabel(pc) : f.city;
+  return parts.filter(Boolean).join(", ") + (place ? `, ${place}` : "");
+}
+async function geocodeListing(f) {
+  if (f.lat && f.lng) return;
+  const vb = `${BOUNDS[0][1]},${BOUNDS[1][0]},${BOUNDS[1][1]},${BOUNDS[0][0]}`;
+  const city = f.city || (f.postcode && f.postcode.startsWith("75") ? "Paris" : "");
+  const tries = [f.metro && `${f.metro}, ${city || "Paris"}`, f.quartier && `${f.quartier}, ${city}`, f.postcode && `${f.postcode} ${city}`, city].filter(Boolean);
+  for (const q of tries) {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&viewbox=${vb}&bounded=1&limit=1&countrycodes=fr&accept-language=fr`);
+      const j = r.ok ? await r.json() : [];
+      if (j[0]) { f.lat = +j[0].lat; f.lng = +j[0].lon; f.precise = false; f.placedBy = q; return; }
+    } catch (e) {}
+  }
+}
+
+/* ---------- Score de correspondance ---------- */
+function homeValues(f) {
+  const v = {}, known = {};
+  const k = (id, val, isKnown) => { v[id] = Math.max(0, Math.min(5, val)); known[id] = isKnown; };
+  // luminosité
+  let lu = 2.5, kl = false;
+  if (f.exposure) { kl = true; lu = /sud|ouest/.test(f.exposure) ? 4 : /est/.test(f.exposure) ? 3 : 1.5; }
+  if (f.traversant) { lu += 1; kl = true; }
+  if (f.bright) { lu = Math.max(lu, 4); kl = true; }
+  if (f.dark) { lu = 1; kl = true; }
+  if (f.floor != null) lu += f.floor === 0 ? -1.5 : f.floor >= 4 ? .5 : 0;
+  k("lumiere", lu, kl);
+  // étage
+  if (f.floor == null) k("etage", 2.5, false);
+  else if (f.floor === 0) k("etage", 0, true);
+  else if (f.floor === 1) k("etage", 2, true);
+  else if (f.floor <= 3) k("etage", f.elevator === false && f.floor === 3 ? 3 : 3.5, true);
+  else k("etage", f.elevator === false ? 1.5 : f.elevator ? 5 : 3.5, true);
+  if (f.top && v.etage >= 3) v.etage = Math.min(5, v.etage + .5);
+  // extérieur
+  const ex = {terrasse: 5, jardin: 5, balcon: 3, loggia: 3}[f.outdoor];
+  k("exterieur", ex != null ? Math.min(5, ex + (f.outdoorArea >= 8 ? .5 : 0)) : 1, ex != null);
+  k("calme", f.quiet === true ? 5 : f.quiet === false ? 1.5 : 2.5, f.quiet != null);
+  k("etat", {neuf: 5, bon: 4, rafraichir: 2.5, travaux: 1}[f.works] ?? 3, !!f.works);
+  k("energie", f.dpe ? [5, 5, 4, 3, 2, 1, 0][DPE.indexOf(f.dpe)] : 2.5, !!f.dpe);
+  if (f.charges && f.surface) { const c = f.charges / f.surface; k("charges", c < 25 ? 5 : c < 35 ? 4 : c < 45 ? 3 : c < 60 ? 2 : 1, true); } else k("charges", 3, false);
+  if (f.surface && f.rooms) { const r = f.surface / f.rooms; k("agencement", (r >= 20 ? 5 : r >= 16 ? 4 : r >= 13 ? 3 : 2) + (f.bedrooms != null && f.rooms >= 3 && f.bedrooms >= f.rooms - 1 ? .5 : 0), true); } else k("agencement", 2.5, false);
+  k("annexes", f.cave || f.parking ? (f.cave && f.parking ? 5 : 3.5) : 1, !!(f.cave || f.parking));
+  k("cachet", f.cachet ? (f.cachet >= 2 ? 5 : 3.5) : 2, !!f.cachet);
+  k("vue", f.view ? 5 : 2.5, !!f.view);
+  k("immeuble", f.building === "gardien" ? 5 : f.building === "securise" ? 3.5 : 2.5, !!f.building);
+  return {v, known};
+}
+function listingFilters(f, h) {
+  const fails = [];
+  if (h.budgetMax > 0 && f.price > h.budgetMax) fails.push(`au-dessus de votre budget de ${fmtInt(h.budgetMax)} €`);
+  if (h.surfaceMin > 0 && f.surface && f.surface < h.surfaceMin) fails.push(`moins de ${h.surfaceMin} m²`);
+  if (h.roomsMin > 0 && f.rooms && f.rooms < h.roomsMin) fails.push(`moins de ${h.roomsMin} pièces`);
+  if (h.bedroomsMin > 0 && f.bedrooms != null && f.bedrooms < h.bedroomsMin) fails.push(`moins de ${h.bedroomsMin} chambre${h.bedroomsMin > 1 ? "s" : ""}`);
+  if (h.noGround && f.floor === 0) fails.push("rez-de-chaussée");
+  if (h.elevatorFrom && f.floor >= h.elevatorFrom && f.elevator === false) fails.push(`${f.floor}e étage sans ascenseur`);
+  if (h.dpeMax && h.dpeMax !== "G" && f.dpe && DPE.indexOf(f.dpe) > DPE.indexOf(h.dpeMax)) fails.push(`DPE ${f.dpe}`);
+  if (h.outdoorReq && !f.outdoor) fails.push("pas d’extérieur");
+  return fails;
+}
+/* Quartier : la zone qui contient l'annonce, sinon la plus proche (moins de 300 m), sinon l'estimation des données du coin */
+function listingArea(f) {
+  if (!(f.lat && f.lng)) return null;
+  const p = {lat: f.lat, lng: f.lng};
+  const inside = state.zones.find(z => Array.isArray(z.points) && inPoly(f.lat, f.lng, z.points));
+  if (inside) return {zone: inside, score: zoneScore(inside).score, how: "dans"};
+  let best = null;
+  for (const z of state.zones) { if (!z.points) continue; const d = Math.min(...z.points.map(q => distM(p, {lat: q[0], lng: q[1]}))); if (d < 300 && (!best || d < best.d)) best = {zone: z, d}; }
+  if (best) { const s = zoneScore(best.zone).score; return {zone: best.zone, score: s == null ? null : Math.max(0, s - 5), how: "près", d: best.d}; }
+  if (f.est) { const tmp = {est: f.est, ratings: {}}; return {zone: null, score: scoreWith(tmp, {}, crit(), state.profile.budget).score, how: "estimé"}; }
+  return null;
+}
+function scoreListing(f) {
+  const h = homeProfile(), {v, known} = homeValues(f);
+  let ws = 0, acc = 0;
+  for (const [id, w] of Object.entries(h.weights)) if (w > 0) { ws += w; acc += w * v[id] / 5; }
+  const logement = ws ? Math.round(acc / ws * 100) : null;
+  const area = listingArea(f), quartier = area ? area.score : null;
+  const med = f.est && f.est.prix ? f.est.prix.med : null, ppm = f.price && f.surface ? f.price / f.surface : null;
+  let prix = null, ecart = null;
+  if (med && ppm) { ecart = ppm / med - 1; prix = Math.round(Math.max(0, Math.min(1, (0.2 - ecart) / 0.35)) * 100); }
+  const mix = h.mix, parts = [[logement, mix.logement], [quartier, mix.quartier], [prix, mix.prix]].filter(([s]) => s != null);
+  const wt = parts.reduce((a, [, w]) => a + w, 0);
+  let total = wt ? Math.round(parts.reduce((a, [s, w]) => a + s * w, 0) / wt) : null;
+  const fails = listingFilters(f, h);
+  if (fails.length && total != null) total = Math.min(total, 35);
+  // raisons, les plus parlantes d'abord
+  const plus = [], minus = [];
+  if (area && area.zone) (area.score >= 65 ? plus : area.score < 45 ? minus : plus).push(`${area.how === "dans" ? "Dans" : "Près de"} votre zone « ${area.zone.name} » (${area.score ?? "–"})`);
+  else if (area) (area.score >= 60 ? plus : minus).push(`Quartier estimé à ${area.score} d’après les données du coin`);
+  if (ecart != null) (ecart <= -0.03 ? plus : ecart >= 0.08 ? minus : plus).push(ecart <= -0.03 ? `${Math.round(-ecart * 100)} % sous les ventes du quartier` : ecart >= 0.08 ? `${Math.round(ecart * 100)} % au-dessus des ventes du quartier` : "Au prix des ventes du quartier");
+  const label = {lumiere: f.bright || f.traversant ? "Lumineux" + (f.traversant ? ", traversant" : "") : f.exposure ? `Exposé ${f.exposure}` : "Luminosité",
+    etage: f.floor === 0 ? "Rez-de-chaussée" : f.floor != null ? `${f.floor === 1 ? "1er" : f.floor + "e"} étage${f.elevator ? " avec ascenseur" : f.elevator === false ? " sans ascenseur" : ""}` : "Étage",
+    exterieur: f.outdoor ? (f.outdoor[0].toUpperCase() + f.outdoor.slice(1)) + (f.outdoorArea ? ` de ${f.outdoorArea} m²` : "") : "Pas d’extérieur",
+    calme: f.quiet ? "Au calme, sur cour" : "Sur rue", etat: {neuf: "Rénové", bon: "Bon état", rafraichir: "À rafraîchir", travaux: "Travaux à prévoir"}[f.works],
+    energie: f.dpe ? `DPE ${f.dpe}` : "DPE", charges: f.charges ? `Charges de ${fmtInt(f.charges)} € par an` : "Charges", agencement: f.surface && f.rooms ? `${fmtInt(f.surface / f.rooms)} m² par pièce` : "Agencement",
+    annexes: [f.cave && "Cave", f.parking && "Parking"].filter(Boolean).join(" et "), cachet: "Cachet de l’ancien", vue: "Vue dégagée", immeuble: f.building === "gardien" ? "Gardien" : "Immeuble sécurisé"};
+  const ranked = Object.entries(h.weights).filter(([id, w]) => w > 0 && known[id]).sort((a, b) => b[1] - a[1]);
+  ranked.forEach(([id]) => { if (v[id] >= 4 && label[id]) plus.push(label[id]); else if (v[id] <= 1.5 && label[id]) minus.push(label[id]); });
+  const unknown = Object.entries(h.weights).filter(([id, w]) => w >= 10 && !known[id]).map(([id]) => HOME_LIB[id].name.toLowerCase());
+  return {total, logement, quartier, prix, ecart, ppm, med, area, fails, plus: plus.slice(0, 4), minus: minus.slice(0, 3), unknown, values: v, known};
+}
+
+/* ---------- Onglet Annonces ---------- */
+const LSTAT = {nouvelle: "À trier", gardee: "Gardée", visite: "Visite prévue", ecartee: "Écartée"};
+let lui = {filter: "actives", sort: "match", openId: null};
+function renderListings() {
+  const box = $("#annonces"); if (!box) return;
+  if (lui.openId && listings().some(x => x.id === lui.openId)) return renderListingDetail(lui.openId);
+  const all = listings().map(f => ({f, s: scoreListing(f)}));
+  const shown = all.filter(({f}) => lui.filter === "toutes" ? true : lui.filter === "gardees" ? f.status === "gardee" || f.status === "visite" : lui.filter === "ecartees" ? f.status === "ecartee" : f.status !== "ecartee")
+    .sort((a, b) => lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : (b.s.total ?? -1) - (a.s.total ?? -1));
+  const counts = {actives: all.filter(x => x.f.status !== "ecartee").length, gardees: all.filter(x => x.f.status === "gardee" || x.f.status === "visite").length, ecartees: all.filter(x => x.f.status === "ecartee").length};
+  box.innerHTML = `
+    <div class="ann__head">
+      <div><h1>Annonces</h1><p class="lead">Ajoutez les annonces repérées : Heden les lit, les place sur la carte et calcule leur correspondance avec vos critères.</p></div>
+      <button class="btn btn--primary" type="button" id="addListing">+ Ajouter une annonce</button>
+    </div>
+    ${all.length ? `<div class="ann__bar">
+      <div class="seg seg--sm" role="group" aria-label="Filtrer">${[["actives", "À voir"], ["gardees", "Gardées"], ["ecartees", "Écartées"]].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${lui.filter === k}">${l}<span class="num">${counts[k]}</span></button>`).join("")}</div>
+      <label class="ann__sort">Trier par <select id="lsort"><option value="match" ${lui.sort === "match" ? "selected" : ""}>Correspondance</option><option value="prix" ${lui.sort === "prix" ? "selected" : ""}>Prix</option><option value="recent" ${lui.sort === "recent" ? "selected" : ""}>Ajout récent</option></select></label>
+    </div>` : ""}
+    <div class="ann__list">
+      ${shown.map(({f, s}) => `<button type="button" class="lcard${f.status === "ecartee" ? " lcard--off" : ""}" data-id="${f.id}">
+        <span class="lcard__ph">${f.photos && f.photos[0] ? `<img src="${esc(f.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<i></i>`}</span>
+        <span class="lcard__b">
+          <span class="lcard__t">${esc(f.title || listingTitle(f))}</span>
+          <span class="lcard__p num">${f.price ? fmtInt(f.price) + "&#8239;€" : "Prix ?"}${s.ppm ? `<small>${fmtInt(s.ppm)}&#8239;€/m²</small>` : ""}</span>
+          <span class="lcard__r">${esc((s.fails.length ? "Hors critères : " + s.fails[0] : s.plus.slice(0, 2).join(", ")) || "À compléter")}</span>
+        </span>
+        <span class="lcard__s"><b class="num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</b>${f.status !== "nouvelle" ? `<em>${LSTAT[f.status]}</em>` : ""}</span>
+      </button>`).join("") || (all.length ? `<p class="hint2">Aucune annonce dans ce filtre.</p>` : "")}
+    </div>
+    ${all.length ? "" : `<div class="ann__empty">
+      <ol>
+        <li><b>Repérez une annonce</b> sur n’importe quel site : SeLoger, Leboncoin, PAP, une agence.</li>
+        <li><b>Envoyez-la à Heden</b> : copiez son lien et son texte, ou touchez le bouton Heden installé dans vos favoris.</li>
+        <li><b>Heden lit l’annonce</b>, la place sur la carte et la compare à vos critères, à vos zones et aux ventes du quartier.</li>
+      </ol>
+      <p class="hint2">Réglez vos critères de logement dans <button class="link" type="button" id="goHome">Profil</button>.</p>
+    </div>`}
+    ${bookmarkletHTML()}`;
+  $("#addListing").onclick = () => openAddListing();
+  $$("[data-f]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.f; renderListings(); });
+  const so = $("#lsort"); if (so) so.onchange = e => { lui.sort = e.target.value; renderListings(); };
+  $$(".lcard", box).forEach(b => b.onclick = () => { lui.openId = b.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; });
+  const gh = $("#goHome"); if (gh) gh.onclick = () => { setTab("profile"); setTimeout(() => { const e = $("#homeSec"); if (e) e.scrollIntoView({behavior: "smooth"}); }, 50); };
+  bindBookmarklet();
+}
+function renderListingDetail(id) {
+  const f = listings().find(x => x.id === id), box = $("#annonces"); if (!f) { lui.openId = null; return renderListings(); }
+  const s = scoreListing(f), h = homeProfile();
+  const bar = (label, val, hint) => `<div class="mbar"><span>${label}</span><span class="bar"><i style="width:${val ?? 0}%;--c:${traitFor(val)}"></i></span><b class="num">${val ?? "–"}</b>${hint ? `<small>${hint}</small>` : ""}</div>`;
+  const crits = Object.entries(h.weights).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]);
+  box.innerHTML = `
+    <button class="link ann__back" type="button" id="lback">‹ Toutes les annonces</button>
+    ${f.photos && f.photos.length ? `<div class="lgal">${f.photos.map(u => `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer">`).join("")}</div>` : ""}
+    <div class="ldet__head">
+      <div><h1>${esc(f.title || listingTitle(f))}</h1>
+        <p class="ldet__price num">${f.price ? fmtInt(f.price) + "&#8239;€" : "Prix non trouvé"}${s.ppm ? ` <small>${fmtInt(s.ppm)}&#8239;€/m²</small>` : ""}</p>
+        <p class="hint2">${f.source ? esc(f.source) + ", " : ""}ajoutée le ${esc(fmtDate(new Date(f.addedAt || Date.now()).toISOString().slice(0, 10)))}</p></div>
+      <div class="ldet__score" style="--c:${colorFor(s.total)}"><b class="num">${s.total ?? "–"}</b><span>correspondance</span></div>
+    </div>
+    <div class="lact">
+      ${[["gardee", "Garder"], ["visite", "Visite prévue"], ["ecartee", "Écarter"]].map(([k, l]) => `<button class="chip" type="button" data-st="${k}" aria-pressed="${f.status === k}">${l}</button>`).join("")}
+      ${f.url ? `<a class="chip" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
+    </div>
+    ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
+    <section class="lsec">
+      <h2>Pourquoi ce score</h2>
+      ${bar("Logement", s.logement, `compte pour ${h.mix.logement} %`)}
+      ${bar("Quartier", s.quartier, s.area ? (s.area.zone ? (s.area.how === "dans" ? "dans « " + esc(s.area.zone.name) + " »" : "près de « " + esc(s.area.zone.name) + " »") : "estimé") : "lieu inconnu")}
+      ${bar("Prix", s.prix, s.ecart != null ? `${s.ecart > 0 ? "+" : "−"}${Math.abs(Math.round(s.ecart * 100))} % / quartier` : "à comparer")}
+      ${s.plus.length ? `<ul class="lwhy lwhy--plus">${s.plus.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${s.minus.length ? `<ul class="lwhy lwhy--minus">${s.minus.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${s.unknown.length ? `<p class="hint2">À vérifier, l’annonce n’en parle pas : ${esc(s.unknown.join(", "))}.</p>` : ""}
+    </section>
+    <section class="lsec">
+      <h2>Le logement</h2>
+      <div class="lcrit">${crits.map(([cid]) => `<div class="${s.known[cid] ? "" : "unk"}"><span>${esc(HOME_LIB[cid].name)}</span><i style="--c:${colorFor(s.values[cid] * 20)}"></i><b class="num">${s.known[cid] ? fmtNote(Math.round(s.values[cid] * 2) / 2) : "?"}</b></div>`).join("")}</div>
+      <dl class="meta">${[["Surface", f.surface && fmtInt(f.surface) + " m²"], ["Pièces", f.rooms && `${f.rooms}${f.bedrooms != null ? `, dont ${f.bedrooms} chambre${f.bedrooms > 1 ? "s" : ""}` : ""}`], ["Étage", f.floor != null && (f.floor === 0 ? "rez-de-chaussée" : (f.floor === 1 ? "1er" : f.floor + "e") + (f.floors ? ` sur ${f.floors}` : "")) + (f.elevator ? ", ascenseur" : f.elevator === false ? ", sans ascenseur" : "")],
+        ["DPE", f.dpe], ["Charges", f.charges && fmtInt(f.charges) + " € par an"], ["Taxe foncière", f.taxe && fmtInt(f.taxe) + " €"], ["Lieu", [f.metro && "métro " + f.metro, f.quartier, f.postcode, f.city].filter(Boolean).join(", ") + (f.lat && !f.precise ? " (position approximative)" : "")]]
+        .filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    </section>
+    <div class="field"><label class="label" for="lnote">Vos notes</label><textarea id="lnote" placeholder="Impression, questions pour l’agent, date de visite…">${esc(f.note || "")}</textarea></div>
+    <div class="datarow">
+      <button class="btn" type="button" id="ledit">Corriger les informations</button>
+      ${f.lat ? `<button class="btn" type="button" id="lmap">Voir sur la carte</button>` : ""}
+      <button class="btn btn--ghost btn--danger" type="button" id="ldel">Supprimer</button>
+    </div>`;
+  $("#lback").onclick = () => { lui.openId = null; renderListings(); };
+  $$("[data-st]", box).forEach(b => b.onclick = () => { f.status = f.status === b.dataset.st ? "nouvelle" : b.dataset.st; f.updatedAt = Date.now(); save(); renderListings(); toast({gardee: "Annonce gardée", visite: "Visite notée", ecartee: "Annonce écartée", nouvelle: "Annonce remise à trier"}[f.status]); });
+  $("#lnote").oninput = e => { f.note = e.target.value; f.updatedAt = Date.now(); save(); };
+  $("#ledit").onclick = () => openAddListing(f);
+  const lm = $("#lmap"); if (lm) lm.onclick = () => { setTab("map"); map.flyTo([f.lat, f.lng], 16, {duration: .6}); };
+  $("#ldel").onclick = async () => {
+    if (!(await askConfirm({title: "Supprimer cette annonce ?", text: "Elle disparaît de vos annonces et de la carte.", ok: "Supprimer", danger: true}))) return;
+    state.listings = listings().filter(x => x.id !== f.id); save(); lui.openId = null; renderListings(); renderListingPins(); toast("Annonce supprimée");
+  };
+}
+
+/* ---------- Ajouter ou corriger une annonce ---------- */
+const FIELDS = [["price", "Prix", "num", "€"], ["surface", "Surface", "num", "m²"], ["rooms", "Pièces", "num"], ["bedrooms", "Chambres", "num"], ["floor", "Étage (0 = RDC)", "num"],
+  ["elevator", "Ascenseur", "bool"], ["outdoor", "Extérieur", "sel", ["", "balcon", "loggia", "terrasse", "jardin"]], ["dpe", "DPE", "sel", ["", ..."ABCDEFG"]], ["charges", "Charges par an", "num", "€"],
+  ["works", "État", "sel", ["", "neuf", "bon", "rafraichir", "travaux"]], ["quiet", "Au calme, sur cour", "bool"], ["traversant", "Traversant", "bool"], ["bright", "Lumineux", "bool"],
+  ["cave", "Cave", "bool"], ["parking", "Parking", "bool"], ["view", "Vue dégagée", "bool"], ["postcode", "Code postal", "txt"], ["metro", "Métro le plus proche", "txt"]];
+const SEL_LABEL = {neuf: "Rénové", bon: "Bon état", rafraichir: "À rafraîchir", travaux: "Travaux", balcon: "Balcon", loggia: "Loggia", terrasse: "Terrasse", jardin: "Jardin", "": "Non précisé"};
+function openAddListing(existing, imported) {
+  let el = $("#lsheet");
+  if (!el) { el = document.createElement("div"); el.id = "lsheet"; el.className = "auth"; el.innerHTML = `<div class="auth__veil" data-lclose></div><div class="auth__card lsheet" role="dialog" aria-modal="true" aria-labelledby="lsTitle"></div>`; document.body.appendChild(el); el.addEventListener("click", e => { if (e.target.closest("[data-lclose]")) closeSheet(); }); }
+  const card = el.querySelector(".lsheet");
+  const closeSheet = () => { el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); };
+  const close = `<button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+  const review = f => {
+    card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">${existing ? "Corriger l’annonce" : "Vérifier l’annonce"}</h2>${close}</div>
+      <p class="auth__txt">${existing ? "Corrigez ce que l’annonce ne disait pas." : `Heden a trouvé ${Object.keys(f.found || {}).filter(k => FIELDS.some(x => x[0] === k)).length} informations. Complétez ou corrigez avant d’enregistrer.`}</p>
+      <form class="lform" id="lform">
+        ${FIELDS.map(([k, label, type, opt]) => {
+          const v = f[k], tag = f.found && f.found[k] ? ` <em>trouvé</em>` : "";
+          if (type === "bool") return `<label class="lf lf--bool"><input type="checkbox" name="${k}" ${v ? "checked" : ""}><span>${label}${tag}</span></label>`;
+          if (type === "sel") return `<label class="lf"><span>${label}${tag}</span><select name="${k}">${opt.map(o => `<option value="${o}" ${String(v ?? "") === o ? "selected" : ""}>${SEL_LABEL[o] || o}</option>`).join("")}</select></label>`;
+          return `<label class="lf"><span>${label}${tag}</span><input name="${k}" ${type === "num" ? `inputmode="decimal"` : ""} value="${v ?? ""}" placeholder="${opt || ""}"></label>`;
+        }).join("")}
+      </form>
+      ${f.photos && f.photos.length ? `<div class="lgal lgal--sm">${f.photos.slice(0, 6).map(u => `<img src="${esc(u)}" alt="" referrerpolicy="no-referrer">`).join("")}</div>` : ""}
+      <div class="auth__foot"><button class="btn btn--primary btn--block" type="button" id="lsave">${existing ? "Enregistrer" : "Ajouter l’annonce"}</button></div>`;
+    $("#lsave").onclick = async () => {
+      const fd = new FormData($("#lform"));
+      FIELDS.forEach(([k, , type]) => {
+        if (type === "bool") f[k] = fd.get(k) === "on" ? true : (f[k] === false ? false : null);
+        else if (type === "num") { const n = numFR(fd.get(k)); f[k] = n == null ? null : n; }
+        else f[k] = (fd.get(k) || "").trim() || null;
+      });
+      const b = $("#lsave"); b.disabled = true; b.textContent = "Placement sur la carte…";
+      const moved = existing && (existing.postcode !== f.postcode || existing.metro !== f.metro);
+      if (moved && !f.precise) { f.lat = f.lng = null; }
+      await geocodeListing(f);
+      if (f.lat) { const pts = circlePoints(f.lat, f.lng, 120, 10); try { f.est = await estimate(pts); } catch (e) {} }
+      f.title = listingTitle(f); f.updatedAt = Date.now();
+      if (existing) Object.assign(existing, f);
+      else { f.id = zoneId(); f.status = "nouvelle"; f.addedAt = Date.now(); f.mapId = cloud.user ? cloud.mapId : null; f.createdBy = cloud.user ? cloud.user.id : null; listings().unshift(f); lui.openId = f.id; }
+      save(); closeSheet(); if (currentTab !== "annonces") setTab("annonces"); else renderListings(); renderListingPins();
+      toast(existing ? "Annonce mise à jour" : "Annonce ajoutée");
+    };
+  };
+  if (existing || imported) review(existing ? Object.assign(clone(existing), {found: existing.found || {}}) : imported);
+  else {
+    card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Ajouter une annonce</h2>${close}</div>
+      <p class="auth__txt">Collez le lien de l’annonce et son texte (description, caractéristiques). Heden en tire le prix, la surface, l’étage, le DPE et le reste.</p>
+      <form class="auth__form" id="lpaste">
+        <input type="url" id="lurl" placeholder="https://… lien de l’annonce" inputmode="url">
+        <textarea id="ltext" rows="7" placeholder="Collez ici le texte de l’annonce"></textarea>
+        <button class="btn btn--primary btn--block" type="submit">Analyser l’annonce</button>
+      </form>
+      <p class="auth__small">Plus rapide : installez le bouton Heden dans vos favoris, il envoie l’annonce ouverte en un geste (voir en bas de l’onglet Annonces).</p>`;
+    $("#lpaste").onsubmit = e => {
+      e.preventDefault();
+      const url = $("#lurl").value.trim(), text = $("#ltext").value;
+      if (!text.trim() && !url) return toast("Collez au moins le texte de l’annonce");
+      review(parseListing({url, text}));
+    };
+  }
+  el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
+}
+
+/* ---------- Profil : le logement idéal ---------- */
+function homeSectionHTML() {
+  const h = homeProfile(), ws = Object.values(h.weights).reduce((a, w) => a + (w > 0 ? w : 0), 0) || 1;
+  const num = (id, label, val, unit, step = 1) => `<div class="field"><label class="label" for="${id}">${label}</label><input type="number" id="${id}" inputmode="numeric" min="0" step="${step}" value="${val ?? ""}" placeholder="${unit}"></div>`;
+  return `<section class="sec" id="homeSec">
+    <h2>Votre logement idéal</h2>
+    <p class="hint2">Ces filtres et ces critères servent à calculer la correspondance de chaque annonce. Une annonce qui ne passe pas un filtre reste visible, avec une note plafonnée.</p>
+    <div class="row2">${num("hBudget", "Budget total max", h.budgetMax, "Ex. 550 000 €", 5000)}${num("hSurf", "Surface min", h.surfaceMin, "m²")}</div>
+    <div class="row2">${num("hRooms", "Pièces min", h.roomsMin, "Ex. 3")}${num("hBeds", "Chambres min", h.bedroomsMin, "Ex. 2")}</div>
+    <div class="row2">
+      <div class="field"><label class="label" for="hElev">Ascenseur indispensable</label><select id="hElev">${[[0, "Jamais"], [2, "Dès le 2e étage"], [3, "Dès le 3e étage"], [4, "Dès le 4e étage"], [5, "Dès le 5e étage"]].map(([v, l]) => `<option value="${v}" ${+h.elevatorFrom === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+      <div class="field"><label class="label" for="hDpe">DPE au pire</label><select id="hDpe">${["A", "B", "C", "D", "E", "F", "G"].map(l => `<option value="${l}" ${h.dpeMax === l ? "selected" : ""}>${l === "G" ? "Peu importe" : l}</option>`).join("")}</select></div>
+    </div>
+    <div class="chips">
+      <button class="chip" type="button" id="hGround" aria-pressed="${!!h.noGround}">Pas de rez-de-chaussée</button>
+      <button class="chip" type="button" id="hOut" aria-pressed="${!!h.outdoorReq}">Extérieur exigé</button>
+    </div>
+    <h3 class="sub3">Ce qui compte dans le logement</h3>
+    <div class="cards">${Object.keys(HOME_LIB).map(id => `<div class="crow crow--home" data-h="${id}">
+        <div style="min-width:0"><b class="nm">${esc(HOME_LIB[id].name)}</b><span class="ds">${esc(HOME_LIB[id].desc)}</span></div>
+        <div class="wctl"><input type="range" min="0" max="30" step="5" value="${h.weights[id] || 0}" aria-label="Poids de ${esc(HOME_LIB[id].name)}"><output class="num"><span class="wv">${h.weights[id] || 0}</span><small class="ws">${Math.round(Math.max(0, h.weights[id] || 0) / ws * 100)} %</small></output></div>
+      </div>`).join("")}</div>
+    <h3 class="sub3">Dans la note d’une annonce</h3>
+    <div class="cards">${[["logement", "Le logement", "Vos critères ci-dessus"], ["quartier", "Le quartier", "La note de vos zones, ou l’estimation du coin"], ["prix", "Le prix", "Comparé aux ventes réelles du quartier"]].map(([k, n, d]) => `<div class="crow crow--home" data-mix="${k}">
+        <div style="min-width:0"><b class="nm">${n}</b><span class="ds">${d}</span></div>
+        <div class="wctl"><input type="range" min="0" max="60" step="5" value="${h.mix[k]}" aria-label="Part de ${n}"><output class="num"><span class="wv">${h.mix[k]}</span><small class="ws">${Math.round(h.mix[k] / ((h.mix.logement + h.mix.quartier + h.mix.prix) || 1) * 100)} %</small></output></div>
+      </div>`).join("")}</div>
+  </section>`;
+}
+function bindHomeSection() {
+  const sec = $("#homeSec"); if (!sec) return;
+  const h = homeProfile();
+  const numIn = (id, key) => { $("#" + id).oninput = e => { const v = parseFloat(e.target.value); h[key] = isFinite(v) && v > 0 ? v : null; save(); }; };
+  numIn("hBudget", "budgetMax"); numIn("hSurf", "surfaceMin"); numIn("hRooms", "roomsMin"); numIn("hBeds", "bedroomsMin");
+  $("#hElev").onchange = e => { h.elevatorFrom = +e.target.value || 0; save(); };
+  $("#hDpe").onchange = e => { h.dpeMax = e.target.value; save(); };
+  $("#hGround").onclick = e => { h.noGround = !h.noGround; e.currentTarget.setAttribute("aria-pressed", String(h.noGround)); save(); };
+  $("#hOut").onclick = e => { h.outdoorReq = !h.outdoorReq; e.currentTarget.setAttribute("aria-pressed", String(h.outdoorReq)); save(); };
+  const repaint = () => {
+    const ws = Object.values(h.weights).reduce((a, w) => a + (w > 0 ? w : 0), 0) || 1, ms = (h.mix.logement + h.mix.quartier + h.mix.prix) || 1;
+    $$("[data-h]", sec).forEach(r => { const w = h.weights[r.dataset.h] || 0; r.querySelector(".wv").textContent = w; r.querySelector(".ws").textContent = Math.round(w / ws * 100) + " %"; });
+    $$("[data-mix]", sec).forEach(r => { const w = h.mix[r.dataset.mix]; r.querySelector(".wv").textContent = w; r.querySelector(".ws").textContent = Math.round(w / ms * 100) + " %"; });
+  };
+  $$("[data-h] input", sec).forEach(i => i.oninput = e => { h.weights[e.target.closest("[data-h]").dataset.h] = +e.target.value; repaint(); save(); });
+  $$("[data-mix] input", sec).forEach(i => i.oninput = e => { h.mix[e.target.closest("[data-mix]").dataset.mix] = +e.target.value; repaint(); save(); });
+}
+
+/* ---------- Bouton Heden (favori) : envoie l'annonce ouverte ---------- */
+function bookmarkletCode() {
+  const H = location.origin + location.pathname;
+  const js = `(()=>{const H=${JSON.stringify(H)};const m={};document.querySelectorAll('meta[property^="og:"],meta[name="description"]').forEach(x=>m[x.getAttribute('property')||x.getAttribute('name')]=x.content);const ld=[...document.querySelectorAll('script[type="application/ld+json"]')].map(s=>s.textContent).slice(0,8);const im=[...document.images].filter(i=>i.naturalWidth>=500).map(i=>i.currentSrc||i.src).filter((v,i,a)=>a.indexOf(v)===i).slice(0,12);const d={v:1,url:location.href,title:document.title,meta:m,ld:ld,imgs:im,text:(document.body.innerText||'').slice(0,40000)};const sm=Object.assign({},d,{text:d.text.slice(0,12000),ld:ld.map(x=>x.slice(0,6000)).slice(0,3)});const w=window.open(H+'?importer=1#import='+encodeURIComponent(JSON.stringify(sm)),'heden');let n=0;const t=setInterval(()=>{if(!w||n++>40)return clearInterval(t);try{w.postMessage({type:'heden-import',data:d},'*')}catch(e){}},400);window.addEventListener('message',e=>{if(e.data==='heden-recu')clearInterval(t)});})();`;
+  return "javascript:" + encodeURIComponent(js);
+}
+function bookmarkletHTML() {
+  return `<section class="bmk">
+    <h2>Le bouton Heden</h2>
+    <p class="hint2">Sur la page d’une annonce, touchez ce favori : Heden s’ouvre avec l’annonce déjà lue, photos comprises. Il ne lit que la page que vous regardez.</p>
+    <div class="bmk__row"><a class="btn btn--sm bmk__link" href="${bookmarkletCode()}" draggable="true">+ Heden</a><span class="hint2">Sur ordinateur : glissez ce bouton dans la barre des favoris.</span></div>
+    <details><summary>Sur iPhone ou Android</summary>
+      <ol class="hint2"><li>Ajoutez cette page à vos favoris.</li><li>Modifiez le favori : nommez-le « + Heden » et remplacez son adresse par le code copié ci-dessous.</li><li>Sur une annonce, ouvrez vos favoris et touchez « + Heden ».</li></ol>
+      <button class="btn btn--sm" type="button" id="bmkCopy">Copier le code du bouton</button>
+    </details>
+  </section>`;
+}
+function bindBookmarklet() {
+  const c = $("#bmkCopy"); if (c) c.onclick = async () => { try { await navigator.clipboard.writeText(bookmarkletCode()); toast("Code copié"); } catch (e) { window.prompt("Copiez ce code :", bookmarkletCode()); } };
+  const l = $(".bmk__link"); if (l) l.onclick = e => { e.preventDefault(); toast("Glissez ce bouton dans vos favoris, puis utilisez-le sur une annonce"); };
+}
+/* réception d'une annonce envoyée par le bouton */
+(function listenImport() {
+  let done = false;
+  const use = d => {
+    if (done || !d) return; done = true;
+    const safe = {url: String(d.url || "").slice(0, 2000), title: String(d.title || "").slice(0, 300), text: String(d.text || "").slice(0, 40000),
+      meta: typeof d.meta === "object" && d.meta ? d.meta : {}, ld: Array.isArray(d.ld) ? d.ld.map(x => String(x).slice(0, 60000)).slice(0, 8) : [], imgs: Array.isArray(d.imgs) ? d.imgs.map(String).slice(0, 12) : []};
+    setTab("annonces");
+    openAddListing(null, parseListing(safe));
+  };
+  window.addEventListener("message", e => {
+    const m = e.data; if (!m || m.type !== "heden-import" || !m.data) return;
+    try { e.source && e.source.postMessage("heden-recu", "*"); } catch (err) {}
+    use(m.data);
+  });
+  if (/importer=1/.test(location.search)) {
+    let fromHash = null;
+    try { const h = location.hash.match(/import=([^&]*)/); if (h) fromHash = JSON.parse(decodeURIComponent(h[1])); } catch (e) {}
+    try { history.replaceState(null, "", location.pathname + "#annonces"); } catch (e) {}
+    if (fromHash) setTimeout(() => use(fromHash), 1500);       // si la page d'origine n'a pas pu envoyer l'annonce complète
+  }
+})();
+
+/* ---------- Annonces sur la carte ---------- */
+let listingLayer = null;
+function renderListingPins() {
+  if (!listingLayer) listingLayer = L.layerGroup().addTo(map);
+  listingLayer.clearLayers();
+  listings().filter(f => f.lat && f.status !== "ecartee").forEach(f => {
+    const s = scoreListing(f);
+    const mk = L.marker([f.lat, f.lng], {icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin${f.status === "gardee" || f.status === "visite" ? " lpin--kept" : ""}${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9H4z"/></svg><em class="num">${f.price ? Math.round(f.price / 1000) + "&#8239;k€" : ""}</em></span>`}), zIndexOffset: 500});
+    mk.on("click", () => { lui.openId = f.id; setTab("annonces"); });
+    mk.addTo(listingLayer);
+  });
+}
+
+
 /* Démarrage */
 renderZones();
-setTab(/profil/.test(location.hash) ? "profile" : "map");
+setTab(/profil/.test(location.hash) ? "profile" : /annonces|import=/.test(location.hash) ? "annonces" : "map");
 cloudInit();
 refreshEstimates();
 window.__heden = {state: () => state, scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate, map};
