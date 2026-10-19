@@ -1017,6 +1017,34 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .btn--danger,.btn--danger:hover{background:transparent;border:1.5px solid color-mix(in srgb,var(--alerte) 70%,transparent);color:var(--alerte)}
 .btn--danger:hover{background:color-mix(in srgb,var(--alerte) 8%,transparent)}
 .ask__acts .btn--clair{order:-1}
+/* Correction de la note d'une annonce */
+.lsec__head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lsec__head h2{margin:0}
+.lcrit .fix b{color:var(--laiton)}
+.lcrit .fix span::after,.fixdot{content:"";display:inline-block;width:7px;height:6px;margin-left:6px;vertical-align:middle;border-radius:var(--galet-a);background:var(--laiton)}
+.fixdot{margin:0 4px 0 0}
+.fixsum{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:22px;background:var(--enduit)}
+.fixsum__s{flex:none;min-width:64px;height:54px;padding:0 8px;display:grid;place-items:center;border-radius:var(--galet-a);background:var(--c);color:var(--on-score);font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:28px}
+.fixsum span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fixsum span b{font-size:15px}
+.fixsum small{font-size:12.5px;line-height:17px;color:var(--zinc)}
+.fixsec{display:flex;flex-direction:column;gap:10px}
+.fixsec h3{margin:6px 0 0;font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:20px;line-height:24px}
+.fixsec .hint2{margin:0}
+.fixrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--trait)}
+.fixrow__l{display:flex;flex-direction:column;gap:1px;min-width:0}
+.fixrow__l b{font-size:14.5px;font-weight:650}
+.fixrow__l small{font-size:12px;line-height:16px;color:var(--zinc)}
+.fixrow .scale{gap:4px}
+.fixrow .scale button{height:38px;font-size:14px}
+.fixtot{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14.5px}
+.fixtot input{width:20px;height:20px;accent-color:var(--email)}
+.fixrange{display:flex;align-items:center;gap:14px}
+.fixrange input{flex:1;accent-color:var(--email)}
+.fixrange b{min-width:36px;text-align:right;font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:24px}
+.fixfoot{display:flex;gap:10px;justify-content:stretch}
+.fixfoot .btn--clair{flex:none}
+@media (max-width:899px){.fixrow{grid-template-columns:1fr;gap:6px}}
 /* Notifications : placées par toast() dans un espace libre, jamais sur une barre ou une consigne */
 .toast{left:50%;right:auto;bottom:auto;transform:translateX(-50%);max-width:min(440px,calc(100% - 32px));box-sizing:border-box;text-wrap:pretty}
 @media (max-width:899px){body[data-tab="map"] .toast{max-width:calc(100% - 132px)}}
@@ -1593,17 +1621,6 @@ map.on("zoomend", updateFar); updateFar();
 
 /* Zones enregistrées */
 const zoneLayer = L.layerGroup().addTo(map);
-/* Lissage de Chaikin : les angles du tracé deviennent des courbes, pour l'affichage seulement */
-function smoothRing(pts, it = 3) {
-  if (!Array.isArray(pts) || pts.length < 3 || pts.length > 400) return pts;
-  let r = pts;
-  for (let k = 0; k < it; k++) {
-    const o = [];
-    for (let i = 0; i < r.length; i++) { const a = r[i], b = r[(i + 1) % r.length]; o.push([a[0] * .75 + b[0] * .25, a[1] * .75 + b[1] * .25], [a[0] * .25 + b[0] * .75, a[1] * .25 + b[1] * .75]); }
-    r = o;
-  }
-  return r;
-}
 let justSaved = null;
 function renderZones() {
   zoneLayer.clearLayers();
@@ -1612,7 +1629,7 @@ function renderZones() {
     const {score} = zoneScore(z);
     const col = colorFor(score);
     const out = overBudget(z);
-    const circle = L.polygon(smoothRing(z.points), {
+    const circle = L.polygon(z.points, {
       color: traitMap(score), weight: selectedId === z.id ? 3 : 2, opacity: 1, className: justSaved === z.id ? "zone-new" : "",
       fillColor: col, fillOpacity: out ? .12 : (selectedId === z.id ? .45 : .3),
       dashArray: out ? "5 6" : null, bubblingMouseEvents: false
@@ -3906,7 +3923,7 @@ function listingTitle(f) {
 }
 
 /* ---------- Score de correspondance ---------- */
-function homeValues(f) {
+function homeValues(f, raw = false) {
   const v = {}, known = {};
   const k = (id, val, isKnown) => { v[id] = Math.max(0, Math.min(5, val)); known[id] = isKnown; };
   // luminosité
@@ -3938,7 +3955,10 @@ function homeValues(f) {
   k("immeuble", f.building === "gardien" ? 5 : f.building === "securise" ? 3.5 : 2.5, !!f.building);
   const cm = commutes(f);
   if (cm.length) { const t = Math.max(...cm.map(x => x.min)); k("trajets", t <= 20 ? 5 : t <= 30 ? 4 : t <= 40 ? 3 : t <= 50 ? 2 : t <= 60 ? 1 : 0, true); } else k("trajets", 2.5, false);
-  return {v, known};
+  /* corrections faites après lecture ou visite : elles priment sur la lecture de l'annonce */
+  const fixed = {};
+  if (!raw && f.fix && f.fix.crit) for (const [id, val] of Object.entries(f.fix.crit)) if (id in v && val != null) { v[id] = val; known[id] = true; fixed[id] = true; }
+  return {v, known, fixed};
 }
 function listingFilters(f, h) {
   const fails = [];
@@ -3965,12 +3985,12 @@ function listingArea(f) {
   if (f.est) { const tmp = {est: f.est, ratings: {}}; return {zone: null, score: scoreWith(tmp, {}, crit(), state.profile.budget).score, how: "estimé"}; }
   return null;
 }
-function scoreListing(f) {
-  const h = homeProfile(), {v, known} = homeValues(f), W = homeWeights();
+function scoreListing(f, raw = false) {
+  const h = homeProfile(), {v, known, fixed} = homeValues(f, raw), W = homeWeights(), fx = raw ? null : f.fix;
   let ws = 0, acc = 0;
   for (const [id, w] of Object.entries(W)) if (w > 0) { ws += w; acc += w * v[id] / 5; }
   const logement = ws ? Math.round(acc / ws * 100) : null;
-  const area = listingArea(f), quartier = area ? area.score : null;
+  const area = listingArea(f), quartier = fx && fx.quartier != null ? fx.quartier : area ? area.score : null;
   const med = f.est && f.est.prix ? f.est.prix.med : null, ppm = f.price && f.surface ? f.price / f.surface : null;
   let prix = null, ecart = null;
   if (med && ppm) { ecart = ppm / med - 1; prix = Math.round(Math.max(0, Math.min(1, (0.2 - ecart) / 0.35)) * 100); }
@@ -3979,10 +3999,14 @@ function scoreListing(f) {
   let total = wt ? Math.round(parts.reduce((a, [s, w]) => a + s * w, 0) / wt) : null;
   const fails = listingFilters(f, h);
   if (fails.length && total != null) total = Math.min(total, 35);
+  const hasFix = !!(fx && ((fx.crit && Object.keys(fx.crit).length) || fx.quartier != null || fx.total != null));
+  const heden = hasFix ? scoreListing(f, true).total : total;
+  if (fx && fx.total != null) total = fx.total;
   // raisons, les plus parlantes d'abord
   const plus = [], minus = [];
   if (f.dropped && f.priceHistory && f.priceHistory.length) plus.push(`Prix baissé de ${fmtInt(f.priceHistory[f.priceHistory.length - 1].price - f.price)} €`);
-  if (area && area.zone) (area.score >= 65 ? plus : area.score < 45 ? minus : plus).push(`${area.how === "dans" ? "Dans" : "Près de"} votre zone « ${area.zone.name} » (${area.score ?? "–"})`);
+  if (fx && fx.quartier != null) (fx.quartier >= 60 ? plus : minus).push(`Quartier corrigé à ${fx.quartier}`);
+  else if (area && area.zone) (area.score >= 65 ? plus : area.score < 45 ? minus : plus).push(`${area.how === "dans" ? "Dans" : "Près de"} votre zone « ${area.zone.name} » (${area.score ?? "–"})`);
   else if (area) (area.score >= 60 ? plus : minus).push(`Quartier estimé à ${area.score} d’après les données du coin`);
   if (ecart != null) (ecart <= -0.03 ? plus : ecart >= 0.08 ? minus : plus).push(ecart <= -0.03 ? `${Math.round(-ecart * 100)} % sous les ventes du quartier` : ecart >= 0.08 ? `${Math.round(ecart * 100)} % au-dessus des ventes du quartier` : "Au prix des ventes du quartier");
   const label = {lumiere: f.bright || f.traversant ? "Lumineux" + (f.traversant ? ", traversant" : "") : f.exposure ? `Exposé ${f.exposure}` : "Luminosité",
@@ -3993,9 +4017,10 @@ function scoreListing(f) {
     annexes: [f.cave && "Cave", f.parking && "Parking"].filter(Boolean).join(" et "), cachet: "Cachet de l’ancien", vue: "Vue dégagée", immeuble: f.building === "gardien" ? "Gardien" : "Immeuble sécurisé",
     trajets: (() => { const cm = commutes(f); return cm.length ? cm.map(x => `${x.min} min ${x.p.label ? "vers " + x.p.label : "de trajet"}`).join(", ") : ""; })()};
   const ranked = Object.entries(W).filter(([id, w]) => w > 0 && known[id]).sort((a, b) => b[1] - a[1]);
+  for (const id in fixed) label[id] = `${HOME_LIB[id].name} : ${fmtNote(v[id])}/5, corrigé`;
   ranked.forEach(([id]) => { if (v[id] >= 4 && label[id]) plus.push(label[id]); else if (v[id] <= 1.5 && label[id]) minus.push(label[id]); });
   const unknown = Object.entries(W).filter(([id, w]) => w >= 10 && !known[id] && id !== "trajets").map(([id]) => HOME_LIB[id].name.toLowerCase());
-  return {total, logement, quartier, prix, ecart, ppm, med, area, fails, plus: plus.slice(0, 4), minus: minus.slice(0, 3), unknown, values: v, known};
+  return {total, logement, quartier, prix, ecart, ppm, med, area, fails, plus: plus.slice(0, 4), minus: minus.slice(0, 3), unknown, values: v, known, fixed, hasFix, heden, fixTotal: !!(fx && fx.total != null), fixQuartier: !!(fx && fx.quartier != null)};
 }
 
 /* ---------- Onglet Annonces ---------- */
@@ -4071,7 +4096,7 @@ function renderListingDetail(id) {
         <p class="ldet__price num">${f.price ? fmtInt(f.price) + "&#8239;€" : "Prix non trouvé"}${s.ppm ? ` <small>${fmtInt(s.ppm)}&#8239;€/m²</small>` : ""}</p>
         ${f.priceHistory && f.priceHistory.length ? `<p class="ldet__hist num">${f.priceHistory.map(x => `<s>${fmtInt(x.price)}&#8239;€</s>`).join(" ")} ${f.dropped ? "<em class=\"drop\">Baisse de prix</em>" : ""}</p>` : ""}
         <p class="hint2">${esc([...(f.sources || [f.source]).filter(Boolean)].join(", "))}${f.source || f.sources ? ", " : ""}${f.origin === "alerte" ? "reçue par alerte le" : "ajoutée le"} ${esc(fmtDate(new Date(f.firstSeen || f.addedAt || Date.now()).toISOString().slice(0, 10)))}</p></div>
-      <div class="ldet__score" style="--c:${colorFor(s.total)}"><b class="num" ${s.total != null ? `data-count="${s.total}"` : ""}>${s.total ?? "–"}</b><span>correspondance</span></div>
+      <div class="ldet__score" style="--c:${colorFor(s.total)}"><b class="num" ${s.total != null ? `data-count="${s.total}"` : ""}>${s.total ?? "–"}</b><span>${s.hasFix ? `corrigée${s.heden != null && s.heden !== s.total ? ` · Heden&nbsp;${s.heden}` : ""}` : "correspondance"}</span></div>
     </div>
     <div class="lact">
       ${[["gardee", "Garder"], ["visite", "Visite prévue"], ["ecartee", "Écarter"]].map(([k, l]) => `<button class="chip" type="button" data-st="${k}" aria-pressed="${f.status === k}">${l}</button>`).join("")}
@@ -4079,9 +4104,10 @@ function renderListingDetail(id) {
     </div>
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
     <section class="lsec">
-      <h2>Pourquoi ce score</h2>
+      <div class="lsec__head"><h2>Pourquoi ce score</h2><button class="btn btn--sm btn--clair" type="button" id="lfix">${s.hasFix ? "Revoir mes corrections" : "Corriger la note"}</button></div>
+      ${s.fixTotal ? `<p class="banner">Note fixée à ${s.total} par ${f.fix.by && cloud.user && f.fix.by !== cloud.user.id ? esc(personName(f.fix.by)) : "vous"}. Le détail ci-dessous reste celui de l’analyse${s.heden != null ? `, qui donne ${s.heden}` : ""}.</p>` : ""}
       ${bar("Logement", s.logement, `compte pour ${h.mix.logement} %`)}
-      ${bar("Quartier", s.quartier, s.area ? (s.area.zone ? (s.area.how === "dans" ? "dans « " + esc(s.area.zone.name) + " »" : "près de « " + esc(s.area.zone.name) + " »") : "estimé") : "lieu inconnu")}
+      ${bar("Quartier", s.quartier, s.fixQuartier ? "corrigé" : s.area ? (s.area.zone ? (s.area.how === "dans" ? "dans « " + esc(s.area.zone.name) + " »" : "près de « " + esc(s.area.zone.name) + " »") : "estimé") : "lieu inconnu")}
       ${bar("Prix", s.prix, s.ecart != null ? `${s.ecart > 0 ? "+" : "−"}${Math.abs(Math.round(s.ecart * 100))} % / quartier` : "à comparer")}
       ${s.plus.length ? `<ul class="lwhy lwhy--plus">${s.plus.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
       ${s.minus.length ? `<ul class="lwhy lwhy--minus">${s.minus.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
@@ -4090,10 +4116,11 @@ function renderListingDetail(id) {
     ${analysisHTML(f)}
     <section class="lsec">
       <h2>Le logement</h2>
-      <div class="lcrit">${crits.map(([cid]) => `<div class="${s.known[cid] ? "" : "unk"}"><span>${esc(HOME_LIB[cid].name)}</span><i style="--c:${colorFor(s.values[cid] * 20)}"></i><b class="num">${s.known[cid] ? fmtNote(Math.round(s.values[cid] * 2) / 2) : "?"}</b></div>`).join("")}</div>
+      <div class="lcrit">${crits.map(([cid]) => `<div class="${s.fixed[cid] ? "fix" : s.known[cid] ? "" : "unk"}" ${s.fixed[cid] ? `title="Corrigé"` : ""}><span>${esc(HOME_LIB[cid].name)}</span><i style="--c:${colorFor(s.values[cid] * 20)}"></i><b class="num">${s.known[cid] ? fmtNote(Math.round(s.values[cid] * 2) / 2) : "?"}</b></div>`).join("")}</div>
       <dl class="meta">${[["Surface", f.surface && fmtInt(f.surface) + " m²"], ["Pièces", f.rooms && `${f.rooms}${f.bedrooms != null ? `, dont ${f.bedrooms} chambre${f.bedrooms > 1 ? "s" : ""}` : ""}`], ["Étage", f.floor != null && (f.floor === 0 ? "rez-de-chaussée" : (f.floor === 1 ? "1er" : f.floor + "e") + (f.floors ? ` sur ${f.floors}` : "")) + (f.elevator ? ", ascenseur" : f.elevator === false ? ", sans ascenseur" : "")],
         ["DPE", f.dpe], ["Charges", f.charges && fmtInt(f.charges) + " € par an"], ["Taxe foncière", f.taxe && fmtInt(f.taxe) + " €"], ["Lieu", [f.metro && "métro " + f.metro, f.quartier, f.postcode, f.city].filter(Boolean).join(", ") + (f.lat && !f.precise ? " (position approximative)" : "")]]
         .filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+      ${Object.keys(s.fixed).length ? `<p class="hint2"><span class="fixdot"></span> Corrigé après lecture ou visite.</p>` : ""}
     </section>
     <div class="field"><label class="label" for="lnote">Vos notes</label><textarea id="lnote" placeholder="Impression, questions pour l’agent, date de visite…">${esc(f.note || "")}</textarea></div>
     <div class="datarow">
@@ -4109,11 +4136,62 @@ function renderListingDetail(id) {
   $$("[data-st]", box).forEach(b => b.onclick = () => { f.status = f.status === b.dataset.st ? "nouvelle" : b.dataset.st; f.updatedAt = Date.now(); save(); renderListings(); renderListingPins(); toast({gardee: "Annonce gardée", visite: "Visite notée", ecartee: "Annonce écartée", nouvelle: "Annonce remise à trier"}[f.status]); });
   $("#lnote").oninput = e => { f.note = e.target.value; f.updatedAt = Date.now(); save(); };
   $("#ledit").onclick = () => openAddListing(f);
+  $("#lfix").onclick = () => openScoreFix(f);
   const lm = $("#lmap"); if (lm) lm.onclick = () => { setTab("map"); map.flyTo([f.lat, f.lng], 16, {duration: .6}); };
   $("#ldel").onclick = async () => {
     if (!(await askConfirm({title: "Supprimer cette annonce ?", text: "Elle disparaît de vos annonces et de la carte.", ok: "Supprimer", danger: true}))) return;
     state.listings = listings().filter(x => x.id !== f.id); save(); lui.openId = null; renderListings(); renderListingPins(); toast("Annonce supprimée");
   };
+}
+
+/* ---------- Corriger la note d'une annonce ----------
+   Critère par critère (ce que Heden a mal lu ou que la visite a montré), le quartier,
+   et en dernier recours la note finale. Les corrections valent pour toute la carte :
+   chacun garde ses priorités, donc sa note. */
+function openScoreFix(f) {
+  let el = $("#lsheet");
+  const closeSheet = () => { el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); };
+  if (!el) { el = document.createElement("div"); el.id = "lsheet"; el.className = "auth"; el.innerHTML = `<div class="auth__veil" data-lclose></div><div class="auth__card lsheet" role="dialog" aria-modal="true" aria-labelledby="lsTitle"></div>`; document.body.appendChild(el); el.addEventListener("click", e => { if (e.target.closest("[data-lclose]")) closeSheet(); }); }
+  const card = el.querySelector(".lsheet");
+  const raw = scoreListing(f, true), {v: auto, known: autoKnown} = homeValues(f, true);
+  const fx = {crit: {...((f.fix && f.fix.crit) || {})}, quartier: f.fix ? f.fix.quartier ?? null : null, total: f.fix ? f.fix.total ?? null : null};
+  const crits = Object.entries(homeWeights()).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]).map(([id]) => id);
+  const preview = () => { const sv = f.fix; f.fix = fx; const r = scoreListing(f); f.fix = sv; return r; };
+  const scale = (key, cur, est) => `<div class="scale" data-k="${key}">${[0, 1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" aria-pressed="${cur != null && Math.round(cur) === n}" class="${cur == null && est === n ? "is-est" : cur != null && est === n && Math.round(cur) !== n ? "est-mark" : ""}" style="--c:${colorFor(n * 20)}">${n}</button>`).join("")}</div>`;
+  const draw = () => {
+    const r = preview(), qa = raw.quartier != null ? Math.round(raw.quartier / 20) : null;
+    card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Corriger la note</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <div class="fixsum"><b class="fixsum__s num" style="--c:${colorFor(r.total)}">${r.total ?? "–"}</b><span><b>${r.hasFix ? "Avec vos corrections" : "Analyse de Heden"}</b><small>${r.hasFix && raw.total != null ? `Heden seul : ${raw.total}. ` : ""}Vos corrections valent aussi pour votre binôme ; chacun garde ses priorités.</small></span></div>
+      <section class="fixsec"><h3>Le logement</h3><p class="hint2">Les cases en pointillés montrent la lecture de Heden. Touchez la bonne valeur ; touchez-la encore pour revenir à l’analyse.</p>
+        ${crits.map(id => `<div class="fixrow"><div class="fixrow__l"><b>${esc(HOME_LIB[id].name)}</b><small>${fx.crit[id] != null ? `Heden : ${autoKnown[id] ? fmtNote(Math.round(auto[id] * 2) / 2) : "pas dans l’annonce"}` : autoKnown[id] ? "Lu dans l’annonce" : "Pas dans l’annonce, valeur moyenne"}</small></div>${scale("c:" + id, fx.crit[id], Math.round(auto[id]))}</div>`).join("")}
+      </section>
+      <section class="fixsec"><h3>Le quartier</h3>
+        <div class="fixrow"><div class="fixrow__l"><b>${raw.area && raw.area.zone ? `Zone « ${esc(raw.area.zone.name)} »` : "Le coin"}</b><small>${fx.quartier != null ? `Heden : ${raw.quartier ?? "inconnu"}` : raw.area ? (raw.area.zone ? `Note de la zone : ${raw.quartier}` : `Estimé à ${raw.quartier} d’après les données du coin`) : "Lieu inconnu"}</small></div>${scale("q", fx.quartier != null ? fx.quartier / 20 : null, qa)}</div>
+      </section>
+      <section class="fixsec"><h3>La note finale</h3>
+        <label class="fixtot"><input type="checkbox" id="fxT" ${fx.total != null ? "checked" : ""}><span>Fixer la note moi-même</span></label>
+        ${fx.total != null ? `<div class="fixrange"><input type="range" id="fxR" min="0" max="100" step="1" value="${fx.total}" aria-label="Note finale"><b class="num" id="fxV">${fx.total}</b></div><p class="hint2">La note ne bougera plus avec l’analyse ni avec vos priorités, tant qu’elle est fixée.</p>` : `<p class="hint2">À garder pour les cas où rien ci-dessus ne rend compte de votre avis.</p>`}
+      </section>
+      <div class="auth__foot fixfoot">${r.hasFix || (f.fix && Object.keys(f.fix).length) ? `<button class="btn btn--clair" type="button" id="fxReset">Revenir à l’analyse</button>` : ""}<button class="btn btn--primary btn--block" type="button" id="fxSave">Enregistrer</button></div>`;
+    $$(".scale button", card).forEach(b => b.onclick = () => {
+      const k = b.closest(".scale").dataset.k, n = +b.dataset.v;
+      if (k === "q") fx.quartier = fx.quartier != null && Math.round(fx.quartier / 20) === n ? null : n * 20;
+      else { const id = k.slice(2); fx.crit[id] = fx.crit[id] != null && Math.round(fx.crit[id]) === n ? null : n; if (fx.crit[id] == null) delete fx.crit[id]; }
+      const y = card.scrollTop; draw(); card.scrollTop = y;
+    });
+    $("#fxT").onchange = e => { fx.total = e.target.checked ? (preview().total ?? raw.total ?? 50) : null; const y = card.scrollTop; draw(); card.scrollTop = y; };
+    const rg = $("#fxR"); if (rg) rg.oninput = e => { fx.total = +e.target.value; $("#fxV").textContent = fx.total; const sum = $(".fixsum__s", card); sum.textContent = fx.total; sum.style.setProperty("--c", colorFor(fx.total)); };
+    const rs = $("#fxReset"); if (rs) rs.onclick = () => { fx.crit = {}; fx.quartier = null; fx.total = null; draw(); };
+    $("#fxSave").onclick = () => {
+      const empty = !Object.keys(fx.crit).length && fx.quartier == null && fx.total == null;
+      const had = !!f.fix;
+      if (empty) delete f.fix; else f.fix = {crit: fx.crit, quartier: fx.quartier, total: fx.total, by: cloud.user ? cloud.user.id : null, at: Date.now()};
+      f.updatedAt = Date.now(); save(); closeSheet(); renderListings(); renderListingPins();
+      toast(empty ? (had ? "Note rendue à l’analyse de Heden" : "Rien à corriger") : "Note corrigée");
+    };
+  };
+  draw();
+  el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
 }
 
 /* ---------- Ajouter ou corriger une annonce ---------- */
