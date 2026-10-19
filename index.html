@@ -386,6 +386,17 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
 .acctrow span{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .acctrow b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .acctrow small{font-size:12.5px;color:var(--zinc)}
+.ask{position:fixed;inset:0;z-index:2200;display:flex;align-items:center;justify-content:center;padding:16px}
+.ask__veil{position:absolute;inset:0;background:rgba(20,18,15,.4);opacity:0;transition:opacity .18s}
+.ask__card{position:relative;width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:var(--rayon-l);background:var(--calcaire);box-shadow:var(--ombre-feuille);transform:scale(.97);opacity:0;transition:transform .18s cubic-bezier(.2,.7,.2,1),opacity .18s}
+.ask.is-open .ask__veil{opacity:1}
+.ask.is-open .ask__card{transform:none;opacity:1}
+.ask h2{margin:0;font-family:var(--display);font-variation-settings:"wdth" 100;font-size:18px;line-height:23px;font-weight:650;text-wrap:balance}
+.ask p{margin:0;font-size:14px;line-height:20px;color:var(--ardoise-2)}
+.ask__acts{display:flex;gap:10px;margin-top:8px}
+.ask__acts .btn{flex:1;height:44px;padding:0 12px;white-space:normal;line-height:1.15}
+.btn--danger-plein{background:var(--alerte);border-color:var(--alerte);color:var(--calcaire)}
+@media (prefers-reduced-motion:reduce){.ask__veil,.ask__card{transition:none}}
 .auth{position:fixed;inset:0;z-index:2000;display:flex;align-items:flex-end;justify-content:center}
 .auth__veil{position:absolute;inset:0;background:rgba(38,35,31,.32);opacity:0;transition:opacity .2s cubic-bezier(.2,.7,.2,1)}
 .auth__card{position:relative;width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px;padding:18px 20px calc(20px + env(safe-area-inset-bottom));background:var(--calcaire);border-radius:var(--rayon-l) var(--rayon-l) 0 0;box-shadow:var(--ombre-feuille);transform:translateY(24px);opacity:0;transition:transform .22s cubic-bezier(.2,.7,.2,1),opacity .18s}
@@ -1303,7 +1314,7 @@ function renderPlacing() {
         <div><b class="num">${area ? fmtArea(area) : "–"}</b><span>surface</span></div>
         <div><b class="num">${n >= 2 ? "≈ " + walkAround(per) + " min" : "–"}</b><span>pour en faire le tour</span></div>
       </div>
-      ${draft.walk ? `<p class="hint2 num">Tracée d’après ${draft.walk.len < 1000 ? fmtInt(Math.round(draft.walk.len / 10) * 10) + " m" : (draft.walk.len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"} de marche en ${draft.walk.min} min. Le parcours reste affiché en pointillés pour vous aider à ajuster.</p>` : ""}
+      ${draft.walk ? `<p class="hint2 num">Tracée d’après ${draft.walk.len < 1000 ? fmtInt(Math.round(draft.walk.len / 10) * 10) + " m" : (draft.walk.len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"} de marche en ${draft.walk.min} min${draft.walk.rec ? ", dont une partie reconstituée (tirets gris) pendant une coupure du suivi" : ""}. Le parcours reste affiché pour vous aider à ajuster.</p>` : ""}
       <div class="liveprice" id="livePrice" hidden></div>
       <div class="draw-actions">
         ${closed
@@ -1452,16 +1463,13 @@ function renderRating() {
   $("#back").onclick = () => { ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); drawDraft(); renderPanel(); };
   $("#saveZ").onclick = commitDraft;
   const cx = $("#cancelR");
-  cx.onclick = () => {
+  cx.onclick = async () => {
     const pick = z => JSON.stringify([z.ratings || {}, z.comment || "", z.name || "", !!z.fav, z.price || null, z.moment || "", z.date || ""]);
     const orig = draft.id && state.zones.find(x => x.id === draft.id);
     const dirty = orig ? pick(orig) !== pick(draft) : (Object.keys(draft.ratings || {}).length || draft.comment || draft.nameTouched || draft.fav || draft.price || draft.moment);
-    if (dirty && !cx.classList.contains("armed")) {
-      cx.classList.add("armed");
-      toast(draft.id ? "Touchez encore la croix pour annuler vos modifications" : "Touchez encore la croix pour abandonner cette zone");
-      setTimeout(() => cx.isConnected && cx.classList.remove("armed"), 3500);
-      return;
-    }
+    if (dirty && !(await askConfirm(draft.id
+      ? {title: "Annuler vos modifications ?", text: "Les notes et commentaires modifiés ne seront pas enregistrés.", ok: "Annuler les modifications", cancel: "Continuer", danger: true}
+      : {title: "Abandonner cette zone ?", text: "Le tracé et les notes saisies seront perdus.", ok: "Abandonner", cancel: "Continuer", danger: true}))) return;
     const wasNew = !draft.id;
     cancelDraft();
     toast(wasNew ? "Zone abandonnée" : "Modifications annulées");
@@ -1609,9 +1617,8 @@ function renderDetail() {
   $$("[data-copy]", panel).forEach(b => b.onclick = () => copyToMap(z, b.dataset.copy, b));
   paintPhotos(); bindAccount(panel);
   const del = $("#del");
-  del.onclick = () => {
-    const label = del.textContent;
-    if (!del.classList.contains("armed")) { del.classList.add("armed"); del.textContent = "Confirmer la suppression"; setTimeout(() => { if (del.isConnected) { del.classList.remove("armed"); del.textContent = label; } }, 3500); return; }
+  del.onclick = async () => {
+    if (!(await askConfirm({title: `Supprimer « ${z.name || "cette zone"} » ?`, text: duo ? "La zone disparaît pour vous deux, avec les notes et les photos de chacun." : "La zone, ses notes et ses photos seront effacées.", ok: "Supprimer", danger: true}))) return;
     const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id) : [];
     if (mine.length) cloud.client.storage.from("photos").remove(mine.flatMap(p => [p.path, p.thumb])).catch(() => {});
     state.zones = state.zones.filter(x => x.id !== z.id); save();
@@ -1763,10 +1770,56 @@ async function keepAwake() {
   try { if (walk.on && "wakeLock" in navigator && (!walk.wake || walk.wake.released)) walk.wake = await navigator.wakeLock.request("screen"); } catch (e) {}
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") keepAwake(); });
+/* Le tracé est découpé en morceaux : suivis par le GPS (pointillés laiton) ou reconstitués après une coupure (tirets gris) */
+function walkRuns(pts) {
+  const real = [], rec = []; let cur = null, kind = null;
+  for (let i = 1; i < pts.length; i++) {
+    const k = pts[i][3] || pts[i - 1][3] ? "rec" : "real";
+    if (k !== kind) { cur = [[pts[i - 1][0], pts[i - 1][1]]]; (k === "rec" ? rec : real).push(cur); kind = k; }
+    cur.push([pts[i][0], pts[i][1]]);
+  }
+  return {real, rec};
+}
 function drawWalk() {
-  const ll = walk.pts.map(p => [p[0], p[1]]);
-  if (!walk.line) walk.line = L.polyline(ll, {color: "#A07B33", weight: 4, opacity: .9, dashArray: "1 8", lineCap: "round", interactive: false}).addTo(map);
-  else walk.line.setLatLngs(ll);
+  const {real, rec} = walkRuns(walk.pts);
+  if (!walk.line) {
+    walk.line = L.layerGroup().addTo(map);
+    walk.lineReal = L.polyline([], {color: "#A07B33", weight: 4, opacity: .9, dashArray: "1 8", lineCap: "round", interactive: false}).addTo(walk.line);
+    walk.lineRec = L.polyline([], {color: "#857B6E", weight: 3, opacity: .8, dashArray: "7 7", interactive: false}).addTo(walk.line);
+  }
+  walk.lineReal.setLatLngs(real); walk.lineRec.setLatLngs(rec);
+}
+/* Coupure du suivi (téléphone en veille, appli fermée) : on reconstitue le chemin probable à pied entre les deux positions */
+const GAP_S = 40, GAP_M = 40;
+async function fillGap(a, b) {
+  let co = null;
+  try {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch(`https://routing.openstreetmap.de/routed-foot/route/v1/foot/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`, {signal: ctl.signal});
+    clearTimeout(tm);
+    const j = await r.json();
+    if (j.code === "Ok" && j.routes && j.routes[0]) co = j.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+  } catch (e) {}
+  if (!co || co.length < 2) {                                   // pas d'itinéraire : ligne droite, un point tous les 25 m
+    const d = distM({lat: a[0], lng: a[1]}, {lat: b[0], lng: b[1]}), n = Math.max(1, Math.round(d / 25));
+    co = Array.from({length: n + 1}, (_, i) => [a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n]);
+  }
+  const keep = [co[0]];                                          // un point tous les 10 m au moins
+  for (const c of co.slice(1, -1)) { const l = keep[keep.length - 1]; if (distM({lat: l[0], lng: l[1]}, {lat: c[0], lng: c[1]}) >= 10) keep.push(c); }
+  const mid = keep.slice(1);
+  return mid.map((c, i) => [+c[0].toFixed(6), +c[1].toFixed(6), Math.round(a[2] + (b[2] - a[2]) * (i + 1) / (mid.length + 1)), 1]);
+}
+async function reconstructGap(a, b) {
+  walk.filling = (walk.filling || 0) + 1; paintWalk();
+  const mid = await fillGap(a, b);
+  walk.filling--;
+  if (!walk.on) return;
+  const i = walk.pts.indexOf(b); if (i < 0) return;
+  b[3] = b[3] || 0;
+  walk.pts.splice(i, 0, ...mid);
+  walkSave(); drawWalk(); paintWalk();
+  const mins = Math.round((b[2] - a[2]) / 60000);
+  toast(`Parcours reconstitué sur ${mins >= 1 ? mins + " min" : "quelques instants"} de coupure`);
 }
 function paintWalk() {
   const bar = $("#walkbar"), btn = $("#walkBtn");
@@ -1776,25 +1829,32 @@ function paintWalk() {
   const min = Math.max(0, Math.round((Date.now() - walk.start) / 60000)), len = walkLen(walk.pts);
   bar.hidden = false;
   bar.innerHTML = `<i class="walkbar__dot"></i>
-    <span class="walkbar__t num">${walk.pts.length ? `Balade, ${min} min, ${len < 1000 ? fmtInt(Math.round(len / 10) * 10) + " m" : (len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"}` : "Recherche du signal GPS…"}</span>
+    <span class="walkbar__t num">${walk.filling ? "Reconstitution du parcours…" : walk.pts.length ? `${min} min, ${len < 1000 ? fmtInt(Math.round(len / 10) * 10) + " m" : (len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"}` : "Recherche du signal GPS…"}</span>
     <button class="btn btn--sm btn--primary" type="button" id="walkEnd">Terminer</button>
     <button class="x" type="button" id="walkCancel" aria-label="Abandonner la balade"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
   $("#walkEnd").onclick = finishWalk;
   const cx = $("#walkCancel");
-  cx.onclick = () => {
-    if (!cx.classList.contains("armed")) { cx.classList.add("armed"); toast("Touchez encore la croix pour abandonner la balade"); setTimeout(() => cx.isConnected && cx.classList.remove("armed"), 3500); return; }
+  cx.onclick = async () => {
+    if (!(await askConfirm({title: "Abandonner la balade ?", text: "Le parcours enregistré sera effacé, aucune zone ne sera proposée.", ok: "Abandonner", cancel: "Continuer la balade", danger: true}))) return;
     stopWalk(); toast("Balade abandonnée");
   };
 }
 function onWalkPos(pt) {
   if (!walk.on || pt.acc > 40) return;                  // position trop imprécise : on attend la suivante
   const last = walk.pts[walk.pts.length - 1];
+  const np = [+pt.lat.toFixed(6), +pt.lng.toFixed(6), pt.t];
   if (last) {
     const d = distM({lat: last[0], lng: last[1]}, pt), dt = (pt.t - last[2]) / 1000;
     if (d < 8) return;                                  // on ne bouge pas : pas de nouveau point
+    if (dt > GAP_S && d > GAP_M) {                      // le suivi a été coupé : on reprend et on comble le trou
+      if (d > 3000) np[3] = 1;                          // trop loin pour l'avoir fait à pied : simple liaison grise
+      walk.pts.push(np); walkSave(); drawWalk(); paintWalk();
+      if (d <= 3000) reconstructGap(last, np);
+      return;
+    }
     if (dt > 0 && d / dt > 7) return;                   // saut irréaliste à pied
   }
-  walk.pts.push([+pt.lat.toFixed(6), +pt.lng.toFixed(6), pt.t]);
+  walk.pts.push(np);
   walkSave(); drawWalk(); paintWalk();
 }
 geo.listeners.add(onWalkPos);
@@ -1804,13 +1864,17 @@ function startWalk() {
   Object.assign(walk, {on: true, pts: [], start: Date.now()});
   walkSave(); keepAwake(); drawWalk(); paintWalk();
   clearInterval(walk.timer); walk.timer = setInterval(paintWalk, 30000);
-  toast("Balade lancée. Gardez l’appli ouverte : le suivi s’arrête si le téléphone se verrouille");
+  toast("Balade lancée. Si le téléphone se met en veille, le trajet manquant sera reconstitué au retour");
 }
 function stopWalk(keepTrace) {
   walk.on = false; clearInterval(walk.timer);
   try { walk.wake && walk.wake.release(); } catch (e) {} walk.wake = null;
   try { localStorage.removeItem(WALK_KEY); } catch (e) {}
-  if (walk.line) { if (keepTrace) { walk.trace = walk.line; walk.line.setStyle({opacity: .55}); } else map.removeLayer(walk.line); walk.line = null; }
+  if (walk.line) {
+    if (keepTrace) { walk.trace = walk.line; walk.lineReal.setStyle({opacity: .55}); walk.lineRec.setStyle({opacity: .5}); }
+    else map.removeLayer(walk.line);
+    walk.line = walk.lineReal = walk.lineRec = null;
+  }
   paintWalk();
 }
 function clearWalkTrace() { if (walk.trace) { map.removeLayer(walk.trace); walk.trace = null; } }
@@ -1835,6 +1899,7 @@ async function walkToZone(pts) {
   return shape.geometry.coordinates[0].slice(0, -1).map(([x, y]) => [y, x]);
 }
 async function finishWalk() {
+  for (let k = 0; walk.filling && k < 40; k++) await new Promise(r => setTimeout(r, 250));
   const pts = walk.pts, len = walkLen(pts);
   if (pts.length < 4 || len < 120) return toast("Balade trop courte pour proposer une zone : marchez au moins 150 m");
   const btn = $("#walkEnd"); if (btn) { btn.disabled = true; btn.textContent = "Calcul…"; }
@@ -1844,7 +1909,7 @@ async function finishWalk() {
   const minutes = Math.max(1, Math.round((Date.now() - walk.start) / 60000));
   stopWalk(true);
   startNew();
-  draft.points = poly; draft.closed = true; draft.walk = {len: Math.round(len), min: minutes};
+  draft.points = poly; draft.closed = true; draft.walk = {len: Math.round(len), min: minutes, rec: pts.some(p => p[3])};
   finishZoneGeometry(draft);
   setHint("Zone proposée d’après votre balade : ajustez les points, puis validez");
   drawDraft(); renderPanel();
@@ -1868,6 +1933,33 @@ try { navigator.permissions && navigator.permissions.query({name: "geolocation"}
 /* =========================================================
    Onglet profil
    ========================================================= */
+/* =========================================================
+   Confirmation : petite fenêtre au lieu d'un double appui
+   ========================================================= */
+function askConfirm({title, text = "", ok = "Confirmer", cancel = "Annuler", danger = false}) {
+  return new Promise(resolve => {
+    const prev = document.activeElement;
+    const el = document.createElement("div");
+    el.className = "ask";
+    el.innerHTML = `<div class="ask__veil" data-no></div>
+      <div class="ask__card" role="alertdialog" aria-modal="true" aria-labelledby="askT" aria-describedby="askD">
+        <h2 id="askT">${esc(title)}</h2>${text ? `<p id="askD">${esc(text)}</p>` : ""}
+        <div class="ask__acts"><button class="btn" type="button" data-no>${esc(cancel)}</button><button class="btn ${danger ? "btn--danger-plein" : "btn--primary"}" type="button" data-yes>${esc(ok)}</button></div>
+      </div>`;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => { el.classList.add("is-open"); el.querySelector("[data-yes]").focus({preventScroll: true}); });
+    const done = v => {
+      document.removeEventListener("keydown", key);
+      el.classList.remove("is-open"); setTimeout(() => el.remove(), 180);
+      try { prev && prev.focus && prev.focus({preventScroll: true}); } catch (e) {}
+      resolve(v);
+    };
+    const key = e => { if (e.key === "Escape") { e.stopPropagation(); done(false); } };
+    document.addEventListener("keydown", key);
+    el.addEventListener("click", e => { if (e.target.closest("[data-yes]")) done(true); else if (e.target.closest("[data-no]")) done(false); });
+  });
+}
+
 /* =========================================================
    Connexion : petit panneau qui s'ouvre de partout
    ========================================================= */
@@ -2092,8 +2184,8 @@ function renderProfile() {
   $("#exp").onclick = exportData;
   $("#imp").onclick = () => $("#importFile").click();
   const wipe = $("#wipe");
-  wipe.onclick = () => {
-    if (!wipe.classList.contains("armed")) { wipe.classList.add("armed"); wipe.textContent = "Confirmer : tout effacer"; setTimeout(() => { if (wipe.isConnected) { wipe.classList.remove("armed"); wipe.textContent = "Tout effacer"; } }, 4000); return; }
+  wipe.onclick = async () => {
+    if (!(await askConfirm({title: "Effacer toutes vos zones ?", text: "Toutes les zones de cette carte et leurs notes seront supprimées. Pensez à exporter une copie avant.", ok: "Tout effacer", danger: true}))) return;
     state.zones = []; save(); renderProfile(); toast("Toutes les zones ont été effacées");
   };
 }
@@ -2479,7 +2571,7 @@ async function paintViewer() {
   if (cv) cv.onclick = () => { z.cover = p.id; save(); renderZones(); paintPhotos(); paintViewer(); toast("Photo de couverture choisie"); };
   const dl = el.querySelector("[data-vdel]");
   if (dl) dl.onclick = async () => {
-    if (!dl.classList.contains("armed")) { dl.classList.add("armed"); dl.textContent = "Confirmer"; setTimeout(() => { if (dl.isConnected) { dl.classList.remove("armed"); dl.textContent = "Supprimer"; } }, 3000); return; }
+    if (!(await askConfirm({title: "Supprimer cette photo ?", ok: "Supprimer", danger: true}))) return;
     if (await deletePhoto(z, p)) paintViewer();
   };
   if (!photoUrl(p.path)) { await signUrls([p.path]); if (viewer.z === z && z.photos[viewer.i] === p) img.src = photoUrl(p.path) || img.src; }
@@ -2685,8 +2777,11 @@ function bindShared() {
         if (act === "share" && navigator.share) { try { await navigator.share({title: "Heden", text: "Rejoignez ma carte sur Heden pour noter les quartiers ensemble.", url: link}); } catch (err) {} return; }
         try { await navigator.clipboard.writeText(link); toast("Lien copié"); } catch (err) { window.prompt("Copiez ce lien :", link); }
       } else if (act === "leave" || act === "delete") {
-        const label = b.textContent;
-        if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = act === "leave" ? "Confirmer : quitter" : "Confirmer : tout supprimer"; setTimeout(() => { if (b.isConnected) { b.classList.remove("armed"); b.textContent = label; } }, 3500); return; }
+        const m = cloud.maps.find(x => x.id === id), nm = m ? m.name : "cette carte";
+        const okk = await askConfirm(act === "leave"
+          ? {title: `Quitter « ${nm} » ?`, text: "Vous ne verrez plus cette carte. Elle reste à votre binôme, avec vos notes.", ok: "Quitter la carte", danger: true}
+          : {title: `Supprimer « ${nm} » ?`, text: "La carte, ses zones, les notes et les photos de chacun seront effacées pour vous deux.", ok: "Supprimer pour tous", danger: true});
+        if (!okk) return;
         if (act === "leave") leaveSharedMap(id); else deleteSharedMap(id);
       }
     };
