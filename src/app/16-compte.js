@@ -39,6 +39,32 @@ function snapshot() {
   }
   return {zones, listings: lst, profile: JSON.stringify(profileRow())};
 }
+/* Fusion à trois : base (dernier état synchronisé), local, serveur. Les champs changés ici gagnent, les autres suivent le serveur :
+   deux personnes qui modifient la même annonce (l'une la garde, l'autre la note) ne s'écrasent plus. */
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function merge3(base, mine, srv) {
+  const out = {};
+  for (const k of new Set([...Object.keys(base), ...Object.keys(mine), ...Object.keys(srv)])) {
+    const v = k === "data" && mine.data && srv.data ? merge3(base.data || {}, mine.data, srv.data) : !same(mine[k], base[k]) ? mine[k] : srv[k];
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
+// lignes à envoyer, fusionnées avec ce qui a changé sur le serveur depuis la dernière synchro ; les lignes supprimées ailleurs restent supprimées
+async function mergeWithServer(table, rows, baseOf) {
+  const based = rows.filter(r => baseOf(r.id));
+  if (!based.length) return {rows, gone: []};
+  const {data, error} = await cloud.client.from(table).select("*").in("id", based.map(r => r.id));
+  if (error) throw error;
+  const srv = new Map((data || []).map(r => [r.id, r])), gone = [];
+  const out = rows.flatMap(r => {
+    const b = baseOf(r.id); if (!b) return [r];
+    const sv = srv.get(r.id); if (!sv) { gone.push(r.id); return []; }
+    const m = merge3(b, r, sv); delete m.created_at; return [m];
+  });
+  return {rows: out, gone};
+}
+
 function hasPending() {
   if (!cloud.user) return false;
   const cur = snapshot(), prev = cloud.synced || {zones: {}, profile: null};
@@ -100,16 +126,34 @@ async function syncNow() {
     const zUp = [], rUp = [];
     for (const [id, v] of Object.entries(cur.zones)) {
       const old = prev.zones[id] || {};
-      if (v.zone !== old.zone) zUp.push(Object.assign(JSON.parse(v.zone), {updated_at: new Date().toISOString()}));
+      if (v.zone !== old.zone) zUp.push(JSON.parse(v.zone));
       if (v.rating !== old.rating) rUp.push(Object.assign(JSON.parse(v.rating), {updated_at: new Date().toISOString()}));
     }
     const dels = Object.keys(prev.zones).filter(id => !cur.zones[id]);
-    if (zUp.length) { const {error} = await c.from("zones").upsert(zUp); if (error) throw error; }
+    if (zUp.length) {
+      const mz = await mergeWithServer("zones", zUp, id => prev.zones[id] && JSON.parse(prev.zones[id].zone));
+      mz.gone.forEach(id => { state.zones = state.zones.filter(z => z.id !== id); delete cur.zones[id]; });
+      const now = new Date().toISOString();
+      const {error} = mz.rows.length ? await c.from("zones").upsert(mz.rows.map(r => Object.assign(r, {updated_at: now}))) : {}; if (error) throw error;
+      mz.rows.forEach(r => { const z = state.zones.find(x => x.id === r.id); if (!z) return;
+        Object.assign(z, {name: r.name, place: r.place, points: r.points, est: r.estimates || null, cover: r.cover_photo || null}); finishZoneGeometry(z);
+        cur.zones[r.id].zone = JSON.stringify(zoneRow(z)); });
+      if (mz.gone.length) { rerenderAll(); renderPanel(); }
+    }
     if (rUp.length) { const {error} = await c.from("ratings").upsert(rUp); if (error) throw error; }
     await syncTwins(rUp);
     if (dels.length) { const {error} = await c.from("zones").delete().in("id", dels); if (error) throw error; }
-    const pl = prev.listings || {}, lUp = Object.entries(cur.listings).filter(([id, v]) => pl[id] !== v).map(([, v]) => Object.assign(JSON.parse(v), {updated_at: new Date().toISOString()}));
-    const lDel = Object.keys(pl).filter(id => !cur.listings[id]);
+    const pl = prev.listings || {}, lDel = Object.keys(pl).filter(id => !cur.listings[id]);
+    let lUp = Object.entries(cur.listings).filter(([id, v]) => pl[id] !== v).map(([, v]) => JSON.parse(v));
+    if (lUp.length && !cloud.noListings) {
+      const ml = await mergeWithServer("listings", lUp, id => pl[id] && JSON.parse(pl[id]));
+      ml.gone.forEach(id => { state.listings = listings().filter(f => f.id !== id); delete cur.listings[id]; });
+      const now = new Date().toISOString();
+      lUp = ml.rows.map(r => Object.assign(r, {updated_at: now}));
+      lUp.forEach(r => { const i = listings().findIndex(f => f.id === r.id); if (i < 0) return;
+        const f = Object.assign(listingFromRow(r), {updatedAt: listings()[i].updatedAt}); state.listings[i] = f; cur.listings[r.id] = JSON.stringify(listingRow(f)); });
+      if (ml.gone.length && currentTab === "annonces") renderListings();
+    }
     if (lUp.length) {
       const {error} = await c.from("listings").upsert(lUp);
       if (error && schemaMissing(error)) { cloud.noListings = true; cur.listings = {}; }

@@ -21,3 +21,11 @@ npm run build    # dist/, mis en ligne par le workflow « Site » à chaque push
 - `data/`, `config.js`, `v2/` : servis tels quels, copiés dans `dist/` à la construction.
 
 Direction artistique : design system « Heden » (Claude Design) — pierre, émail, laiton.
+
+## Essais
+
+`npm run build && python tests/essais.py` : parcours réels dans Chromium (carte, zones, cartes de groupe, annonces, synchronisation, accessibilité, cas extrêmes), avec un faux Supabase et les bibliothèques de carte servies depuis `node_modules`, sans réseau. Le workflow « Site » les lance avant chaque mise en ligne : un échec bloque le déploiement.
+
+## Dépendances : décisions connues
+
+- MapLibre reste en 5.24 : la faille signalée (GHSA-jrc7-96c5-q579) touche son nettoyage de HTML pour les fenêtres et l'attribution, où Heden ne passe que du contenu à lui. La version 6 n'existe qu'en module ES avec un worker qui doit être servi depuis le même domaine : à reprendre si on héberge MapLibre nous-mêmes.
