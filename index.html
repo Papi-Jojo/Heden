@@ -1045,6 +1045,47 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .fixfoot{display:flex;gap:10px;justify-content:stretch}
 .fixfoot .btn--clair{flex:none}
 @media (max-width:899px){.fixrow{grid-template-columns:1fr;gap:6px}}
+/* Fraîcheur et contact d'une annonce */
+.fresh{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 14px;border-radius:18px;background:var(--calcaire);border:1px solid var(--trait)}
+.fresh p{margin:0;flex:1;font-size:13.5px;line-height:19px;color:var(--ardoise-2)}
+.fresh__dot{flex:none;width:11px;height:9px;border-radius:var(--galet-a);background:var(--laiton)}
+.fresh--old .fresh__dot{background:var(--trait-fort)}
+.fresh--off{background:transparent;border-style:dashed}
+.fresh--off .fresh__dot{background:var(--alerte)}
+.contact{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:24px;background:var(--enduit)}
+.contact__who{display:flex;align-items:center;gap:12px;min-width:0}
+.contact__who>span:last-child{display:flex;flex-direction:column;min-width:0}
+.contact__who b{font-size:16px;font-weight:700;overflow-wrap:anywhere}
+.contact__who small{font-size:12.5px;color:var(--zinc)}
+.contact__ic{flex:none;width:44px;height:38px;display:grid;place-items:center;border-radius:var(--galet-b);background:var(--ardoise);color:var(--pierre);font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:19px}
+.contact .hint2{margin:0}
+.contact__acts{display:flex;flex-wrap:wrap;gap:8px}
+.contact__acts .btn{text-decoration:none}
+.contact__acts .btn:not(.btn--primary):not(.btn--clair){background:var(--calcaire)}
+.lcard__r .gone{font-style:normal;font-weight:700;color:var(--alerte)}
+/* Filtres de la carte */
+.mapf{position:relative}
+.mapf__btn{position:relative;overflow:visible}
+.mapf__btn svg{position:absolute;inset:0;margin:auto;transition:transform .36s var(--ease-ressort),opacity .18s}
+.mapf__x{opacity:0;transform:rotate(-90deg) scale(.5)}
+.mapf.is-open .mapf__ico{opacity:0;transform:rotate(90deg) scale(.5)}
+.mapf.is-open .mapf__x{opacity:1;transform:none}
+.mapf.is-open .mapf__btn{background:var(--ardoise);color:var(--pierre);border-color:var(--ardoise)}
+.mapf__dot{position:absolute;top:2px;right:2px;width:11px;height:9px;border-radius:var(--galet-a);background:var(--laiton);box-shadow:0 0 0 2px var(--calcaire);transform:scale(0);transition:transform .3s var(--ease-ressort)}
+.mapf.has-filter .mapf__dot{transform:none}
+.mapf__list{position:absolute;right:54px;top:2px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
+.mapf__opt{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px 0 12px;border:1px solid var(--trait);border-radius:var(--galet-a);background:var(--calcaire);color:var(--ardoise);font:650 14px var(--sans);white-space:nowrap;box-shadow:var(--ombre-flottant);
+  opacity:0;transform:translateX(26px) scale(.55);transform-origin:right center;transition:transform .46s var(--ease-ressort),opacity .2s,background-color .16s,color .16s;transition-delay:calc(var(--i) * 55ms)}
+.mapf__opt:nth-child(2){border-radius:var(--galet-b)}
+.mapf.is-open .mapf__list{pointer-events:auto}
+.mapf.is-open .mapf__opt{opacity:1;transform:none}
+.mapf:not(.is-open) .mapf__opt{transition-delay:calc((1 - var(--i)) * 40ms)}
+.mapf__slash{stroke-dasharray:23;stroke-dashoffset:23;transition:stroke-dashoffset .28s var(--ease-sortie)}
+.mapf__opt[aria-pressed="false"]{background:color-mix(in srgb,var(--calcaire) 70%,transparent);color:var(--zinc);border-style:dashed;border-color:var(--trait-fort)}
+.mapf__opt[aria-pressed="false"] .mapf__slash{stroke-dashoffset:0}
+.mapf__opt[aria-pressed="false"] span{text-decoration:line-through;text-decoration-thickness:1.5px}
+.mapf__opt:active{transform:scale(.96)}
+@media (prefers-reduced-motion: reduce){.mapf__opt{transform:none}}
 /* Notifications : placées par toast() dans un espace libre, jamais sur une barre ou une consigne */
 .toast{left:50%;right:auto;bottom:auto;transform:translateX(-50%);max-width:min(440px,calc(100% - 32px));box-sizing:border-box;text-wrap:pretty}
 @media (max-width:899px){body[data-tab="map"] .toast{max-width:calc(100% - 132px)}}
@@ -1086,6 +1127,17 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
         </div>
         <div class="walkbar" id="walkbar" hidden></div>
         <div class="fab-col">
+          <div class="mapf" id="mapf">
+            <button class="icon-btn mapf__btn" id="mapfBtn" type="button" aria-expanded="false" aria-controls="mapfList" title="Filtres" aria-label="Filtres de la carte">
+              <svg class="mapf__ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg>
+              <svg class="mapf__x" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              <i class="mapf__dot" aria-hidden="true"></i>
+            </button>
+            <div class="mapf__list" id="mapfList" role="group" aria-label="Afficher sur la carte">
+              <button class="mapf__opt" type="button" data-mf="zones" aria-pressed="true" style="--i:0"><svg class="mapf__eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/><path class="mapf__slash" d="M4 4l16 16"/></svg><span>Zones</span></button>
+              <button class="mapf__opt" type="button" data-mf="annonces" aria-pressed="true" style="--i:1"><svg class="mapf__eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/><path class="mapf__slash" d="M4 4l16 16"/></svg><span>Annonces</span></button>
+            </div>
+          </div>
           <button class="icon-btn" id="walkBtn" type="button" title="Tracer une balade" aria-label="Tracer une balade">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"/></svg>
           </button>
@@ -1293,6 +1345,8 @@ const scoreOf = z => scoreWith(z, z.ratings, crit(), state.profile.budget);
 /* Carte à deux : chacun note avec son profil, la carte montre la note commune */
 const curMap = () => cloud.user ? cloud.maps.find(m => m.id === cloud.mapId) : null;
 const isShared = () => { const m = curMap(); return !!(m && m.kind === "partagee"); };
+/* toutes les cartes du compte : les annonces suivent la personne d'un appareil à l'autre, quelle que soit la carte affichée */
+const myMapIds = () => [...new Set([cloud.mapId, cloud.personalMapId, ...(cloud.maps || []).map(m => m.id)].filter(Boolean))];
 const hasRated = r => !!r && (Object.keys(r.ratings || {}).length > 0 || !!r.fav || !!r.comment);
 const personName = id => (cloud.people[id] && cloud.people[id].name) || cloud.names[id] || "Votre binôme";
 function partnerScores(z) {
@@ -1621,11 +1675,13 @@ map.on("zoomend", updateFar); updateFar();
 
 /* Zones enregistrées */
 const zoneLayer = L.layerGroup().addTo(map);
+const mapFilter = (() => { try { return Object.assign({zones: true, annonces: true}, JSON.parse(localStorage.getItem("heden.mapf") || "{}")); } catch (e) { return {zones: true, annonces: true}; } })();
 let justSaved = null;
 function renderZones() {
   zoneLayer.clearLayers();
   for (const z of state.zones) {
     if (draft && draft.id === z.id) continue;
+    if (mapFilter.zones === false && z.id !== selectedId) continue;
     const {score} = zoneScore(z);
     const col = colorFor(score);
     const out = overBudget(z);
@@ -2402,6 +2458,24 @@ function stopGeo() {
 }
 $("#locate").onclick = () => startGeo(true);
 
+/* ---------- Filtres de la carte : les options sortent du bouton en galets ---------- */
+function paintMapFilter() {
+  $$("#mapf [data-mf]").forEach(b => { const on = mapFilter[b.dataset.mf] !== false; b.setAttribute("aria-pressed", String(on)); b.title = on ? "Masquer sur la carte" : "Afficher sur la carte"; });
+  $("#mapf").classList.toggle("has-filter", !mapFilter.zones || !mapFilter.annonces);
+}
+function openMapFilter(open) {
+  const m = $("#mapf"); m.classList.toggle("is-open", open); $("#mapfBtn").setAttribute("aria-expanded", String(open));
+}
+$("#mapfBtn").onclick = () => openMapFilter(!$("#mapf").classList.contains("is-open"));
+$$("#mapf [data-mf]").forEach(b => b.onclick = () => {
+  const k = b.dataset.mf; mapFilter[k] = mapFilter[k] === false;
+  try { localStorage.setItem("heden.mapf", JSON.stringify(mapFilter)); } catch (e) {}
+  paintMapFilter(); if (k === "zones") renderZones(); else renderListingPins();
+});
+document.addEventListener("pointerdown", e => { if (!e.target.closest("#mapf")) openMapFilter(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#mapf").classList.contains("is-open")) { openMapFilter(false); $("#mapfBtn").focus(); } });
+paintMapFilter();
+
 /* =========================================================
    Balade : on trace le parcours, puis on propose une zone
    ========================================================= */
@@ -2953,7 +3027,7 @@ let toastT = null;
 /* La notification cherche une place libre : sous les barres et consignes du haut, sinon au-dessus
    de la feuille ou de la barre du bas. Elle ne recouvre jamais une barre de balade, une consigne
    de tracé, la recherche, les boutons de carte ou une fenêtre ouverte. */
-const TOAST_AVOID = ".topbar, .tabbar, .map-top, .walkbar, .hint, .fab-col, .panel, .ask__card, .auth__card, .lsheet, .quiz, .leaflet-control-attribution";
+const TOAST_AVOID = ".topbar, .tabbar, .map-top, .walkbar, .hint, .fab-col, #mapf.is-open .mapf__opt, .panel, .ask__card, .auth__card, .lsheet, .quiz, .leaflet-control-attribution";
 function placeToast(t) {
   const vv = window.visualViewport, vh = vv ? vv.height : innerHeight, vw = innerWidth, gap = 10;
   t.style.top = "0px";
@@ -3485,16 +3559,17 @@ async function switchMap(id) {
 function setupRealtime() {
   const c = cloud.client;
   if (cloud.channel) { try { c.removeChannel(cloud.channel); } catch (e) {} cloud.channel = null; }
-  if (!isShared() || typeof c.channel !== "function") return;
+  if (!cloud.mapId || typeof c.channel !== "function") return;
   let t = null;
-  const later = () => { clearTimeout(t); t = setTimeout(() => {
-    if (ui.mode === "list" || ui.mode === "detail") cloudRefresh(true).catch(() => {}); else later();
-  }, 900); };
+  /* on attend un moment calme : pas de tracé en cours, pas de saisie, pas de fenêtre ouverte */
+  const busy = () => !(ui.mode === "list" || ui.mode === "detail") || document.querySelector(".auth.is-open, .ask") || (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
+  const later = () => { clearTimeout(t); t = setTimeout(() => { if (busy()) later(); else cloudRefresh(true).catch(() => {}); }, 900); };
   try {
-    cloud.channel = c.channel("carte-" + cloud.mapId)
+    let ch = c.channel("carte-" + cloud.mapId + "-" + cloud.user.id)
       .on("postgres_changes", {event: "*", schema: "public", table: "zones", filter: "map_id=eq." + cloud.mapId}, later)
-      .on("postgres_changes", {event: "*", schema: "public", table: "ratings"}, later)
-      .subscribe();
+      .on("postgres_changes", {event: "*", schema: "public", table: "listings", filter: "map_id=in.(" + myMapIds().join(",") + ")"}, later);
+    if (isShared()) ch = ch.on("postgres_changes", {event: "*", schema: "public", table: "ratings"}, later);
+    cloud.channel = ch.subscribe();
   } catch (e) { console.warn("Heden : temps réel", e); }
 }
 async function copyToMap(z, mapId, btn) {
@@ -3662,7 +3737,7 @@ async function cloudRefresh(force) {
   const [{data: prof, error: e1}, {data: rows, error: e2}, {data: lrows, error: e3}] = await Promise.all([
     c.from("profiles").select("*").eq("id", me).maybeSingle(),
     c.from("zones").select("*, ratings(*)").eq("map_id", cloud.mapId),
-    c.from("listings").select("*").eq("map_id", cloud.mapId)
+    c.from("listings").select("*").in("map_id", myMapIds())
   ]);
   if (e1 || e2) { setCloudStatus("error", e1 || e2); return; }
   cloud.noListings = schemaMissing(e3);
@@ -3688,8 +3763,12 @@ async function cloudRefresh(force) {
   if (lrows) {
     // les annonces locales jamais envoyées (ajoutées hors ligne ou avant la migration) sont gardées
     const known = (cloud.synced && cloud.synced.listings) || {}, srv = new Set(lrows.map(r => r.id));
-    const local = (state.listings || []).filter(f => !srv.has(f.id) && !known[f.id] && (!f.mapId || f.mapId === cloud.mapId));
-    state.listings = lrows.map(listingFromRow).concat(local).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+    const ids = myMapIds(), local = (state.listings || []).filter(f => !srv.has(f.id) && !known[f.id] && (!f.mapId || ids.includes(f.mapId)));
+    // une même annonce enregistrée sur deux cartes n'apparaît qu'une fois : celle de la carte affichée d'abord
+    const all = lrows.map(listingFromRow).concat(local).sort((a, b) => (b.mapId === cloud.mapId) - (a.mapId === cloud.mapId));
+    const uniq = [];
+    for (const f of all) if (!uniq.some(x => x.mapId !== f.mapId && sameListing(x, f))) uniq.push(f);
+    state.listings = uniq.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
   }
   if (isShared()) {
     const st = seenSet(), u = cloud.unseen[cloud.mapId] = new Set();
@@ -3913,8 +3992,50 @@ function parseListing(src) {
   const ldi = pick(n => n.image); (Array.isArray(ldi) ? ldi : [ldi]).forEach(x => addP(typeof x === "object" && x ? x.url : x));
   f.photos = photos;
   f.url = src.url || ""; f.source = hostOf(src.url);
+  // Annonce retirée : la page le dit
+  if (GONE_RE.test(raw.slice(0, 6000))) f.gone = true;
+  // Agence ou particulier, d'après ce que la page affiche
+  Object.assign(f, readAgency(nodes, raw, src.hints || {}, f.source));
+  ["agencyName", "agencyPhone", "agencyEmail", "agencyUrl", "agencyAddress", "ref", "seller"].forEach(k => { if (f[k]) found[k] = true; else delete f[k]; });
   f.found = found;
   return f;
+}
+const GONE_RE = /annonce (?:n['’]est plus (?:disponible|en ligne|active)|a (?:été )?(?:retirée|supprimée|désactivée|expiré)|(?:est )?expirée|n['’]existe plus|introuvable)|(?:ce |le )?bien (?:a été |est )?(?:déjà )?vendu|(?:ce |le )?bien n['’]est plus disponible|offre (?:n['’]est plus disponible|expirée)|plus disponible à la vente/i;
+const PORTALS = /seloger|leboncoin|bienici|bien'ici|pap\b|logic-?immo|figaro|meilleursagents|avendrealouer|paruvendu|ouestfrance|superimmo|jinka|green-acres|lesiteimmo/i;
+const cleanPhone = v => { const d = String(v || "").replace(/[^\d+]/g, "").replace(/^0033/, "+33"); return /^(\+33[1-9]\d{8}|0[1-9]\d{8})$/.test(d) ? d : null; };
+const fmtPhone = v => { const d = cleanPhone(v); if (!d) return v || ""; const n = d.startsWith("+33") ? "0" + d.slice(3) : d; return n.replace(/(\d{2})(?=\d)/g, "$1 "); };
+const cleanMail = v => { const m = String(v || "").trim().toLowerCase(); return /^[\w.+-]+@[\w-]+(?:\.[\w-]+)+$/.test(m) && !/noreply|no-reply|ne-pas-repondre|privacy|dpo@|rgpd|support@|contact@(?:seloger|leboncoin|bienici|pap)/.test(m) ? m : null; };
+const cleanWeb = v => { try { const u = new URL(String(v)); return /^https?:$/.test(u.protocol) ? u.href : null; } catch (e) { return null; } };
+function readAgency(nodes, raw, hints, host) {
+  const o = {}, low = raw.toLowerCase(), notPortal = n => n && !PORTALS.test(n) && !(host && n.toLowerCase().includes(host.split(".").slice(-2, -1)[0]));
+  // 1. données structurées : vendeur de l'offre, ou fiche d'agence immobilière
+  const ag = nodes.map(n => n.seller || n.offeredBy || n.provider || (n.offers && !Array.isArray(n.offers) && (n.offers.seller || n.offers.offeredBy))).find(x => x && typeof x === "object" && x.name && notPortal(x.name))
+    || nodes.find(n => /RealEstateAgent|RealEstateAgency/.test([].concat(n["@type"] || []).join(" ")) && n.name && notPortal(n.name));
+  if (ag) {
+    o.agencyName = String(ag.name).trim();
+    o.agencyPhone = cleanPhone(ag.telephone) || undefined; o.agencyEmail = cleanMail(ag.email) || undefined; o.agencyUrl = cleanWeb(ag.url) || undefined;
+    const ad = ag.address; if (ad && typeof ad === "object") o.agencyAddress = [ad.streetAddress, [ad.postalCode, ad.addressLocality].filter(Boolean).join(" ")].filter(Boolean).join(", ") || undefined; else if (typeof ad === "string") o.agencyAddress = ad;
+    if (/Person/.test([].concat(ag["@type"] || []).join(" "))) o.seller = "particulier";
+  }
+  // 2. état de la page (sites en React, Next…) : objets « agency », « contact », « owner »…
+  for (const sn of hints.state || []) {
+    const nm = (sn.match(/"(?:agencyName|agency_name|advertiserName|sellerName|storeName|companyName|brandName|tradeName|name|displayName|legalName|commercialName)"\s*:\s*"([^"]{2,90})"/) || [])[1];
+    if (!o.agencyName && nm && notPortal(nm) && !/^(?:agence|particulier|contact|pro|null|undefined)$/i.test(nm) && /agenc|advertis|seller|store|owner|contact|professional|annonceur|realEstate|brand|company|trade/i.test(sn.slice(0, 40))) o.agencyName = nm.trim();
+    if (!o.agencyPhone) { const ph = (sn.match(/"(?:phone|phoneNumber|telephone|mobile|phoneNumbers?)"\s*:\s*\[?"(\+?[\d .()-]{8,20})"/) || [])[1]; if (cleanPhone(ph)) o.agencyPhone = cleanPhone(ph); }
+    if (!o.agencyEmail) { const em = (sn.match(/"(?:email|mail|contactEmail)"\s*:\s*"([^"]{5,90})"/) || [])[1]; if (cleanMail(em)) o.agencyEmail = cleanMail(em); }
+    if (!o.agencyUrl) { const w = (sn.match(/"(?:website|webSite|siteUrl|agencyUrl|url)"\s*:\s*"(https?:[^"]{4,200})"/) || [])[1]; if (w && !PORTALS.test(w) && cleanWeb(w.replace(/\\u002F/g, "/"))) o.agencyUrl = cleanWeb(w.replace(/\\u002F/g, "/")); }
+    if (!o.seller && /"(?:type|ownerType|userType|accountType)"\s*:\s*"(?:private|particulier|part)"/i.test(sn)) o.seller = "particulier";
+  }
+  // 3. liens cliquables de la page
+  if (!o.agencyPhone) for (const t of hints.tels || []) { const ph = cleanPhone(t.split("|")[0]); if (ph) { o.agencyPhone = ph; break; } }
+  if (!o.agencyEmail) for (const m of hints.mails || []) { const em = cleanMail(m); if (em) { o.agencyEmail = em; break; } }
+  // 4. texte : « Proposé par… », « Agence : … », numéro affiché, référence
+  if (!o.agencyName) { const mn = raw.match(/(?:propos[ée]e? par|annonce (?:publi[ée]e|diffus[ée]e) par|vendu par|agence\s*:)\s*\n?\s*([A-Z0-9][^\n]{2,60})/i); if (mn && notPortal(mn[1]) && !/particulier/i.test(mn[1])) o.agencyName = mn[1].trim().replace(/\s{2,}/g, " "); }
+  if (!o.agencyPhone) { const mp = raw.match(/(?:\+33\s?|\b0)[1-9](?:[\s.-]?\d{2}){4}\b/); if (mp && cleanPhone(mp[0])) o.agencyPhone = cleanPhone(mp[0]); }
+  const mr = raw.match(/\br[ée]f(?:[ée]rence|\.)?(?:\s+de l['’]annonce)?\s*[:.°]?\s*(?:n°\s*)?([A-Z0-9][A-Z0-9\-_/]{2,24})\b/i); if (mr && /\d/.test(mr[1])) o.ref = mr[1];
+  if (!o.seller) o.seller = /pap\.fr/.test(host || "") || /de particulier à particulier|\bparticulier\b(?! ou)/.test(low) && !o.agencyName ? "particulier" : o.agencyName ? "agence" : undefined;
+  Object.keys(o).forEach(k => o[k] == null && delete o[k]);
+  return o;
 }
 function listingTitle(f) {
   const parts = [f.rooms ? (f.rooms === 1 ? "Studio" : `${f.rooms} pièces`) : "Appartement", f.surface ? `${fmtInt(f.surface)}\u00a0m²` : null];
@@ -4031,8 +4152,8 @@ function renderListings() {
   if (lui.openId && listings().some(x => x.id === lui.openId)) return renderListingDetail(lui.openId);
   const all = listings().map(f => ({f, s: scoreListing(f)}));
   const shown = all.filter(({f}) => lui.filter === "toutes" ? true : lui.filter === "gardees" ? f.status === "gardee" || f.status === "visite" : lui.filter === "ecartees" ? f.status === "ecartee" : f.status !== "ecartee")
-    .sort((a, b) => lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : (b.s.total ?? -1) - (a.s.total ?? -1));
-  const best = lui.filter === "actives" && lui.sort === "match" ? shown.find(x => x.s.total != null && !x.s.fails.length && x.f.status !== "ecartee") : null;
+    .sort((a, b) => (!!a.f.gone - !!b.f.gone) || (lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : (b.s.total ?? -1) - (a.s.total ?? -1)));
+  const best = lui.filter === "actives" && lui.sort === "match" ? shown.find(x => x.s.total != null && !x.s.fails.length && x.f.status !== "ecartee" && !x.f.gone) : null;
   const counts = {actives: all.filter(x => x.f.status !== "ecartee").length, gardees: all.filter(x => x.f.status === "gardee" || x.f.status === "visite").length, ecartees: all.filter(x => x.f.status === "ecartee").length};
   box.innerHTML = `
     <div class="ann__head">
@@ -4045,12 +4166,12 @@ function renderListings() {
     </div>` : ""}
     ${best ? heroHTML(best.f, best.s) : ""}
     ${all.length ? `<div class="ann__list">
-      ${shown.filter(x => x !== best).map(({f, s}) => `<button type="button" class="lcard${f.status === "ecartee" ? " lcard--off" : ""}" data-id="${f.id}">
+      ${shown.filter(x => x !== best).map(({f, s}) => `<button type="button" class="lcard${f.status === "ecartee" || f.gone ? " lcard--off" : ""}" data-id="${f.id}">
         <span class="lcard__ph">${f.photos && f.photos[0] ? `<img src="${esc(f.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createElement('i'))">` : `<i></i>`}</span>
         <span class="lcard__b">
           <span class="lcard__t">${esc(f.title || listingTitle(f))}</span>
           <span class="lcard__p num">${f.price ? fmtInt(f.price) + "&#8239;€" : "Prix ?"}${s.ppm ? `<small>${fmtInt(s.ppm)}&#8239;€/m²</small>` : ""}</span>
-          <span class="lcard__r">${f.dropped ? `<em class="drop">Baisse de prix</em> ` : ""}${esc((s.fails.length ? "Hors critères : " + s.fails[0] : s.plus.slice(0, 2).join(", ")) || (f.lat ? "À compléter" : "Placement sur la carte…"))}</span>
+          <span class="lcard__r">${f.gone ? `<em class="gone">Plus en ligne</em> ` : ""}${f.dropped ? `<em class="drop">Baisse de prix</em> ` : ""}${esc((s.fails.length ? "Hors critères : " + s.fails[0] : s.plus.slice(0, 2).join(", ")) || (f.lat ? "À compléter" : "Placement sur la carte…"))}</span>
         </span>
         <span class="lcard__s"><b class="num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</b>${f.status !== "nouvelle" ? `<em>${LSTAT[f.status]}</em>` : ""}</span>
       </button>`).join("") || `<p class="hint2 ann__none">Aucune annonce dans ce filtre.</p>`}
@@ -4103,6 +4224,8 @@ function renderListingDetail(id) {
       ${f.url ? `<a class="chip" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
     </div>
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
+    ${freshHTML(f)}
+    ${contactHTML(f)}
     <section class="lsec">
       <div class="lsec__head"><h2>Pourquoi ce score</h2><button class="btn btn--sm btn--clair" type="button" id="lfix">${s.hasFix ? "Revoir mes corrections" : "Corriger la note"}</button></div>
       ${s.fixTotal ? `<p class="banner">Note fixée à ${s.total} par ${f.fix.by && cloud.user && f.fix.by !== cloud.user.id ? esc(personName(f.fix.by)) : "vous"}. Le détail ci-dessous reste celui de l’analyse${s.heden != null ? `, qui donne ${s.heden}` : ""}.</p>` : ""}
@@ -4137,10 +4260,54 @@ function renderListingDetail(id) {
   $("#lnote").oninput = e => { f.note = e.target.value; f.updatedAt = Date.now(); save(); };
   $("#ledit").onclick = () => openAddListing(f);
   $("#lfix").onclick = () => openScoreFix(f);
+  bindContact(f, box);
   const lm = $("#lmap"); if (lm) lm.onclick = () => { setTab("map"); map.flyTo([f.lat, f.lng], 16, {duration: .6}); };
   $("#ldel").onclick = async () => {
     if (!(await askConfirm({title: "Supprimer cette annonce ?", text: "Elle disparaît de vos annonces et de la carte.", ok: "Supprimer", danger: true}))) return;
     state.listings = listings().filter(x => x.id !== f.id); save(); lui.openId = null; renderListings(); renderListingPins(); toast("Annonce supprimée");
+  };
+}
+
+/* ---------- Fraîcheur : l'annonce est-elle toujours en ligne ? ---------- */
+function freshHTML(f) {
+  const last = f.lastSeen || f.checkedAt || f.firstSeen || f.addedAt, days = last ? Math.floor((Date.now() - last) / 864e5) : null;
+  const ago = days == null ? "" : days < 1 ? "aujourd’hui" : days === 1 ? "hier" : `il y a ${days} jours`;
+  const txt = f.gone ? `<b>Plus en ligne</b> depuis le ${esc(fmtDate(new Date(f.gone).toISOString().slice(0, 10)))}. Gardez-la pour comparer, ou supprimez-la.`
+    : `En ligne, vue ${ago}${f.priceHistory && f.priceHistory.length ? ` · ${f.priceHistory.length} changement${f.priceHistory.length > 1 ? "s" : ""} de prix` : ""}.`;
+  return `<div class="fresh ${f.gone ? "fresh--off" : days != null && days > 14 ? "fresh--old" : ""}"><span class="fresh__dot" aria-hidden="true"></span><p>${txt}</p>${f.url ? `<button class="btn btn--sm btn--clair" type="button" id="lrecheck">Revérifier</button>` : ""}</div>`;
+}
+
+/* ---------- Contacter l'agence (ou le particulier) depuis Heden ---------- */
+function visitMessage(f) {
+  const duo = (homeProfile().setup || {}).who === "deux", name = (state.profile.name || "").trim();
+  const what = `${f.ref ? `réf. ${f.ref}, ` : ""}${f.title || listingTitle(f)}${f.price ? ` à ${fmtInt(f.price)} €` : ""}`;
+  return `Bonjour,\n\n${duo ? "Nous sommes intéressés" : "Je suis intéressé"} par votre annonce (${what})${f.url ? ` :\n${normUrl(f.url)}` : "."}\n\n${duo ? "Pourrions-nous la visiter ? Nous sommes" : "Serait-il possible de la visiter ? Je suis"} disponible${duo ? "s" : ""} en semaine après 18 h et le samedi.\n\nBien cordialement,${name ? "\n" + name : ""}`;
+}
+function contactHTML(f) {
+  const tel = cleanPhone(f.agencyPhone), mail = cleanMail(f.agencyEmail), web = cleanWeb(f.agencyUrl), part = f.seller === "particulier";
+  const any = f.agencyName || tel || mail || web;
+  const subject = `Annonce ${f.ref ? "réf. " + f.ref + " : " : ""}${f.title || listingTitle(f)}`;
+  return `<section class="contact" aria-label="Contact">
+    <div class="contact__who"><span class="contact__ic" aria-hidden="true">${part ? "P" : "A"}</span><span><small>${part ? "Particulier" : "Agence"}${f.ref ? ` · réf. ${esc(f.ref)}` : ""}</small><b>${esc(f.agencyName || (part ? "Vendu par un particulier" : any ? "Agence" : "Coordonnées non trouvées"))}</b>${f.agencyAddress ? `<small>${esc(f.agencyAddress)}</small>` : ""}</span></div>
+    ${any ? "" : `<p class="hint2">La page ne montrait pas les coordonnées. Sur le site, touchez « Afficher le numéro » puis + Heden : Heden les récupère. Ou ajoutez-les vous-même.</p>`}
+    <div class="contact__acts">
+      ${tel ? `<a class="btn btn--sm btn--primary" href="tel:${tel}">Appeler ${esc(fmtPhone(tel))}</a>` : ""}
+      ${mail ? `<a class="btn btn--sm" href="mailto:${mail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(visitMessage(f))}">Écrire</a>` : ""}
+      <button class="btn btn--sm" type="button" id="lmsg">Copier un message de visite</button>
+      ${web ? `<a class="btn btn--sm btn--clair" href="${esc(web)}" target="_blank" rel="noopener noreferrer">Site de l’agence ↗</a>` : ""}
+      ${any ? "" : `<button class="btn btn--sm btn--clair" type="button" id="lcontactEdit">Ajouter les coordonnées</button>`}
+    </div>
+  </section>`;
+}
+function bindContact(f, box) {
+  const m = $("#lmsg", box); if (m) m.onclick = async () => {
+    try { await navigator.clipboard.writeText(visitMessage(f)); toast(f.agencyPhone || f.agencyEmail ? "Message copié" : "Message copié : collez-le dans le formulaire de contact du site"); }
+    catch (e) { toast("Copie impossible sur ce navigateur"); }
+  };
+  const e = $("#lcontactEdit", box); if (e) e.onclick = () => openAddListing(f);
+  const r = $("#lrecheck", box); if (r) r.onclick = () => {
+    window.open(f.url, "_blank", "noopener");
+    toast("Sur la page de l’annonce, touchez + Heden : prix, disponibilité et agence seront mis à jour");
   };
 }
 
@@ -4198,8 +4365,9 @@ function openScoreFix(f) {
 const FIELDS = [["price", "Prix", "num", "€"], ["surface", "Surface", "num", "m²"], ["rooms", "Pièces", "num"], ["bedrooms", "Chambres", "num"], ["floor", "Étage (0 = RDC)", "num"],
   ["elevator", "Ascenseur", "bool"], ["outdoor", "Extérieur", "sel", ["", "balcon", "loggia", "terrasse", "jardin"]], ["dpe", "DPE", "sel", ["", ..."ABCDEFG"]], ["charges", "Charges par an", "num", "€"],
   ["works", "État", "sel", ["", "neuf", "bon", "rafraichir", "travaux"]], ["quiet", "Au calme, sur cour", "bool"], ["traversant", "Traversant", "bool"], ["bright", "Lumineux", "bool"],
-  ["cave", "Cave", "bool"], ["parking", "Parking", "bool"], ["view", "Vue dégagée", "bool"], ["postcode", "Code postal", "txt"], ["metro", "Métro le plus proche", "txt"]];
-const SEL_LABEL = {neuf: "Rénové", bon: "Bon état", rafraichir: "À rafraîchir", travaux: "Travaux", balcon: "Balcon", loggia: "Loggia", terrasse: "Terrasse", jardin: "Jardin", "": "Non précisé"};
+  ["cave", "Cave", "bool"], ["parking", "Parking", "bool"], ["view", "Vue dégagée", "bool"], ["postcode", "Code postal", "txt"], ["metro", "Métro le plus proche", "txt"],
+  ["seller", "Vendu par", "sel", ["", "agence", "particulier"]], ["agencyName", "Agence", "txt"], ["agencyPhone", "Téléphone", "txt"], ["agencyEmail", "E-mail", "txt"], ["agencyUrl", "Site de l’agence", "txt"], ["agencyAddress", "Adresse de l’agence", "txt"], ["ref", "Référence de l’annonce", "txt"]];
+const SEL_LABEL = {agence: "Une agence", particulier: "Un particulier", neuf: "Rénové", bon: "Bon état", rafraichir: "À rafraîchir", travaux: "Travaux", balcon: "Balcon", loggia: "Loggia", terrasse: "Terrasse", jardin: "Jardin", "": "Non précisé"};
 function openAddListing(existing, imported) {
   let el = $("#lsheet");
   if (!el) { el = document.createElement("div"); el.id = "lsheet"; el.className = "auth"; el.innerHTML = `<div class="auth__veil" data-lclose></div><div class="auth__card lsheet" role="dialog" aria-modal="true" aria-labelledby="lsTitle"></div>`; document.body.appendChild(el); el.addEventListener("click", e => { if (e.target.closest("[data-lclose]")) closeSheet(); }); }
@@ -4310,11 +4478,16 @@ function bindHomeSection() {
     if (done || !d) return; done = true;
     const safe = {url: String(d.url || "").slice(0, 2000), title: String(d.title || "").slice(0, 300), text: String(d.text || "").slice(0, 40000),
       meta: typeof d.meta === "object" && d.meta ? d.meta : {}, ld: Array.isArray(d.ld) ? d.ld.map(x => String(x).slice(0, 60000)).slice(0, 8) : [], imgs: Array.isArray(d.imgs) ? d.imgs.map(String).slice(0, 12) : []};
+    const hi = d.hints && typeof d.hints === "object" ? d.hints : {}, arr = (a, n, len) => Array.isArray(a) ? a.slice(0, n).map(x => String(x).slice(0, len)) : [];
+    safe.hints = {tels: arr(hi.tels, 6, 100), mails: arr(hi.mails, 4, 120), state: arr(hi.state, 24, 1600)};
     try { localStorage.setItem("heden.bmk", "1"); } catch (e) {}
     const items = Array.isArray(d.items) ? d.items.slice(0, 80).map(c => ({url: String(c.url || "").slice(0, 2000), img: String(c.img || "").slice(0, 2000), text: String(c.text || "").slice(0, 1200)})) : [];
     setTab("annonces");
-    if (items.length >= 3 && !isDetailUrl(safe.url)) openBatchImport(items, safe.url);
-    else openAddListing(null, parseListing(safe));
+    if (items.length >= 3 && !isDetailUrl(safe.url)) return openBatchImport(items, safe.url);
+    const p = parseListing(safe), ex = listings().find(x => sameListing(x, p));
+    if (ex) return refreshFromPage(ex, p);
+    if (p.gone) return toast("Cette annonce n’est plus en ligne : rien à ajouter");
+    openAddListing(null, p);
   };
   window.addEventListener("message", e => {
     const m = e.data; if (!m || m.type !== "heden-import" || !m.data) return;
@@ -4481,6 +4654,35 @@ function mergeCard(card, opts = {}) {
   return {kind: "new", f};
 }
 
+/* ---------- Annonce déjà connue, rouverte avec le bouton + Heden : on la met à jour ----------
+   Prix (avec historique), disponibilité, agence, infos manquantes. Les corrections, notes,
+   statut et coordonnées précises restent ceux de l'utilisateur. */
+function refreshFromPage(ex, p) {
+  const now = Date.now(), news = [];
+  ex.lastSeen = now; ex.checkedAt = now;
+  if (p.gone) { if (!ex.gone) news.push("plus en ligne sur le site"); ex.gone = ex.gone || now; }
+  else {
+    if (ex.gone) news.push("de nouveau en ligne");
+    delete ex.gone;
+    if (p.price && ex.price && p.price !== ex.price) {
+      ex.priceHistory = (ex.priceHistory || []).concat({price: ex.price, at: ex.priceAt || ex.addedAt || now});
+      news.push(p.price < ex.price ? `prix baissé de ${fmtInt(ex.price - p.price)} €` : `prix monté de ${fmtInt(p.price - ex.price)} €`);
+      if (p.price < ex.price) ex.dropped = true;
+      ex.price = p.price; ex.priceAt = now;
+    }
+    const keep = new Set(["id", "status", "lat", "lng", "precise", "mapId", "createdBy", "note", "fix", "addedAt", "firstSeen", "origin", "title", "price", "photos", "found", "url", "source", "sources", "est"]);
+    let filled = 0;
+    for (const k of Object.keys(p.found || {})) if (!keep.has(k) && (ex[k] == null || ex[k] === "") && p[k] != null) { ex[k] = p[k]; filled++; }
+    for (const k of ["agencyName", "agencyPhone", "agencyEmail", "agencyUrl", "agencyAddress", "ref", "seller"]) if (p[k] && p[k] !== ex[k]) { if (!ex[k]) filled++; ex[k] = p[k]; }
+    if (!(ex.photos || []).length && (p.photos || []).length) ex.photos = p.photos;
+    if (filled) news.push(`${filled} info${filled > 1 ? "s" : ""} ajoutée${filled > 1 ? "s" : ""}`);
+    if (p.url && !ex.url) ex.url = p.url;
+  }
+  ex.updatedAt = now; save(); renderListingPins();
+  lui.openId = ex.id; if (currentTab !== "annonces") setTab("annonces"); else renderListings();
+  toast(news.length ? "Annonce à jour : " + news.join(", ") : "Annonce à jour : rien n’a changé sur le site");
+}
+
 /* ---------- Import d'une page de résultats ---------- */
 function openBatchImport(items, pageUrl) {
   const src = siteName(hostOf(pageUrl));
@@ -4532,20 +4734,28 @@ async function processInbox() {
     const {data, error} = await cloud.client.from("inbox").select("id, sender, subject, html, received_at").order("received_at").limit(20);
     if (error) { if (schemaMissing(error)) cloud.noInbox = true; return; }
     if (!data || !data.length) return;
-    let added = 0, drops = 0; const fresh = [];
+    let added = 0, drops = 0, gone = 0; const fresh = [];
     for (const m of data) {
       let cards = [];
       try { cards = extractCards(new DOMParser().parseFromString(m.html || "", "text/html").body); } catch (e) {}
-      const src = siteName((String(m.sender).match(/@([\w.-]+)/) || [])[1]);
-      for (const c of cards) {
-        const r = mergeCard(c, {origin: "alerte", source: src, at: Date.parse(m.received_at) || Date.now(), revive: true});
+      const src = siteName((String(m.sender).match(/@([\w.-]+)/) || [])[1]), at = Date.parse(m.received_at) || Date.now();
+      let head = "";
+      try { head = (new DOMParser().parseFromString(m.html || "", "text/html").body.textContent || "").replace(/\s+/g, " ").slice(0, 400); } catch (e) {}
+      if (GONE_RE.test((m.subject || "") + " " + head)) {
+        // e-mail de retrait (annonce suivie vendue ou retirée) : on marque, on n'ajoute rien
+        for (const c of cards) { const f = parseListing({url: c.url, text: c.text}); const ex = listings().find(x => sameListing(x, f)); if (ex && !ex.gone) { ex.gone = at; ex.updatedAt = Date.now(); gone++; } }
+        let doc = null; try { doc = new DOMParser().parseFromString(m.html || "", "text/html"); } catch (e) {}
+        if (doc) for (const a of doc.querySelectorAll("a[href]")) { const ex = listings().find(x => x.url && normUrl(x.url) === normUrl(a.getAttribute("href"))); if (ex && !ex.gone) { ex.gone = at; ex.updatedAt = Date.now(); gone++; } }
+      } else for (const c of cards) {
+        const r = mergeCard(c, {origin: "alerte", source: src, at, revive: true});
         if (r.kind === "new") { added++; fresh.push(r.f); } else if (r.kind === "drop") drops++;
+        if (r.f && r.f.gone && r.kind !== "new") { delete r.f.gone; r.f.updatedAt = Date.now(); }
       }
       await cloud.client.from("inbox").delete().eq("id", m.id);
     }
-    if (added || drops) {
+    if (added || drops || gone) {
       save(); renderListings(); renderListingPins(); queuePlace(fresh);
-      toast([added && `${added} nouvelle${added > 1 ? "s" : ""} annonce${added > 1 ? "s" : ""} de vos alertes`, drops && `${drops} baisse${drops > 1 ? "s" : ""} de prix`].filter(Boolean).join(", "));
+      toast([added && `${added} nouvelle${added > 1 ? "s" : ""} annonce${added > 1 ? "s" : ""} de vos alertes`, drops && `${drops} baisse${drops > 1 ? "s" : ""} de prix`, gone && `${gone} annonce${gone > 1 ? "s" : ""} retirée${gone > 1 ? "s" : ""} du site`].filter(Boolean).join(", "));
     }
     if (data.length === 20) setTimeout(processInbox, 500);
   } catch (e) { console.warn("Heden : alertes", e); }
@@ -4876,7 +5086,7 @@ const bmkOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) ? "ios" : /Andr
 let srcUI = {os: null, open: null};
 function bookmarkletCode() {
   const H = location.origin + location.pathname;
-  const body = `const m={};document.querySelectorAll('meta[property^="og:"],meta[name="description"]').forEach(x=>m[x.getAttribute('property')||x.getAttribute('name')]=x.content);const ld=[...document.querySelectorAll('script[type="application/ld+json"]')].map(s=>s.textContent).slice(0,8);const im=[...document.images].filter(i=>i.naturalWidth>=500).map(i=>i.currentSrc||i.src).filter((v,i,a)=>a.indexOf(v)===i).slice(0,12);const hs=[];document.querySelectorAll('ul,ol,div').forEach(u=>{const k=[...u.children];if(k.length<7||k.length>8||!k.every(c=>/^[A-G]$/.test(c.textContent.trim())))return;const a=k.find(c=>/activ|select|current|highlight|\\bon\\b/i.test(c.className+' '+(c.getAttribute('aria-current')||'')));if(a)hs.push((u.parentElement.textContent||'').replace(/\\s+/g,' ').replace(/(?:\\b[A-G]\\s?){6,}/,'').trim().slice(0,40)+' : '+a.textContent.trim())});let it=[];try{it=X(document.body).slice(0,60)}catch(e){}const d={v:2,url:location.href,title:document.title,meta:m,ld:ld,imgs:im,text:(hs.join('\\n')+'\\n'+(document.body.innerText||'')).slice(0,40000),items:it};const sm=Object.assign({},d,{text:d.text.slice(0,9000),ld:ld.map(x=>x.slice(0,5000)).slice(0,2),items:it.slice(0,30).map(c=>({url:c.url,img:c.img,text:c.text.slice(0,240)}))});const w=window.open(H+'?importer='+Date.now()+'#import='+encodeURIComponent(JSON.stringify(sm)),'heden');let n=0;const t=setInterval(()=>{if(!w||n++>40)return clearInterval(t);try{w.postMessage({type:'heden-import',data:d},'*')}catch(e){}},400);window.addEventListener('message',e=>{if(e.data==='heden-recu')clearInterval(t)});`;
+  const body = `const m={};document.querySelectorAll('meta[property^="og:"],meta[name="description"]').forEach(x=>m[x.getAttribute('property')||x.getAttribute('name')]=x.content);const ld=[...document.querySelectorAll('script[type="application/ld+json"]')].map(s=>s.textContent).slice(0,8);const im=[...document.images].filter(i=>i.naturalWidth>=500).map(i=>i.currentSrc||i.src).filter((v,i,a)=>a.indexOf(v)===i).slice(0,12);const hs=[];document.querySelectorAll('ul,ol,div').forEach(u=>{const k=[...u.children];if(k.length<7||k.length>8||!k.every(c=>/^[A-G]$/.test(c.textContent.trim())))return;const a=k.find(c=>/activ|select|current|highlight|\\bon\\b/i.test(c.className+' '+(c.getAttribute('aria-current')||'')));if(a)hs.push((u.parentElement.textContent||'').replace(/\\s+/g,' ').replace(/(?:\\b[A-G]\\s?){6,}/,'').trim().slice(0,40)+' : '+a.textContent.trim())});let it=[];try{it=X(document.body).slice(0,60)}catch(e){}const tl=[...document.querySelectorAll('a[href^="tel:"]')].map(a=>a.getAttribute('href').slice(4)+'|'+(a.textContent||'').trim().slice(0,60)).slice(0,6);const ml=[...document.querySelectorAll('a[href^="mailto:"]')].map(a=>a.getAttribute('href').slice(7).split('?')[0]).slice(0,4);let st='';try{for(const k of ['__NEXT_DATA__','__INITIAL_STATE__','__PRELOADED_STATE__','__NUXT__','__APOLLO_STATE__','__REDIAL_PROPS__']){const w=window[k];if(w&&typeof w==='object'&&!(w instanceof Element))st+=JSON.stringify(w).slice(0,800000)}const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')st+=nd.textContent.slice(0,800000)}catch(e){}const sn=[];for(const re of [/"(?:agency|agence|advertiser|seller|contact|owner|publisher|professional|realEstateAgency|annonceur|store)[A-Za-z]*"\\s*:\\s*\\{[^{}]{0,1500}\\}/gi,/"(?:agencyName|agency_name|advertiserName|sellerName|storeName|companyName|contactName|brandName|tradeName)"\\s*:\\s*"[^"]{2,90}"/gi,/"(?:phone|phoneNumber|telephone|mobile|phoneNumbers?)"\\s*:\\s*\\[?"\\+?[\\d .()-]{8,20}"/gi]){let q;while((q=re.exec(st))&&sn.length<24)sn.push(q[0].slice(0,1600))}const d={v:3,url:location.href,title:document.title,meta:m,ld:ld,imgs:im,text:(hs.join('\\n')+'\\n'+(document.body.innerText||'')).slice(0,40000),items:it,hints:{tels:tl,mails:ml,state:sn}};const sm=Object.assign({},d,{text:d.text.slice(0,9000),ld:ld.map(x=>x.slice(0,5000)).slice(0,2),items:it.slice(0,30).map(c=>({url:c.url,img:c.img,text:c.text.slice(0,240)})),hints:{tels:tl,mails:ml,state:sn.slice(0,6).map(x=>x.slice(0,500))}});const w=window.open(H+'?importer='+Date.now()+'#import='+encodeURIComponent(JSON.stringify(sm)),'heden');let n=0;const t=setInterval(()=>{if(!w||n++>40)return clearInterval(t);try{w.postMessage({type:'heden-import',data:d},'*')}catch(e){}},400);window.addEventListener('message',e=>{if(e.data==='heden-recu')clearInterval(t)});`;
   return "javascript:" + encodeURIComponent(`(()=>{const H=${JSON.stringify(H)};const X=${extractCards.toString()};${body}})();`);
 }
 const bmkInstalled = () => { try { return !!localStorage.getItem("heden.bmk"); } catch (e) { return false; } };
@@ -5028,6 +5238,7 @@ let listingLayer = null;
 function renderListingPins() {
   if (!listingLayer) listingLayer = L.layerGroup().addTo(map);
   listingLayer.clearLayers();
+  if (mapFilter.annonces === false) return;
   listings().filter(f => f.lat && f.status !== "ecartee").forEach(f => {
     const s = scoreListing(f);
     const mk = L.marker([f.lat, f.lng], {icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin${f.status === "gardee" || f.status === "visite" ? " lpin--kept" : ""}${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9H4z"/></svg><em class="num">${f.price ? Math.round(f.price / 1000) + "&#8239;k€" : ""}</em></span>`}), zIndexOffset: 500});
