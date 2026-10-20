@@ -58,8 +58,8 @@ input,textarea{caret-color:var(--email)}
 
 /* Onglets du profil : les quatre tiennent sur un téléphone étroit au lieu de déborder. */
 @media (max-width: 400px){
-  .prof__top .ptabs{display:grid;grid-auto-flow:column;grid-auto-columns:auto;width:100%;align-self:stretch}
-  .prof__top .ptabs button{padding-inline:10px;font-size:13.5px}
+  .prof__top .ptabs{display:flex;width:100%;align-self:stretch;overflow:hidden}
+  .prof__top .ptabs button{flex:1 1 auto;min-width:0;padding-inline:8px;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
 
 /* Repère « votre annonce » sur la frise des prix : l'étiquette reste dans la frise aux extrémités. */

@@ -19,8 +19,7 @@
   .panel[data-mode="placing"] .panel__foot{padding-top:10px}
   .panel__head{padding-top:24px}
   .grip{display:block;position:absolute;top:9px;left:50%;width:38px;height:4px;margin-left:-19px;border-radius:var(--pilule);background:var(--trait-fort);opacity:.6}
-  .panel{transition:transform .26s cubic-bezier(.2,.7,.2,1);will-change:transform}
-  .panel.dragging{transition:none}
+  .panel{will-change:transform}
   .panel .grip,.panel .panel__head{touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   .grip::before{content:"";position:absolute;inset:-12px -60px}
   .panel[data-sheet="peek"],.panel[data-sheet="mini"]{box-shadow:0 -4px 18px rgba(38,35,31,.10)}
