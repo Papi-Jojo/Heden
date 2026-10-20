@@ -1130,6 +1130,55 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .addrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .fresh--line{display:flex;align-items:center;gap:8px;margin:0;padding:0;border:0;background:none;font-size:13px;color:var(--zinc)}
 .fresh--line .link{font-size:13px}
+/* Tri des annonces : trois piles, actions rapides, annulation */
+.ann__list{border:0;background:none;gap:8px;overflow:visible}
+.lrow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px;border-radius:22px;background:var(--calcaire);border:1px solid var(--trait);overflow:hidden;transition:transform .26s var(--ease-sortie),opacity .22s,height .26s .1s var(--ease-sortie),margin .26s .1s,border-width .26s .1s}
+.lrow .lcard{border:0!important;box-shadow:none!important;background:none;padding-right:4px;gap:12px}
+.lrow .lcard__t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:19px}
+@media (max-width:899px){.lrow .lcard{grid-template-columns:62px minmax(0,1fr) auto}.lrow .lcard__ph{width:62px;height:56px}}
+.lrow .lcard:hover{background:none}
+.lrow:hover{background:color-mix(in srgb,var(--enduit) 45%,var(--calcaire))}
+.lrow--out-r{transform:translateX(24%);opacity:0;height:0!important;margin-top:-8px;border-width:0}
+.lrow--out-l{transform:translateX(-24%);opacity:0;height:0!important;margin-top:-8px;border-width:0}
+.lqa{display:flex;flex-direction:column;gap:6px;padding:8px 10px 8px 0}
+.qa{width:38px;height:38px;display:grid;place-items:center;border-radius:var(--galet-a);border:1px solid var(--trait);background:var(--calcaire);color:var(--ardoise-2);transition:transform .14s var(--ease-sortie),background-color .14s,color .14s}
+.qa:nth-child(2){border-radius:var(--galet-b)}
+.qa:active{transform:scale(.9)}
+.qa--keep:hover,.qa--keep[aria-pressed="true"]{background:var(--email);border-color:var(--email);color:var(--on-email)}
+.qa--drop:hover{border-color:var(--alerte);color:var(--alerte)}
+.qa--visit[aria-pressed="true"]{background:var(--ardoise);border-color:var(--ardoise);color:var(--pierre)}
+.hero{transition:transform .24s var(--ease-sortie),opacity .2s}
+.hero--out-r{transform:translateX(18%) rotate(2deg);opacity:0}
+.hero--out-l{transform:translateX(-18%) rotate(-2deg);opacity:0}
+.hero__acts .chip{display:inline-flex;align-items:center;gap:6px}
+.hero__acts .hero__keep{background:var(--bourgeon);border-color:var(--bourgeon);color:var(--on-bourgeon)}
+.lstat{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lst{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;border-radius:var(--pilule);border:1.5px solid var(--trait-fort);background:var(--calcaire);font:650 15px var(--sans);color:var(--ardoise);transition:background-color .16s,color .16s,border-color .16s,transform .14s var(--ease-sortie)}
+.lst:active{transform:scale(.97)}
+.lst--keep[aria-pressed="true"]{background:var(--email);border-color:var(--email);color:var(--on-email)}
+.lst--drop[aria-pressed="true"]{background:color-mix(in srgb,var(--alerte) 12%,var(--calcaire));border-color:var(--alerte);color:var(--alerte)}
+.lact .chip{display:inline-flex;align-items:center;gap:6px}
+.toast__act{border:0;background:none;color:var(--bourgeon);font:700 14px var(--sans);padding:4px 2px 4px 8px;margin-left:4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.ann__empty{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:20px 22px;border:1px dashed var(--trait-fort);border-radius:24px}
+.ann__empty p{margin:0;font-size:14.5px;color:var(--ardoise-2)}
+/* Ajouter une annonce */
+.addf{display:flex;flex-direction:column;gap:16px}
+@keyframes addf-in{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes addf-back{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+.addf--in{animation:addf-in .26s var(--ease-sortie) both}
+.addf--back{animation:addf-back .26s var(--ease-sortie) both}
+.addf__back{margin-right:4px}
+.addf .auth__head{display:flex;align-items:center;gap:6px}
+.addf .auth__head h2{flex:1}
+.addopts{display:flex;flex-direction:column;gap:10px}
+.addopt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px 16px;border-radius:22px;border:1px solid var(--trait);background:var(--calcaire);text-align:left;cursor:pointer;color:var(--ardoise);transition:transform .14s var(--ease-sortie),background-color .14s}
+.addopt:hover{background:color-mix(in srgb,var(--enduit) 50%,var(--calcaire))}
+.addopt:active{transform:scale(.98)}
+.addopt__t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.addopt__t b{font-size:15.5px}
+.addopt__t small{font-size:13px;color:var(--zinc);line-height:17px}
+.addf__body{display:flex;flex-direction:column;gap:14px}
+@media (prefers-reduced-motion: reduce){.addf--in,.addf--back{animation:none}}
 /* Notation : fourchette, position, avis */
 .ldet__rng{display:block;margin-top:2px;font-size:12px;font-weight:650;color:var(--ardoise-2)}
 .ldet__pct{display:block;max-width:120px;font-size:11.5px;line-height:15px;color:var(--zinc);text-align:center}
@@ -3255,10 +3304,12 @@ function placeToast(t) {
   if (y == null) { const ys = [...boxes.map(b => b.bottom + gap), ...boxes.map(b => b.top - gap - h)].filter(free).sort((a, b) => a - b); y = ys.length ? ys[0] : yt; }
   t.style.top = Math.round(Math.max(8, Math.min(y, vh - h - 8))) + "px";
 }
-function toast(msg) {
-  const t = $("#toast"); t.textContent = msg; t.hidden = false; t.style.opacity = "1";
+function toast(msg, action) {
+  const t = $("#toast"); t.hidden = false; t.style.opacity = "1";
+  if (action) { t.innerHTML = `<span>${esc(msg)}</span><button class="toast__act" type="button">${esc(action.label)}</button>`; t.querySelector(".toast__act").onclick = () => { clearTimeout(toastT); t.style.opacity = "0"; setTimeout(() => t.hidden = true, 200); action.fn(); }; }
+  else t.textContent = msg;
   placeToast(t); requestAnimationFrame(() => placeToast(t)); setTimeout(() => !t.hidden && placeToast(t), 160);
-  const ms = Math.min(6000, Math.max(2400, String(msg).length * 55));
+  const ms = action ? 5000 : Math.min(6000, Math.max(2400, String(msg).length * 55));
   clearTimeout(toastT); toastT = setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.hidden = true, 200); }, ms);
 }
 document.addEventListener("keydown", e => { if (e.key === "Escape" && ui.mode === "placing" && !document.querySelector(".ask")) confirmCancelDraft(); });
@@ -4456,7 +4507,21 @@ function scoreListing(f, raw = false) {
 
 /* ---------- Onglet Annonces ---------- */
 const LSTAT = {nouvelle: "À trier", gardee: "Gardée", visite: "Visite prévue", ecartee: "Écartée"};
-let lui = {filter: "actives", sort: "match", openId: null};
+let lui = {filter: "atrier", sort: "match", openId: null};
+const isKept = f => f.status === "gardee" || f.status === "visite";
+const ICO = {
+  keep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>',
+  drop: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  visit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>',
+  back: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12"/></svg>'
+};
+function setStatus(f, st, after) {
+  const prev = f.status || "nouvelle";
+  if (prev === st) return;
+  f.status = st; f.updatedAt = Date.now(); learnMemo.key = null; save(); renderListingPins();
+  if (after) after(); else renderListings();
+  toast({gardee: "Annonce gardée", visite: "Visite prévue", ecartee: "Annonce écartée", nouvelle: "Annonce remise à trier"}[st], {label: "Annuler", fn: () => { f.status = prev; f.updatedAt = Date.now(); learnMemo.key = null; save(); renderListingPins(); renderListings(); }});
+}
 function renderListings() {
   const vw = $("#view-annonces"), box = $("#annonces");
   const view = lui.openId && listings().some(x => x.id === lui.openId) ? "d:" + lui.openId : "list", prev = lui.lastView;
@@ -4473,43 +4538,56 @@ function renderListingsView() {
   const box = $("#annonces"); if (!box) return;
   if (lui.openId && listings().some(x => x.id === lui.openId)) return renderListingDetail(lui.openId);
   const all = modeListings().map(f => ({f, s: scoreListing(f)}));
-  const shown = all.filter(({f}) => lui.filter === "toutes" ? true : lui.filter === "gardees" ? f.status === "gardee" || f.status === "visite" : lui.filter === "ecartees" ? f.status === "ecartee" : f.status !== "ecartee")
+  if (!["atrier", "gardees", "ecartees"].includes(lui.filter)) lui.filter = "atrier";
+  const shown = all.filter(({f}) => lui.filter === "gardees" ? isKept(f) : lui.filter === "ecartees" ? f.status === "ecartee" : !isKept(f) && f.status !== "ecartee")
     .sort((a, b) => (!!a.f.gone - !!b.f.gone) || (lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : (b.s.total ?? -1) - (a.s.total ?? -1)));
-  const best = lui.filter === "actives" && lui.sort === "match" ? shown.find(x => x.s.total != null && !x.s.fails.length && x.f.status !== "ecartee" && !x.f.gone) : null;
-  const counts = {actives: all.filter(x => x.f.status !== "ecartee").length, gardees: all.filter(x => x.f.status === "gardee" || x.f.status === "visite").length, ecartees: all.filter(x => x.f.status === "ecartee").length};
+  const best = lui.filter === "atrier" && lui.sort === "match" ? shown.find(x => x.s.total != null && !x.s.fails.length && !x.f.gone) : null;
+  const counts = {atrier: all.filter(x => !isKept(x.f) && x.f.status !== "ecartee").length, gardees: all.filter(x => isKept(x.f)).length, ecartees: all.filter(x => x.f.status === "ecartee").length};
   box.innerHTML = `
     <div class="ann__head">
-      <div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1><p class="lead">${all.length ? `${plural(counts.actives, "annonce à voir", "annonces à voir")}.` : "Heden lit les annonces, les place sur la carte et les classe selon votre profil, vos zones et les ventes du quartier."}</p></div>
+      <div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1><p class="lead">${all.length ? (counts.atrier ? `${plural(counts.atrier, "annonce à trier", "annonces à trier")}.` : "Tout est trié.") : ""}</p></div>
       <button class="btn btn--primary" type="button" id="addListing">+ Ajouter une annonce</button>
     </div>
     ${all.length ? `<div class="ann__bar">
-      <div class="seg seg--sm" role="group" aria-label="Filtrer">${[["actives", "À voir"], ["gardees", "Gardées"], ["ecartees", "Écartées"]].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${lui.filter === k}">${l}<span class="num">${counts[k]}</span></button>`).join("")}</div>
+      <div class="seg seg--sm" role="group" aria-label="Filtrer">${[["atrier", "À trier"], ["gardees", "Gardées"], ["ecartees", "Écartées"]].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${lui.filter === k}">${l}<span class="num">${counts[k]}</span></button>`).join("")}</div>
       <label class="ann__sort">Trier par <select id="lsort"><option value="match" ${lui.sort === "match" ? "selected" : ""}>Correspondance</option><option value="prix" ${lui.sort === "prix" ? "selected" : ""}>Prix</option><option value="recent" ${lui.sort === "recent" ? "selected" : ""}>Ajout récent</option></select></label>
     </div>` : ""}
     ${(() => { const other = projet() === "deux" ? 0 : listings().filter(f => kindOf(f) !== curMode()).length; return other ? `<p class="hint2 ann__other">${plural(other, curMode() === "achat" ? "annonce de location masquée" : "annonce de vente masquée", curMode() === "achat" ? "annonces de location masquées" : "annonces de vente masquées")} : votre projet est ${curMode() === "achat" ? "l’achat" : "la location"}. <button class="link" type="button" id="addOther">Ajouter ${curMode() === "achat" ? "la location" : "l’achat"} à mon projet</button></p>` : ""; })()}
     ${best ? heroHTML(best.f, best.s) : ""}
     ${all.length ? `<div class="ann__list">
-      ${shown.filter(x => x !== best).map(({f, s}) => `<button type="button" class="lcard${f.status === "ecartee" || f.gone ? " lcard--off" : ""}" data-id="${f.id}">
+      ${shown.filter(x => x !== best).map(({f, s}) => `<div class="lrow" data-id="${f.id}"><button type="button" class="lcard${f.status === "ecartee" || f.gone ? " lcard--off" : ""}" data-id="${f.id}">
         <span class="lcard__ph">${f.photos && f.photos[0] ? `<img src="${esc(f.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createElement('i'))">` : `<i></i>`}</span>
         <span class="lcard__b">
           <span class="lcard__t">${esc(f.title || listingTitle(f))}</span>
           <span class="lcard__p num">${priceTxt(f)}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</span>
           <span class="lcard__r">${f.gone ? `<em class="gone">Plus en ligne</em> ` : ""}${f.dropped ? `<em class="drop">Baisse de prix</em> ` : ""}${esc((s.fails.length ? "Hors critères : " + s.fails[0] : s.plus.slice(0, 2).join(", ")) || (f.lat ? "À compléter" : "Placement sur la carte…"))}</span>
         </span>
-        <span class="lcard__s"><b class="num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</b>${f.status !== "nouvelle" ? `<em>${LSTAT[f.status]}</em>` : ""}</span>
-      </button>`).join("") || `<p class="hint2 ann__none">Aucune annonce dans ce filtre.</p>`}
+        <span class="lcard__s"><b class="num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</b>${f.status === "visite" ? `<em>Visite prévue</em>` : ""}</span>
+      </button><div class="lqa">${lui.filter === "gardees"
+        ? `<button type="button" class="qa qa--visit" data-qa="visite" aria-pressed="${f.status === "visite"}" aria-label="Visite prévue" title="Visite prévue">${ICO.visit}</button><button type="button" class="qa qa--drop" data-qa="ecartee" aria-label="Écarter" title="Écarter">${ICO.drop}</button>`
+        : lui.filter === "ecartees"
+        ? `<button type="button" class="qa" data-qa="nouvelle" aria-label="Remettre à trier" title="Remettre à trier">${ICO.back}</button><button type="button" class="qa qa--keep" data-qa="gardee" aria-label="Garder" title="Garder">${ICO.keep}</button>`
+        : `<button type="button" class="qa qa--drop" data-qa="ecartee" aria-label="Écarter" title="Écarter">${ICO.drop}</button><button type="button" class="qa qa--keep" data-qa="gardee" aria-label="Garder" title="Garder">${ICO.keep}</button>`}</div></div>`).join("") || `<p class="hint2 ann__none">${lui.filter === "gardees" ? "Aucune annonce gardée : touchez le cœur d’une annonce pour la garder." : lui.filter === "ecartees" ? "Aucune annonce écartée." : "Rien à trier."}</p>`}
     </div>` : ""}
-    ${sourcesHTML(!all.length)}`;
-  $("#addListing").onclick = () => openAddListing();
+    ${all.length ? "" : `<div class="ann__empty">${GALETS}<p>Vos annonces apparaîtront ici, notées et placées sur la carte.</p></div>`}`;
+  $("#addListing").onclick = () => openAddFlow();
   $$("[data-f]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.f; renderListings(); });
   const so = $("#lsort"); if (so) so.onchange = e => { lui.sort = e.target.value; renderListings(); };
   $$(".lcard", box).forEach(b => b.onclick = () => { lui.openId = b.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; });
-  bindSources(); bindModeSel(box);
+  $$("[data-qa]", box).forEach(b => b.onclick = () => {
+    const row = b.closest(".lrow"), f = listings().find(x => x.id === row.dataset.id); if (!f) return;
+    let st = b.dataset.qa; if (st === "visite") st = f.status === "visite" ? "gardee" : "visite";
+    const leaves = st !== "visite" && st !== "gardee" || lui.filter !== "gardees";
+    if (!leaves || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setStatus(f, st);
+    row.style.height = row.offsetHeight + "px"; row.classList.add(st === "ecartee" ? "lrow--out-l" : "lrow--out-r");
+    setTimeout(() => setStatus(f, st), 260);
+  });
+  bindModeSel(box);
   const ao = $("#addOther", box); if (ao) ao.onclick = () => { const h = homeProfile(), k = curMode() === "achat" ? "location" : "achat"; h.projet = "deux"; if (h.setup) h.setup.projet = "deux"; save(); setMode(k); toast(k === "location" ? "Location ajoutée : passez de l’un à l’autre en haut des annonces" : "Achat ajouté : passez de l’un à l’autre en haut des annonces"); };
   const hero = $(".hero", box);
   if (hero) {
     hero.onclick = e => { if (e.target.closest("[data-hst]")) return; lui.openId = hero.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; };
-    $$("[data-hst]", hero).forEach(b => b.onclick = () => { const f = listings().find(x => x.id === hero.dataset.id); if (!f) return; f.status = b.dataset.hst; f.updatedAt = Date.now(); save(); renderListings(); renderListingPins(); toast(f.status === "gardee" ? "Annonce gardée" : "Annonce écartée"); });
+    $$("[data-hst]", hero).forEach(b => b.onclick = () => { const f = listings().find(x => x.id === hero.dataset.id); if (!f) return; hero.classList.add(b.dataset.hst === "ecartee" ? "hero--out-l" : "hero--out-r"); setTimeout(() => setStatus(f, b.dataset.hst), 240); });
     countUp(hero);
   }
   if (cloud.user && cloud.alert === undefined && !cloud.noInbox) { cloud.alert = null; loadAlertState().then(() => { if (currentTab === "annonces" && !lui.openId) renderListings(); }); }
@@ -4524,7 +4602,7 @@ function heroHTML(f, s) {
       <h2>${esc(f.title || listingTitle(f))}</h2>
       <p class="hero__p num">${f.price ? priceTxt(f) : ""}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
       ${s.plus.length ? `<ul class="hero__why">${s.plus.slice(0, 3).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
-      <div class="hero__acts"><button class="chip" type="button" data-hst="gardee">Garder</button><button class="chip" type="button" data-hst="ecartee">Écarter</button></div>
+      <div class="hero__acts"><button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.drop}Écarter</button><button class="chip hero__keep" type="button" data-hst="gardee">${ICO.keep}Garder</button></div>
     </div>
   </article>`;
 }
@@ -4543,9 +4621,13 @@ function renderListingDetail(id) {
         <p class="hint2">${esc([...(f.sources || [f.source]).filter(Boolean)].join(", "))}${f.source || f.sources ? ", " : ""}${f.origin === "alerte" ? "reçue par alerte le" : "ajoutée le"} ${esc(fmtDate(new Date(f.firstSeen || f.addedAt || Date.now()).toISOString().slice(0, 10)))}</p></div>
       <div class="ldet__score" style="--c:${colorFor(s.total)}"><b class="num" ${s.total != null ? `data-count="${s.total}"` : ""}>${s.total ?? "–"}</b><span>${s.hasFix ? `corrigée${s.heden != null && s.heden !== s.total ? ` · Heden&nbsp;${s.heden}` : ""}` : "correspondance"}</span>${s.range ? `<span class="ldet__rng num" title="Fourchette tant que l’annonce ne dit pas tout">${s.range[0]} à ${s.range[1]}</span>` : ""}${(() => { const others = modeListings().filter(x => x.id !== f.id && x.status !== "ecartee").map(x => scoreListing(x).total).filter(v => v != null); if (others.length < 3 || s.total == null) return ""; const pct = Math.round(others.filter(v => v < s.total).length / others.length * 100); return `<span class="ldet__pct">${pct >= 50 ? `mieux que ${pct} %` : `moins bien que ${100 - pct} %`} de vos annonces</span>`; })()}</div>
     </div>
+    <div class="lstat">
+      <button class="lst lst--keep" type="button" data-st="gardee" aria-pressed="${isKept(f)}">${ICO.keep}<span>${isKept(f) ? "Gardée" : "Garder"}</span></button>
+      <button class="lst lst--drop" type="button" data-st="ecartee" aria-pressed="${f.status === "ecartee"}">${ICO.drop}<span>${f.status === "ecartee" ? "Écartée" : "Écarter"}</span></button>
+    </div>
     <div class="lact">
-      ${[["gardee", "Garder"], ["visite", "Visite prévue"], ["ecartee", "Écarter"]].map(([k, l]) => `<button class="chip" type="button" data-st="${k}" aria-pressed="${f.status === k}">${l}</button>`).join("")}
-      ${f.url ? `<a class="chip" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
+      ${isKept(f) ? `<button class="chip chip--sm" type="button" data-st="visite" aria-pressed="${f.status === "visite"}">${ICO.visit}Visite prévue</button>` : ""}
+      ${f.url ? `<a class="chip chip--sm" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
     </div>
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
     <div class="feel" role="group" aria-label="Votre avis sur la note"><span>Cette note vous semble</span>${[["juste", "Juste"], ["haut", "Trop haute"], ["bas", "Trop basse"]].map(([k, l]) => `<button class="chip chip--sm" type="button" data-feel="${k}" aria-pressed="${!!(f.feel && f.feel.v === k)}">${l}</button>`).join("")}
@@ -4586,7 +4668,10 @@ function renderListingDetail(id) {
   const fe = $("#finEdit"); if (fe) fe.onclick = openFinance;
   const re = $("#revEdit"); if (re) re.onclick = openRentSettings;
   if (f.dropped) { f.dropped = false; f.updatedAt = Date.now(); save(); }
-  $$("[data-st]", box).forEach(b => b.onclick = () => { f.status = f.status === b.dataset.st ? "nouvelle" : b.dataset.st; f.updatedAt = Date.now(); save(); renderListings(); renderListingPins(); toast({gardee: "Annonce gardée", visite: "Visite notée", ecartee: "Annonce écartée", nouvelle: "Annonce remise à trier"}[f.status]); });
+  $$("[data-st]", box).forEach(b => b.onclick = () => {
+    const k = b.dataset.st, st = k === "gardee" ? (isKept(f) ? "nouvelle" : "gardee") : k === "visite" ? (f.status === "visite" ? "gardee" : "visite") : (f.status === "ecartee" ? "nouvelle" : "ecartee");
+    setStatus(f, st, () => renderListingDetail(f.id));
+  });
   $("#lnote").oninput = e => { f.note = e.target.value; f.updatedAt = Date.now(); save(); };
   $("#ledit").onclick = () => openAddListing(f);
   $("#lfix").onclick = () => openScoreFix(f);
@@ -4714,7 +4799,7 @@ function fieldsFor(f) {
   return [["kind", "Type d’annonce", "sel", ["vente", "location"]], ...F];
 }
 const SEL_LABEL = {vente: "Vente", location: "Location", "true": "Meublé", "false": "Vide", a: "Avant 1946", b: "1946 à 1970", c: "1971 à 1990", d: "Après 1990", agence: "Une agence", particulier: "Un particulier", neuf: "Rénové", bon: "Bon état", rafraichir: "À rafraîchir", travaux: "Travaux", balcon: "Balcon", loggia: "Loggia", terrasse: "Terrasse", jardin: "Jardin", "": "Non précisé"};
-function openAddListing(existing, imported) {
+function openAddListing(existing, imported, opts = {}) {
   let el = $("#lsheet");
   if (!el) { el = document.createElement("div"); el.id = "lsheet"; el.className = "auth"; el.innerHTML = `<div class="auth__veil" data-lclose></div><div class="auth__card lsheet" role="dialog" aria-modal="true" aria-labelledby="lsTitle"></div>`; document.body.appendChild(el); el.addEventListener("click", e => { if (e.target.closest("[data-lclose]")) closeSheet(); }); }
   const card = el.querySelector(".lsheet");
@@ -4759,14 +4844,15 @@ function openAddListing(existing, imported) {
   };
   if (existing || imported) review(existing ? Object.assign(clone(existing), {found: existing.found || {}}) : imported);
   else {
-    card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Ajouter une annonce</h2>${close}</div>
-      <p class="auth__txt">Collez le lien et le texte de l’annonce.</p>
+    card.innerHTML = `<div class="addf addf--${opts.dir || "in"}"><div class="auth__head">${opts.back ? `<button class="x addf__back" type="button" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button>` : ""}<h2 id="lsTitle">Coller une annonce</h2>${close}</div>
+      <p class="auth__txt">Le lien et le texte de l’annonce : Heden lit le prix, la surface, l’étage, le DPE…</p>
       <form class="auth__form" id="lpaste">
         <input type="url" id="lurl" placeholder="https://… lien de l’annonce" inputmode="url">
         <textarea id="ltext" rows="7" placeholder="Collez ici le texte de l’annonce"></textarea>
         <button class="btn btn--primary btn--block" type="submit">Analyser l’annonce</button>
       </form>
-      <p class="auth__small">Plus rapide : le bouton + Heden, en bas de l’onglet Annonces.</p>`;
+      </div>`;
+    const bk = card.querySelector(".addf__back"); if (bk) bk.onclick = opts.back;
     $("#lpaste").onsubmit = e => {
       e.preventDefault();
       const url = $("#lurl").value.trim(), text = $("#ltext").value;
@@ -5549,10 +5635,10 @@ function sourcesHTML(empty) {
 const ICON_MAIL = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 7 8.5-7"/></svg>';
 const ICON_BMK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z"/><path d="M12 7.5v6M9 10.5h6" stroke-linecap="round"/></svg>';
 const ICON_PASTE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3" stroke-linecap="round"/></svg>';
-function bindSources() {
-  const box = $("#srcs"); if (!box) return;
-  $$("[data-srct]", box).forEach(b => b.onclick = () => { const k = b.dataset.srct; srcUI.open = srcUI.open === k || (srcUI.open == null && box.querySelector(`[data-src="${k}"].is-open`)) ? "" : k; renderListings(); });
-  $$("[data-os]", box).forEach(b => b.onclick = () => { srcUI.os = b.dataset.os; srcUI.open = "bouton"; renderListings(); });
+function bindSources(box = $("#srcs"), redraw = renderListings) {
+  if (!box) return;
+  $$("[data-srct]", box).forEach(b => b.onclick = () => { const k = b.dataset.srct; srcUI.open = srcUI.open === k || (srcUI.open == null && box.querySelector(`[data-src="${k}"].is-open`)) ? "" : k; redraw(); });
+  $$("[data-os]", box).forEach(b => b.onclick = () => { srcUI.os = b.dataset.os; srcUI.open = "bouton"; redraw(); });
   $$("[data-bmkcopy]", box).forEach(c => c.onclick = async () => { try { await navigator.clipboard.writeText(bookmarkletCode()); toast("Code copié : collez-le dans le signet"); } catch (e) { window.prompt("Copiez ce code :", bookmarkletCode()); } });
   const l = $(".bmk__link", box); if (l) l.onclick = e => { e.preventDefault(); l.classList.remove("bmk__link--nudge"); void l.offsetWidth; l.classList.add("bmk__link--nudge"); toast("Ne cliquez pas : glissez-le dans la barre des favoris"); };
   const p = $("#srcPaste"); if (p) p.onclick = () => openAddListing();
@@ -5562,13 +5648,40 @@ function bindSources() {
     btn.disabled = true;
     const {data, error} = await cloud.client.rpc("new_ingest_token");
     if (error || !data) { btn.disabled = false; return toast("Impossible de créer le script pour l’instant"); }
-    cloud.alert = {token: data, last_at: null, received: 0}; srcUI.open = "alertes"; renderListings();
+    cloud.alert = {token: data, last_at: null, received: 0}; srcUI.open = "alertes"; redraw();
     try { await navigator.clipboard.writeText(gmailScript(data)); toast("Script copié : collez-le dans Google Apps Script"); } catch (e) {}
   };
   if (on) on.onclick = () => mk(on);
   if (reset) reset.onclick = async () => { if (await askConfirm({title: "Changer de script ?", text: "L’ancien script Gmail cessera d’envoyer vos alertes. Il faudra coller le nouveau.", ok: "Changer"})) mk(reset); };
   const cp = $("#alCopy"); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(gmailScript(cloud.alert.token)); toast("Script copié"); } catch (e) { window.prompt("Copiez ce script :", gmailScript(cloud.alert.token)); } };
   const am = $("#alMap"); if (am) am.onchange = e => { const h = homeProfile(); h.alerts = Object.assign({}, h.alerts, {mapId: e.target.value}); save(); toast("Les alertes iront sur cette carte"); };
+}
+
+/* ---------- Ajouter une annonce : trois façons, puis l'étape choisie ---------- */
+function openAddFlow(view = "choix", dir = "in") {
+  let el = $("#lsheet");
+  const closeSheet = () => { el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); };
+  if (!el) { el = document.createElement("div"); el.id = "lsheet"; el.className = "auth"; el.innerHTML = `<div class="auth__veil" data-lclose></div><div class="auth__card lsheet" role="dialog" aria-modal="true" aria-labelledby="lsTitle"></div>`; document.body.appendChild(el); el.addEventListener("click", e => { if (e.target.closest("[data-lclose]")) closeSheet(); }); }
+  if (cloud.user && cloud.alert === undefined && !cloud.noInbox) { cloud.alert = null; loadAlertState().then(() => { const c = $("#lsheet .addf"); if (c && !el.hidden) openAddFlow(c.dataset.v, "same"); }); }
+  if (view === "coller") return openAddListing(null, null, {back: () => openAddFlow("choix", "back"), dir});
+  const card = el.querySelector(".lsheet");
+  const close = `<button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+  const back = `<button class="x addf__back" type="button" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button>`;
+  const tmp = document.createElement("div"); tmp.innerHTML = sourcesHTML(false);
+  const status = k => { const t = tmp.querySelector(`[data-src="${k}"] .src__t span`); return t ? t.textContent : ""; };
+  const opt = (k, ic, t, sub) => `<button class="addopt" type="button" data-v="${k}"><span class="src__ic">${ic}</span><span class="addopt__t"><b>${t}</b><small>${esc(sub)}</small></span><span class="src__chev src__chev--go"></span></button>`;
+  let body;
+  if (view === "choix") body = `<div class="auth__head"><h2 id="lsTitle">Ajouter une annonce</h2>${close}</div>
+    <div class="addopts">${opt("coller", ICON_PASTE, "Coller une annonce", "Son lien et son texte, tout de suite")}${opt("bouton", ICON_BMK, "Le bouton + Heden", bmkInstalled() ? "Installé : une annonce ou une page de résultats en un clic" : "À installer une fois, puis un clic sur chaque annonce")}${opt("alertes", ICON_MAIL, "Les alertes e-mail", status("alertes") || "Vos alertes arrivent toutes seules")}</div>`;
+  else {
+    const src = tmp.querySelector(`[data-src="${view}"] .src__body`);
+    body = `<div class="auth__head">${back}<h2 id="lsTitle">${view === "bouton" ? "Le bouton + Heden" : "Les alertes e-mail"}</h2>${close}</div><div class="addf__body" id="srcs">${src ? src.innerHTML : ""}</div>`;
+  }
+  card.innerHTML = `<div class="addf addf--${dir}" data-v="${view}">${body}</div>`;
+  $$(".addopt", card).forEach(b => b.onclick = () => openAddFlow(b.dataset.v, "in"));
+  const bk = card.querySelector(".addf__back"); if (bk) bk.onclick = () => openAddFlow("choix", "back");
+  if (view !== "choix") bindSources(card.querySelector("#srcs"), () => openAddFlow(view, "same"));
+  if (el.hidden || !el.classList.contains("is-open")) { el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open")); }
 }
 
 /* ---------- Fiche annonce : sections d'analyse ---------- */
