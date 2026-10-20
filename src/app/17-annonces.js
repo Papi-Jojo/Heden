@@ -388,7 +388,7 @@ function scoreListing(f, raw = false) {
 
 /* ---------- Onglet Annonces ---------- */
 const LSTAT = {nouvelle: "À trier", gardee: "Gardée", visite: "Visite prévue", ecartee: "Écartée"};
-let lui = {filter: "atrier", sort: "match", openId: null};
+let lui = {filter: "atrier", sort: "reco", openId: null};
 const isKept = f => f.status === "gardee" || f.status === "visite";
 const ICO = {
   keep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>',
@@ -420,9 +420,9 @@ function renderListingsView() {
   if (lui.openId && listings().some(x => x.id === lui.openId)) return renderListingDetail(lui.openId);
   const all = modeListings().map(f => ({f, s: scoreListing(f)}));
   if (!["atrier", "gardees", "ecartees"].includes(lui.filter)) lui.filter = "atrier";
+  if (!["reco", "match", "prix", "recent"].includes(lui.sort)) lui.sort = "reco";
   const shown = all.filter(({f}) => lui.filter === "gardees" ? isKept(f) : lui.filter === "ecartees" ? f.status === "ecartee" : !isKept(f) && f.status !== "ecartee")
-    .sort((a, b) => (!!a.f.gone - !!b.f.gone) || (lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : (b.s.total ?? -1) - (a.s.total ?? -1)));
-  const best = lui.filter === "atrier" && lui.sort === "match" ? shown.find(x => x.s.total != null && !x.s.fails.length && !x.f.gone) : null;
+    .sort((a, b) => (!!a.f.gone - !!b.f.gone) || (lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : lui.sort === "match" ? (b.s.total ?? -1) - (a.s.total ?? -1) : recoScore(b) - recoScore(a)));
   const counts = {atrier: all.filter(x => !isKept(x.f) && x.f.status !== "ecartee").length, gardees: all.filter(x => isKept(x.f)).length, ecartees: all.filter(x => x.f.status === "ecartee").length};
   box.innerHTML = `
     <div class="ann__head">
@@ -431,59 +431,61 @@ function renderListingsView() {
     </div>
     ${all.length ? `<div class="ann__bar">
       <div class="seg seg--sm" role="group" aria-label="Filtrer">${[["atrier", "À trier"], ["gardees", "Gardées"], ["ecartees", "Écartées"]].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${lui.filter === k}">${l}<span class="num">${counts[k]}</span></button>`).join("")}</div>
-      <label class="ann__sort">Trier par <select id="lsort"><option value="match" ${lui.sort === "match" ? "selected" : ""}>Correspondance</option><option value="prix" ${lui.sort === "prix" ? "selected" : ""}>Prix</option><option value="recent" ${lui.sort === "recent" ? "selected" : ""}>Ajout récent</option></select></label>
+      <label class="ann__sort">Trier par <select id="lsort">${[["reco", "Recommandé"], ["match", "Note"], ["prix", "Prix"], ["recent", "Ajout récent"]].map(([v, l]) => `<option value="${v}" ${lui.sort === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
     </div>` : ""}
     ${(() => { const other = projet() === "deux" ? 0 : listings().filter(f => kindOf(f) !== curMode()).length; return other ? `<p class="hint2 ann__other">${plural(other, curMode() === "achat" ? "annonce de location masquée" : "annonce de vente masquée", curMode() === "achat" ? "annonces de location masquées" : "annonces de vente masquées")} : votre projet est ${curMode() === "achat" ? "l’achat" : "la location"}. <button class="link" type="button" id="addOther">Ajouter ${curMode() === "achat" ? "la location" : "l’achat"} à mon projet</button></p>` : ""; })()}
-    ${best ? heroHTML(best.f, best.s) : ""}
-    ${all.length ? `<div class="ann__list">
-      ${shown.filter(x => x !== best).map(({f, s}) => `<div class="lrow" data-id="${f.id}"><button type="button" class="lcard${f.status === "ecartee" || f.gone ? " lcard--off" : ""}" data-id="${f.id}">
-        <span class="lcard__ph">${f.photos && f.photos[0] ? `<img src="${esc(f.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createElement('i'))">` : `<i></i>`}</span>
-        <span class="lcard__b">
-          <span class="lcard__t">${esc(f.title || listingTitle(f))}</span>
-          <span class="lcard__p num">${priceTxt(f)}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</span>
-          <span class="lcard__r">${f.gone ? `<em class="gone">Plus en ligne</em> ` : ""}${f.dropped ? `<em class="drop">Baisse de prix</em> ` : ""}${esc((s.fails.length ? "Hors critères : " + s.fails[0] : s.plus.slice(0, 2).join(", ")) || (f.lat ? "À compléter" : "Placement sur la carte…"))}</span>
-        </span>
-        <span class="lcard__s"><b class="num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</b>${f.status === "visite" ? `<em>Visite prévue</em>` : ""}</span>
-      </button><div class="lqa">${lui.filter === "gardees"
-        ? `<button type="button" class="qa qa--visit" data-qa="visite" aria-pressed="${f.status === "visite"}" aria-label="Visite prévue" title="Visite prévue">${ICO.visit}</button><button type="button" class="qa qa--drop" data-qa="ecartee" aria-label="Écarter" title="Écarter">${ICO.drop}</button>`
-        : lui.filter === "ecartees"
-        ? `<button type="button" class="qa" data-qa="nouvelle" aria-label="Remettre à trier" title="Remettre à trier">${ICO.back}</button><button type="button" class="qa qa--keep" data-qa="gardee" aria-label="Garder" title="Garder">${ICO.keep}</button>`
-        : `<button type="button" class="qa qa--drop" data-qa="ecartee" aria-label="Écarter" title="Écarter">${ICO.drop}</button><button type="button" class="qa qa--keep" data-qa="gardee" aria-label="Garder" title="Garder">${ICO.keep}</button>`}</div></div>`).join("") || `<p class="hint2 ann__none">${lui.filter === "gardees" ? "Aucune annonce gardée : touchez le cœur d’une annonce pour la garder." : lui.filter === "ecartees" ? "Aucune annonce écartée." : "Rien à trier."}</p>`}
-    </div>` : ""}
+    ${all.length ? `<div class="ann__feed">${shown.map(({f, s}, k) => heroHTML(f, s, k)).join("") || `<p class="hint2 ann__none">${lui.filter === "gardees" ? "Aucune annonce gardée : touchez le cœur d’une annonce pour la garder." : lui.filter === "ecartees" ? "Aucune annonce écartée." : "Rien à trier."}</p>`}</div>` : ""}
     ${all.length ? "" : `<div class="ann__empty">${GALETS}<p>Vos annonces apparaîtront ici, notées et placées sur la carte.</p></div>`}`;
   $("#addListing").onclick = () => openAddFlow();
   $$("[data-f]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.f; renderListings(); });
   const so = $("#lsort"); if (so) so.onchange = e => { lui.sort = e.target.value; renderListings(); };
-  $$(".lcard", box).forEach(b => b.onclick = () => { lui.openId = b.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; });
-  $$("[data-qa]", box).forEach(b => b.onclick = () => {
-    const row = b.closest(".lrow"), f = listings().find(x => x.id === row.dataset.id); if (!f) return;
-    let st = b.dataset.qa; if (st === "visite") st = f.status === "visite" ? "gardee" : "visite";
-    const leaves = st !== "visite" && st !== "gardee" || lui.filter !== "gardees";
-    if (!leaves || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setStatus(f, st);
-    row.style.height = row.offsetHeight + "px"; row.classList.add(st === "ecartee" ? "lrow--out-l" : "lrow--out-r");
-    setTimeout(() => setStatus(f, st), 260);
+  $$(".hero", box).forEach(card => {
+    card.onclick = e => { if (e.target.closest("[data-hst]")) return; lui.openId = card.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; };
+    $$("[data-hst]", card).forEach(b => b.onclick = () => {
+      const f = listings().find(x => x.id === card.dataset.id); if (!f) return;
+      let st = b.dataset.hst; if (st === "visite") st = f.status === "visite" ? "gardee" : "visite";
+      const stays = (st === "visite" || st === "gardee") && lui.filter === "gardees";
+      if (stays || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setStatus(f, st);
+      card.style.height = card.offsetHeight + "px"; card.classList.add(st === "ecartee" ? "hero--out-l" : "hero--out-r");
+      setTimeout(() => setStatus(f, st), 260);
+    });
   });
+  const first = $(".hero", box); if (first) countUp(first);
   bindModeSel(box);
-  const ao = $("#addOther", box); if (ao) ao.onclick = () => { const h = homeProfile(), k = curMode() === "achat" ? "location" : "achat"; h.projet = "deux"; if (h.setup) h.setup.projet = "deux"; save(); setMode(k); toast(k === "location" ? "Location ajoutée : passez de l’un à l’autre en haut des annonces" : "Achat ajouté : passez de l’un à l’autre en haut des annonces"); };
-  const hero = $(".hero", box);
-  if (hero) {
-    hero.onclick = e => { if (e.target.closest("[data-hst]")) return; lui.openId = hero.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; };
-    $$("[data-hst]", hero).forEach(b => b.onclick = () => { const f = listings().find(x => x.id === hero.dataset.id); if (!f) return; hero.classList.add(b.dataset.hst === "ecartee" ? "hero--out-l" : "hero--out-r"); setTimeout(() => setStatus(f, b.dataset.hst), 240); });
-    countUp(hero);
-  }
+  const ao = $("#addOther", box); if (ao) ao.onclick = () => { const h = homeProfile(), k = curMode() === "achat" ? "location" : "achat"; h.projet = "deux"; if (h.setup) h.setup.projet = "deux"; save(); setMode(k); toast(k === "location" ? "Location ajoutée à votre projet" : "Achat ajouté à votre projet"); };
   if (cloud.user && cloud.alert === undefined && !cloud.noInbox) { cloud.alert = null; loadAlertState().then(() => { if (currentTab === "annonces" && !lui.openId) renderListings(); }); }
 }
-function heroHTML(f, s) {
-  const ph = f.photos && f.photos[0];
-  return `<article class="hero" data-id="${f.id}" style="--c:${colorFor(s.total)}" aria-label="Meilleure correspondance">
-    <div class="hero__ph">${ph ? `<img src="${esc(ph)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : GALETS}</div>
-    <b class="hero__s num" data-count="${s.total}">${s.total}</b>
+/* Recommandé : la note, plus un bonus pour les annonces récentes (qui s'efface en deux à trois semaines), hors critères en dernier */
+function recoScore({f, s}) {
+  const days = Math.max(0, (Date.now() - (f.addedAt || f.firstSeen || 0)) / 864e5);
+  return (s.total ?? 45) + 14 * Math.exp(-days / 6) - (s.fails.length ? 25 : 0) + (f.dropped ? 3 : 0);
+}
+function heroKicker(f, s, k) {
+  if (f.gone) return "Plus en ligne";
+  if (f.status === "visite") return "Visite prévue";
+  if (s.fails.length) return "Hors critères";
+  if (f.dropped) return "Baisse de prix";
+  if (k === 0 && lui.sort === "reco" && lui.filter === "atrier" && s.total != null) return "Recommandée";
+  const days = Math.floor((Date.now() - (f.addedAt || 0)) / 864e5);
+  if (days < 2) return "Nouvelle";
+  return days < 60 ? `Ajoutée il y a ${days} jours` : (kindOf(f) === "location" ? "Location" : "Vente");
+}
+function heroHTML(f, s, k = 0) {
+  const ph = f.photos && f.photos[0], why = s.fails.length ? s.fails.slice(0, 1).map(x => "Hors critères : " + x).concat(s.plus.slice(0, 2)) : s.plus.slice(0, 3);
+  const acts = lui.filter === "gardees"
+    ? `<button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.drop}Écarter</button><button class="chip hero__keep" type="button" data-hst="visite" aria-pressed="${f.status === "visite"}">${ICO.visit}${f.status === "visite" ? "Visite prévue" : "Prévoir la visite"}</button>`
+    : lui.filter === "ecartees"
+    ? `<button class="chip hero__drop" type="button" data-hst="nouvelle">${ICO.back}Remettre à trier</button><button class="chip hero__keep" type="button" data-hst="gardee">${ICO.keep}Garder</button>`
+    : `<button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.drop}Écarter</button><button class="chip hero__keep" type="button" data-hst="gardee">${ICO.keep}Garder</button>`;
+  return `<article class="hero${ph ? "" : " hero--nophoto"}${f.gone || f.status === "ecartee" ? " hero--off" : ""}${s.fails.length ? " hero--fail" : ""}" data-id="${f.id}" style="--c:${colorFor(s.total)}">
+    <div class="hero__ph">${ph ? `<img src="${esc(ph)}" alt="" loading="${k < 2 ? "eager" : "lazy"}" referrerpolicy="no-referrer" onerror="this.remove()">` : GALETS}</div>
+    <b class="hero__s num"${k === 0 && s.total != null ? ` data-count="${s.total}"` : ""}>${s.total ?? "–"}</b>
     <div class="hero__b">
-      <span class="hero__k">Meilleure correspondance</span>
+      <span class="hero__k">${esc(heroKicker(f, s, k))}</span>
       <h2>${esc(f.title || listingTitle(f))}</h2>
-      <p class="hero__p num">${f.price ? priceTxt(f) : ""}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
-      ${s.plus.length ? `<ul class="hero__why">${s.plus.slice(0, 3).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
-      <div class="hero__acts"><button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.drop}Écarter</button><button class="chip hero__keep" type="button" data-hst="gardee">${ICO.keep}Garder</button></div>
+      <p class="hero__p num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer ?" : "Prix ?"}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
+      ${why.length ? `<ul class="hero__why">${why.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="hero__why hero__why--none">${f.lat ? "À compléter" : "Placement sur la carte…"}</p>`}
+      <div class="hero__acts">${acts}</div>
     </div>
   </article>`;
 }
@@ -500,7 +502,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
         <p class="ldet__price num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer non trouvé" : "Prix non trouvé"}${s.ppm ? ` <small>${ppmTxt(f)}</small>` : ""}</p>
         ${f.priceHistory && f.priceHistory.length ? `<p class="ldet__hist num">${f.priceHistory.map(x => `<s>${fmtInt(x.price)}&#8239;€</s>`).join(" ")} ${f.dropped ? "<em class=\"drop\">Baisse de prix</em>" : ""}</p>` : ""}
         <p class="hint2">${esc([...(f.sources || [f.source]).filter(Boolean)].join(", "))}${f.source || f.sources ? ", " : ""}${f.origin === "alerte" ? "reçue par alerte le" : "ajoutée le"} ${esc(fmtDate(new Date(f.firstSeen || f.addedAt || Date.now()).toISOString().slice(0, 10)))}</p></div>
-      <div class="ldet__score" style="--c:${colorFor(s.total)}"><b class="num" ${s.total != null ? `data-count="${s.total}"` : ""}>${s.total ?? "–"}</b><span>${s.hasFix ? `corrigée${s.heden != null && s.heden !== s.total ? ` · Heden&nbsp;${s.heden}` : ""}` : "correspondance"}</span>${s.range ? `<span class="ldet__rng num" title="Fourchette tant que l’annonce ne dit pas tout">${s.range[0]} à ${s.range[1]}</span>` : ""}${(() => { const others = modeListings().filter(x => x.id !== f.id && x.status !== "ecartee").map(x => scoreListing(x).total).filter(v => v != null); if (others.length < 3 || s.total == null) return ""; const pct = Math.round(others.filter(v => v < s.total).length / others.length * 100); return `<span class="ldet__pct">${pct >= 50 ? `mieux que ${pct} %` : `moins bien que ${100 - pct} %`} de vos annonces</span>`; })()}</div>
+      <div class="ldet__score" style="--c:${colorFor(s.total)}"><b class="num" ${s.total != null ? `data-count="${s.total}"` : ""}>${s.total ?? "–"}</b><span>${s.hasFix ? `corrigée${s.heden != null && s.heden !== s.total ? ` · Heden&nbsp;${s.heden}` : ""}` : "note"}</span>${s.range ? `<span class="ldet__rng num" title="Fourchette tant que l’annonce ne dit pas tout">${s.range[0]} à ${s.range[1]}</span>` : ""}${(() => { const others = modeListings().filter(x => x.id !== f.id && x.status !== "ecartee").map(x => scoreListing(x).total).filter(v => v != null); if (others.length < 3 || s.total == null) return ""; const pct = Math.round(others.filter(v => v < s.total).length / others.length * 100); return `<span class="ldet__pct">${pct >= 50 ? `mieux que ${pct} %` : `moins bien que ${100 - pct} %`} de vos annonces</span>`; })()}</div>
     </div>
     <div class="lstat">
       <button class="lst lst--keep" type="button" data-st="gardee" aria-pressed="${isKept(f)}">${ICO.keep}<span>${isKept(f) ? "Gardée" : "Garder"}</span></button>
@@ -558,14 +560,14 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
   $$("[data-feel]", box).forEach(b => b.onclick = () => {
     const k = b.dataset.feel; f.feel = f.feel && f.feel.v === k ? null : {v: k, at: Date.now(), total: s.total}; if (!f.feel) delete f.feel;
     f.updatedAt = Date.now(); save(); learnMemo.key = null; renderListingDetail(f.id);
-    if (f.feel) toast(k === "juste" ? "Noté : la note vous convient" : "Noté : Heden ajuste vos priorités au fil de vos avis");
+    if (f.feel) if (k !== "juste") toast("Merci : Heden ajuste vos priorités");
   });
   const ff = $("#feelFix", box); if (ff) ff.onclick = () => openScoreFix(f);
   bindContact(f, box);
   const lm = $("#lmap"); if (lm) lm.onclick = () => { setTab("map"); map.flyTo([f.lat, f.lng], 16, {duration: .6}); };
   $("#ldel").onclick = async () => {
     if (!(await askConfirm({title: "Supprimer cette annonce ?", text: "Elle disparaît de vos annonces et de la carte.", ok: "Supprimer", danger: true}))) return;
-    state.listings = listings().filter(x => x.id !== f.id); save(); lui.openId = null; renderListings(); renderListingPins(); toast("Annonce supprimée");
+    state.listings = listings().filter(x => x.id !== f.id); save(); lui.openId = null; renderListings(); renderListingPins();
   };
 }
 
@@ -603,13 +605,13 @@ function contactHTML(f) {
 }
 function bindContact(f, box) {
   const m = $("#lmsg", box); if (m) m.onclick = async () => {
-    try { await navigator.clipboard.writeText(visitMessage(f)); toast(f.agencyPhone || f.agencyEmail ? "Message copié" : "Message copié : collez-le dans le formulaire de contact du site"); }
+    try { await navigator.clipboard.writeText(visitMessage(f)); toast(f.agencyPhone || f.agencyEmail ? "Message copié" : "Message copié : collez-le dans le formulaire du site"); }
     catch (e) { toast("Copie impossible sur ce navigateur"); }
   };
   const e = $("#lcontactEdit", box); if (e) e.onclick = () => openAddListing(f);
   const r = $("#lrecheck", box); if (r) r.onclick = () => {
     window.open(f.url, "_blank", "noopener");
-    toast("Sur la page de l’annonce, touchez + Heden : prix, disponibilité et agence seront mis à jour");
+    toast("Ouvrez l’annonce et touchez + Heden pour la mettre à jour");
   };
 }
 
@@ -656,7 +658,6 @@ function openScoreFix(f) {
       const had = !!f.fix;
       if (empty) delete f.fix; else f.fix = {crit: fx.crit, quartier: fx.quartier, total: fx.total, by: cloud.user ? cloud.user.id : null, at: Date.now()};
       f.updatedAt = Date.now(); save(); closeSheet(); renderListings(); renderListingPins();
-      toast(empty ? (had ? "Note rendue à l’analyse de Heden" : "Rien à corriger") : "Note corrigée");
     };
   };
   draw();
@@ -719,7 +720,6 @@ function openAddListing(existing, imported, opts = {}) {
       if (existing) Object.assign(existing, f);
       else { f.id = zoneId(); f.status = "nouvelle"; f.addedAt = f.firstSeen = Date.now(); f.origin = "manuel"; f.mapId = cloud.user ? cloud.mapId : null; f.createdBy = cloud.user ? cloud.user.id : null; listings().unshift(f); lui.openId = f.id; }
       save(); closeSheet(); if (currentTab !== "annonces") setTab("annonces"); else renderListings(); renderListingPins();
-      toast(existing ? "Annonce mise à jour" : "Annonce ajoutée");
     };
   };
   if (existing || imported) review(existing ? Object.assign(clone(existing), {found: existing.found || {}}) : imported);

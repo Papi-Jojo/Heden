@@ -192,7 +192,7 @@ function refreshFromPage(ex, p) {
   }
   ex.updatedAt = now; save(); renderListingPins();
   lui.openId = ex.id; if (currentTab !== "annonces") setTab("annonces"); else renderListings();
-  toast(news.length ? "Annonce à jour : " + news.join(", ") : "Annonce à jour : rien n’a changé sur le site");
+  toast(news.length ? "Mise à jour : " + news.join(", ") : "Rien n’a changé sur le site");
 }
 
 /* ---------- Import d'une page de résultats ---------- */
@@ -240,7 +240,7 @@ async function openBatchImport(items, pageUrl) {
         if (!r.on) return;
         const m = mergeCard(r.c, {origin: "page", source: src}); if (m.kind === "new") { n++; fresh.push(m.f); }
       });
-      save(); closeSheet(); lui.openId = null; lui.filter = "actives"; lui.sort = "recent";
+      save(); closeSheet(); lui.openId = null; lui.filter = "atrier"; lui.sort = "reco";
       if (currentTab !== "annonces") setTab("annonces"); else renderListings();
       renderListingPins(); queuePlace(fresh);
       toast(n ? `${n} annonce${n > 1 ? "s" : ""} importée${n > 1 ? "s" : ""}, placement sur la carte en cours` : up ? `${up} prix mis à jour` : "Rien de nouveau");
@@ -576,7 +576,7 @@ function paintQuiz() {
       }, 400);
     };
   });
-  const go = $("#qzDone"); if (go) go.onclick = () => { closeQuiz(); lui.openId = null; rerenderAll(); renderProfile(); toast("Profil réglé : vos zones et annonces sont recalculées"); };
+  const go = $("#qzDone"); if (go) go.onclick = () => { closeQuiz(); lui.openId = null; rerenderAll(); renderProfile(); };
   const adv = $("#qzAdv"); if (adv) adv.onclick = () => { closeQuiz(); rerenderAll(); ptab = "quartier"; setTab("profile"); showPtab("quartier"); };
 }
 function quizResultHTML() {

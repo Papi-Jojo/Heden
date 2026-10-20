@@ -193,7 +193,7 @@ async function cloudLoad() {
   } catch (err) {
     console.warn("Heden : chargement du compte", err);
     setCloudStatus("error", err);
-    toast("Impossible de joindre la base pour l'instant. Vos zones restent sur l'appareil.");
+    toast("Hors connexion : vos zones restent sur cet appareil");
   }
 }
 
@@ -235,7 +235,7 @@ async function uploadPhotos(z, items, opts = {}) {
   if (!items.length || !cloud.user) return 0;
   if (hasPending()) await syncNow();
   const target = photoZoneId(z);
-  if (!z.link && (!cloud.synced || !cloud.synced.zones[z.id])) { toast("Zone pas encore enregistrée dans votre compte : réessayez dans un instant"); return 0; }
+  if (!z.link && (!cloud.synced || !cloud.synced.zones[z.id])) { toast("Zone pas encore enregistrée : réessayez dans un instant"); return 0; }
   uploads.set(z.id, (uploads.get(z.id) || 0) + items.length); paintPhotos();
   const st = cloud.client.storage.from("photos"); let ok = 0;
   for (const it of items) {
@@ -269,7 +269,7 @@ async function deletePhoto(z, ph) {
     const {error} = await cloud.client.from("zone_photos").delete().eq("id", ph.id); if (error) throw error;
     z.photos = (z.photos || []).filter(p => p.id !== ph.id);
     if (z.cover === ph.id) z.cover = null;
-    save(); renderZones(); paintPhotos(); toast("Photo supprimée");
+    save(); renderZones(); paintPhotos();
     return true;
   } catch (err) { console.warn(err); toast("Suppression impossible pour le moment"); return false; }
 }
@@ -352,7 +352,7 @@ async function paintViewer() {
   const isCover = coverOf(z) && coverOf(z).id === p.id, mine = cloud.user && p.userId === cloud.user.id;
   el.querySelector(".viewer__acts").innerHTML = `${ps.length > 1 ? `<button type="button" class="vbtn" data-vcover ${isCover ? "disabled" : ""}>${isCover ? "Photo de couverture" : "Mettre en couverture"}</button>` : ""}${mine ? `<button type="button" class="vbtn vbtn--del" data-vdel>Supprimer</button>` : ""}`;
   const cv = el.querySelector("[data-vcover]");
-  if (cv) cv.onclick = () => { z.cover = p.id; save(); renderZones(); paintPhotos(); paintViewer(); toast("Photo de couverture choisie"); };
+  if (cv) cv.onclick = () => { z.cover = p.id; save(); renderZones(); paintPhotos(); paintViewer(); };
   const dl = el.querySelector("[data-vdel]");
   if (dl) dl.onclick = async () => {
     if (!(await askConfirm({title: "Supprimer cette photo ?", ok: "Supprimer", danger: true}))) return;
@@ -442,7 +442,7 @@ function saveGroupCrit(m) {
   clearTimeout(groupCritT);
   groupCritT = setTimeout(async () => {
     const {error} = await cloud.client.rpc("set_map_criteria", {m: m.id, c: m.criteria});
-    if (error) toast("Critères communs non enregistrés pour le moment : réessayez dans un instant");
+    if (error) toast("Critères communs non enregistrés : réessayez dans un instant");
   }, 600);
 }
 const mapLabel = m => m.kind === "perso" ? "Ma carte" : m.name;
@@ -474,7 +474,7 @@ async function switchMap(id) {
   clearTimeout(cloud.timer);
   for (let k = 0; cloud.busy && k < 100; k++) await new Promise(r => setTimeout(r, 100));
   if (hasPending()) await syncNow();
-  if (hasPending()) { toast("Vos dernières modifications ne sont pas encore envoyées : réessayez dans un instant"); return; }
+  if (hasPending()) { toast("Modifications pas encore envoyées : réessayez dans un instant"); return; }
   if (draft) { draft = null; selVertex = null; clearDraftLayers(); clearWalkTrace(); setHint(null); }
   resetForMap(id);
   selectedId = null; ui.mode = "list";
@@ -484,7 +484,6 @@ async function switchMap(id) {
   await cloudRefresh(true);
   const pts = state.zones.flatMap(z => z.points || []);
   if (pts.length) setTimeout(() => { try { map.invalidateSize(); map.fitBounds(L.latLngBounds(pts).pad(0.2), {maxZoom: 16}); } catch (e) {} }, 80);
-  toast(isShared() ? `Carte « ${curMap().name} »` : "Votre carte");
 }
 function setupRealtime() {
   const c = cloud.client;
@@ -516,8 +515,8 @@ async function copyToMap(z, mapId, btn) {
     await cloud.client.from("zones").update({link_zone: id}).eq("id", z.id);
     z.link = id; cloud.twins[id] = z.id; save();
     if (ui.mode === "detail" && selectedId === z.id) renderPanel();
-    toast(`Zone ajoutée à « ${m.name} » : vos notes et photos y sont reliées`);
-  } catch (err) { console.warn(err); toast("Copie impossible pour le moment. Réessayez plus tard."); }
+    toast(`Ajoutée à « ${m.name} »`);
+  } catch (err) { console.warn(err); toast("Copie impossible pour l’instant"); }
   if (btn) btn.disabled = false;
 }
 const inviteLink = code => location.origin + location.pathname + "?rejoindre=" + encodeURIComponent(code);
@@ -563,7 +562,6 @@ async function leaveSharedMap(mapId) {
   if (error) { toast("Impossible de quitter la carte pour le moment"); return; }
   await loadMaps();
   if (cloud.invite && cloud.invite.mapId === mapId) cloud.invite = null;
-  toast("Vous avez quitté la carte");
   rerenderAll();
 }
 async function deleteSharedMap(mapId) {
@@ -573,7 +571,6 @@ async function deleteSharedMap(mapId) {
   if (error) { toast("Impossible de supprimer la carte pour le moment"); return; }
   await loadMaps();
   if (cloud.invite && cloud.invite.mapId === mapId) cloud.invite = null;
-  toast("Carte supprimée, avec ses zones et ses notes");
   rerenderAll();
 }
 function inviteHTML(inv) {
@@ -625,7 +622,7 @@ function bindShared() {
   $("#newMapForm").onsubmit = async e => {
     e.preventDefault();
     const b = e.target.querySelector("button"); b.disabled = true;
-    try { await createSharedMap($("#newMapName").value.trim()); toast("Carte créée : envoyez l’invitation aux autres membres"); }
+    try { await createSharedMap($("#newMapName").value.trim()); }
     catch (err) { console.warn(err); toast("Création impossible pour le moment"); }
     renderProfile();
   };
@@ -750,7 +747,7 @@ function cloudInit() {
     if (u && (!cloud.user || cloud.user.id !== u.id)) {
       cloud.user = u; cloud.step = "email"; cloud.synced = null; cloud.names = {};
       renderAccountChip();
-      if (event === "SIGNED_IN") toast("Connecté : " + (u.email || ""));
+      if (event === "SIGNED_IN") toast("Connecté");
       cloud.pendingEmail = ""; clearInterval(auth.timer); auth.cooldown = 0;
       if (auth.open) closeAuth();
       try { if (/(access_token|error)=/.test(location.hash)) history.replaceState(null, "", currentTab === "profile" ? "#profil" : "#carte"); } catch (e) {}

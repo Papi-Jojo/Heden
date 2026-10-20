@@ -76,7 +76,7 @@ function tipShow(tip) {
   requestAnimationFrame(() => { el.classList.add("is-in"); halo.classList.add("is-in"); });
   cancelAnimationFrame(tipRaf); tipRaf = requestAnimationFrame(tipLoop);
   el.querySelector(".tip__ok").onclick = () => tipHide(true);
-  el.querySelector(".tip__skip").onclick = () => { tipsState().off = true; tipsSave(); tipHide(true); if (currentTab === "profile") renderProfile(); toast("Astuces désactivées : réactivez-les dans Profil, Compte"); };
+  el.querySelector(".tip__skip").onclick = () => { tipsState().off = true; tipsSave(); tipHide(true); if (currentTab === "profile") renderProfile(); toast("Astuces masquées : Profil, Compte pour les revoir"); };
 }
 function tipHide(seen) {
   if (!tipCur) return;

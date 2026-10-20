@@ -366,7 +366,6 @@ async function confirmCancelDraft() {
       : {title: "Abandonner cette zone ?", text: ui.mode === "rating" ? `Le tracé${draft.pendingPhotos && draft.pendingPhotos.length ? ", les photos" : ""} et les notes saisies seront perdus.` : "Les points déjà posés seront effacés.", ok: "Abandonner", cancel: "Continuer", abandon: true}))) return;
   const wasNew = !orig;
   cancelDraft();
-  if (lose) toast(wasNew ? "Zone abandonnée" : "Modifications annulées");
 }
 
 /* État des échelles : note donnée, ou estimation proposée (modifiable) */
@@ -438,7 +437,7 @@ function commitDraft() {
   renderZones(); renderPanel();
   const pend = pendRaw;
   const saved = state.zones.find(x => x.id === z.id);
-  toast(storageOk ? "Zone enregistrée" : "Zone ajoutée (non sauvegardée : stockage bloqué)");
+  if (!storageOk) toast("Zone non sauvegardée : ce navigateur bloque le stockage");
   refreshEstimates();
   if (pend.length && saved && cloud.user) uploadPhotos(saved, pend, {done: pend.length > 1 ? `Zone enregistrée avec ses ${pend.length} photos` : "Zone enregistrée avec sa photo"}).then(() => walkPhotosClear());
   else if (pend.length) walkPhotosClear();
@@ -529,7 +528,7 @@ function renderDetail() {
     const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id && (p.zoneId || z.id) === z.id) : [];
     if (mine.length) cloud.client.storage.from("photos").remove(mine.flatMap(p => [p.path, p.thumb])).catch(() => {});
     state.zones = state.zones.filter(x => x.id !== z.id); save();
-    selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); toast("Zone supprimée");
+    selectedId = null; ui.mode = "list"; renderZones(); renderPanel();
   };
 }
 /* Notes de chacun, critère par critère (critères du groupe en tête, puis ceux de chacun) */

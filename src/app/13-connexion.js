@@ -214,7 +214,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
     const on = b.dataset.on === "1"; const st = tipsState();
     if (on === !st.off) return;
     st.off = !on; if (on) st.seen = []; else tipHide(false);
-    tipsSave(); renderProfile(); toast(on ? "Astuces activées" : "Astuces désactivées");
+    tipsSave(); renderProfile();
   });
   if ($("#tipsReset")) $("#tipsReset").onclick = () => { tipsState().seen = []; tipsSave(); renderProfile(); toast("Les astuces reviendront au fil des écrans"); };
   $$("#langSel [data-lang]").forEach(b => b.onclick = () => {
@@ -223,12 +223,11 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
     $$("#langSel [data-lang]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
     setTimeout(() => location.reload(), 120);
   });
-  $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); toast(p.halfPoints ? "Notes au demi-point activées" : "Notes au demi-point désactivées"); };
+  $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); };
   if ($("#pbudget")) $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
   $$(".pchip").forEach(b => b.onclick = () => {
     const pr = PRESETS.find(x => x.id === b.dataset.p);
     p.criteria = presetCriteria(pr); p.presetId = pr.id; p.modified = false; save(); renderProfile();
-    toast(`Profil « ${pr.name} » appliqué`);
   });
   $$(".crow[data-i]").forEach(row => {
     const c = cs[+row.dataset.i];
@@ -258,7 +257,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
   const wipe = $("#wipe");
   wipe.onclick = async () => {
     if (!(await askConfirm({title: "Effacer toutes vos zones ?", text: "Toutes les zones de cette carte et leurs notes seront supprimées. Pensez à exporter une copie avant.", ok: "Tout effacer", danger: true}))) return;
-    state.zones = []; save(); renderProfile(); toast("Toutes les zones ont été effacées");
+    state.zones = []; save(); renderProfile();
   };
 }
 

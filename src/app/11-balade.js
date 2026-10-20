@@ -38,7 +38,7 @@ async function addWalkPhotos(files) {
     walk.preparing--;
   }
   drawWalkPhotos(); paintWalk();
-  toast(files.length > 1 ? `${files.length} photos gardées pour la zone` : "Photo gardée : elle sera ajoutée à la zone");
+  toast(files.length > 1 ? `${files.length} photos gardées pour la zone` : "Photo gardée pour la zone");
 }
 const walk = {on: false, pts: [], start: 0, line: null, wake: null, timer: null, trace: null, photos: [], photoLayer: null, preparing: 0};
 const walkLen = pts => pts.reduce((a, p, i) => i ? a + distM({lat: pts[i - 1][0], lng: pts[i - 1][1]}, {lat: p[0], lng: p[1]}) : 0, 0);
@@ -96,7 +96,7 @@ async function reconstructGap(a, b) {
   walk.pts.splice(i, 0, ...mid);
   walkSave(); drawWalk(); paintWalk();
   const mins = Math.round((b[2] - a[2]) / 60000);
-  toast(`Parcours reconstitué sur ${mins >= 1 ? mins + " min" : "quelques instants"} de coupure`);
+  toast(`Trajet reconstitué sur ${mins >= 1 ? mins + " min" : "quelques instants"} de coupure`);
 }
 function paintWalk() {
   const bar = $("#walkbar"), btn = $("#walkBtn");
@@ -117,7 +117,7 @@ function paintWalk() {
   const cx = $("#walkCancel");
   cx.onclick = async () => {
     if (!(await askConfirm({title: "Abandonner la balade ?", text: walk.photos.length ? `Le parcours et les ${walk.photos.length} photo${walk.photos.length > 1 ? "s" : ""} prise${walk.photos.length > 1 ? "s" : ""} seront effacés.` : "Le parcours enregistré sera effacé, aucune zone ne sera proposée.", ok: "Abandonner", cancel: "Continuer la balade", abandon: true}))) return;
-    stopWalk(); walkPhotosClear(); toast("Balade abandonnée");
+    stopWalk(); walkPhotosClear();
   };
 }
 function onWalkPos(pt) {
@@ -146,7 +146,7 @@ function startWalk() {
   Object.assign(walk, {on: true, pts: [], start: Date.now()});
   walkSave(); keepAwake(); drawWalk(); paintWalk();
   clearInterval(walk.timer); walk.timer = setInterval(paintWalk, 30000);
-  toast("Balade lancée. Si le téléphone se met en veille, le trajet manquant sera reconstitué au retour");
+  (() => { try { if (localStorage.getItem("heden.walkhint")) return; localStorage.setItem("heden.walkhint", "1"); } catch (e) {} toast("Écran éteint ? Le trajet manquant sera reconstitué au retour"); })();
 }
 function stopWalk(keepTrace) {
   walk.on = false; clearInterval(walk.timer);
@@ -183,11 +183,11 @@ async function walkToZone(pts) {
 async function finishWalk() {
   for (let k = 0; (walk.filling || walk.preparing) && k < 60; k++) await new Promise(r => setTimeout(r, 250));
   const pts = walk.pts, len = walkLen(pts);
-  if (pts.length < 4 || len < 120) return toast("Balade trop courte pour proposer une zone : marchez au moins 150 m");
+  if (pts.length < 4 || len < 120) return toast("Balade trop courte : marchez au moins 150 m");
   const btn = $("#walkEnd"); if (btn) { btn.disabled = true; btn.textContent = "Calcul…"; }
   let poly;
   try { poly = await walkToZone(pts); }
-  catch (err) { console.warn(err); if (btn) { btn.disabled = false; btn.textContent = "Terminer"; } return toast("Calcul de la zone impossible pour le moment. Réessayez."); }
+  catch (err) { console.warn(err); if (btn) { btn.disabled = false; btn.textContent = "Terminer"; } return toast("Zone impossible à calculer pour l’instant : réessayez"); }
   const minutes = Math.max(1, Math.round((Date.now() - walk.start) / 60000));
   stopWalk(true);
   startNew();
@@ -197,7 +197,7 @@ async function finishWalk() {
   setHint("Zone proposée d’après votre balade : ajustez les points, puis validez");
   drawDraft(); renderPanel();
   requestAnimationFrame(fitDraft);
-  if (draft.area > 600000) toast("Grande zone : pensez à la resserrer sur le coin qui vous intéresse");
+  if (draft.area > 600000) toast("Grande zone : resserrez-la sur le coin visité");
 }
 $("#walkBtn").onclick = () => walk.on ? finishWalk() : startWalk();
 /* reprise d'une balade interrompue (page rechargée, appli rouverte) */
@@ -208,7 +208,7 @@ try {
     startGeo(false); keepAwake(); drawWalk(); paintWalk();
     walkDB.all().then(all => { walk.photos = (all || []).sort((a, b) => a.t - b.t).map(p => Object.assign(p, {url: URL.createObjectURL(p.th.blob)})); drawWalkPhotos(); paintWalk(); }).catch(() => {});
     walk.timer = setInterval(paintWalk, 30000);
-    setTimeout(() => toast("Balade reprise là où vous l’aviez laissée"), 800);
+    setTimeout(() => toast("Balade reprise"), 800);
   }
 } catch (e) {}
 /* si la position est déjà autorisée, la pastille s'affiche dès l'ouverture, sans rien demander */

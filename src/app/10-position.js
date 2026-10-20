@@ -20,8 +20,8 @@ function onGeo(p) {
   geo.listeners.forEach(f => f(geo.last, p));
 }
 function onGeoErr(err) {
-  if (err && err.code === 1) { toast("Position refusée : autorisez-la dans les réglages du navigateur"); stopGeo(); }
-  else if (geo.fly) { geo.fly = false; toast("Position introuvable pour le moment"); }
+  if (err && err.code === 1) { toast("Position refusée : autorisez-la dans les réglages"); stopGeo(); }
+  else if (geo.fly) { geo.fly = false; toast("Position introuvable pour l’instant"); }
 }
 function startGeo(fly) {
   if (!navigator.geolocation) { toast("Géolocalisation indisponible"); return false; }
@@ -36,7 +36,15 @@ function stopGeo() {
   if (geo.marker) { map.removeLayer(geo.marker); map.removeLayer(geo.acc); geo.marker = geo.acc = null; }
   $("#locate").setAttribute("aria-pressed", "false");
 }
-$("#locate").onclick = () => startGeo(true);
+/* Premier appui : on se localise et la carte se centre ; appui suivant, déjà centré : on retire la pastille
+   (sauf pendant une balade, qui en a besoin) */
+$("#locate").onclick = () => {
+  if (geo.watch != null && geo.marker && geo.last && !document.body.classList.contains("walking")) {
+    const centered = map.distance(map.getCenter(), [geo.last.lat, geo.last.lng]) < 60 && map.getZoom() >= 15;
+    if (centered) { stopGeo(); return; }
+  }
+  startGeo(true);
+};
 $("#brandHome").onclick = () => currentTab === "map" ? tabHome("map") : setTab("map");
 
 /* ---------- Filtres de la carte : les options sortent du bouton en galets ---------- */
