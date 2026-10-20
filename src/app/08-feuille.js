@@ -311,7 +311,7 @@ function renderRating() {
       </div>
       <div class="field">
         <label class="label" for="zcom">Commentaires</label>
-        <textarea id="zcom" placeholder="Ambiance, bruit le soir, adresse d’un bien vu…">${esc(draft.comment)}</textarea>
+        <textarea id="zcom" maxlength="2000" placeholder="Ambiance, bruit le soir, adresse d’un bien vu…">${esc(draft.comment)}</textarea>
       </div>
     </div>
     <div class="panel__foot">
