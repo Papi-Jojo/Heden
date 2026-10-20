@@ -1099,6 +1099,37 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .mapf__opt[aria-pressed="false"] span{text-decoration:line-through;text-decoration-thickness:1.5px}
 .mapf__opt:active{transform:scale(.96)}
 @media (prefers-reduced-motion: reduce){.mapf__opt{transform:none}}
+/* Profil en sous-onglets */
+.prof__top{display:flex;flex-direction:column;gap:14px}
+.prof__top .ptabs{align-self:flex-start;margin:0;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.ptabs::-webkit-scrollbar{display:none}
+.ptabs button{flex:none}
+.ppane{display:flex;flex-direction:column;gap:28px}
+.ppane[hidden]{display:none}
+.ppane.swap-in>*{animation:vue-in .22s var(--ease-sortie) both}
+.sec.setrow{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border-radius:20px;background:var(--calcaire);border:1px solid var(--trait)}
+.ppane .sec.setrow+.sec.setrow{margin-top:-18px}
+.setrow>div{min-width:0}
+.setrow .sub3{margin:0 0 2px}
+.setrow .hint2{margin:0}
+#view-profile .crow{grid-template-columns:minmax(0,1fr) auto 32px;grid-template-areas:"nm out x" "rg rg rg";gap:2px 10px;padding:10px 14px}
+#view-profile .crow--home{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm out" "rg rg"}
+#view-profile .crow>div:first-child{grid-area:nm;min-width:0}
+#view-profile .crow .wctl{display:contents}
+#view-profile .crow .wctl input[type=range]{grid-area:rg}
+#view-profile .crow .wctl output{grid-area:out;align-self:center}
+#view-profile .crow .x{grid-area:x;width:32px;height:32px}
+#view-profile .crow .ds,#view-profile .crow .crow__note{display:none}
+#view-profile .crow .wv{display:none}
+#view-profile .crow output small{display:inline;font-size:14px;font-weight:700;color:var(--ardoise)}
+#view-profile .crow input.nm,#view-profile .crow .nm{font-size:14.5px}
+@media (min-width:900px){
+  #view-profile .crow{grid-template-columns:minmax(0,1fr) 240px 56px 32px;grid-template-areas:"nm rg out x";gap:14px}
+  #view-profile .crow--home{grid-template-columns:minmax(0,1fr) 240px 56px;grid-template-areas:"nm rg out"}
+}
+.addrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.fresh--line{display:flex;align-items:center;gap:8px;margin:0;padding:0;border:0;background:none;font-size:13px;color:var(--zinc)}
+.fresh--line .link{font-size:13px}
 /* Notation : fourchette, position, avis */
 .ldet__rng{display:block;margin-top:2px;font-size:12px;font-weight:650;color:var(--ardoise-2)}
 .ldet__pct{display:block;max-width:120px;font-size:11.5px;line-height:15px;color:var(--zinc);text-align:center}
@@ -2053,7 +2084,6 @@ function renderList() {
       <button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button>
     </div>
     <div class="panel__body">
-      ${cloudReady && !cloud.user && state.zones.some(z => !z.example) ? `<div class="banner">Ces zones ne sont enregistrées que sur cet appareil. <button class="link" id="goLogin" type="button">Connectez-vous</button> pour les retrouver sur votre téléphone et votre ordinateur.</div>` : ""}
       ${!storageOk ? `<div class="banner">Ce navigateur bloque le stockage local : vos zones seront perdues à la fermeture. Exportez-les depuis l’onglet Profil.</div>` : ""}
       ${n ? `
         <div class="legend">
@@ -2962,7 +2992,7 @@ function renderAuth() {
   let last = ""; try { last = localStorage.getItem("heden.lastEmail") || ""; } catch (e) {}
   if (cloud.user) {
     card.innerHTML = `<div class="auth__head"><h2 id="authTitle">Votre compte</h2>${close}</div>
-      <p class="auth__txt">Connecté avec <b>${esc(cloud.user.email || "")}</b>. Vos zones, vos notes et votre profil vous suivent sur tous vos appareils.</p>
+      <p class="auth__txt">Connecté avec <b>${esc(cloud.user.email || "")}</b>.</p>
       <p class="auth__small" id="syncState2">${esc(syncLabel())}</p>
       <div class="auth__foot"><button class="btn btn--sm btn--clair" type="button" id="logout">Se déconnecter</button></div>`;
     $("#logout").onclick = async () => { closeAuth(); await signOut(); };
@@ -2997,7 +3027,7 @@ function renderAuth() {
     return;
   }
   card.innerHTML = `<div class="auth__head"><h2 id="authTitle">Se connecter</h2>${close}</div>
-    <p class="auth__txt">${auth.note ? esc(auth.note) : "Retrouvez vos zones sur votre téléphone et votre ordinateur, et partagez une carte à deux."} Pas de mot de passe : vous recevez un code par e-mail.</p>
+    <p class="auth__txt">${auth.note ? esc(auth.note) : "Vos zones et annonces sur tous vos appareils, et une carte à deux."} Pas de mot de passe : un code par e-mail.</p>
     <form id="mailForm" class="auth__form">
       <input type="email" id="loginMail" autocomplete="email" inputmode="email" placeholder="prenom@exemple.fr" aria-label="Adresse e-mail" value="${esc(cloud.pendingEmail || last)}">
       <button class="btn btn--primary btn--block" type="submit">Recevoir un code</button>
@@ -3015,62 +3045,39 @@ function renderAuth() {
     } catch (err) { b.disabled = false; b.textContent = "Recevoir un code"; toast(/rate|seconds/i.test(err.message || "") ? "Trop de demandes : réessayez dans une minute" : "Envoi impossible pour le moment"); }
   };
 }
+let ptab = (() => { try { return localStorage.getItem("heden.ptab") || "recherche"; } catch (e) { return "recherche"; } })();
+function showPtab(k) {
+  ptab = k; try { localStorage.setItem("heden.ptab", k); } catch (e) {}
+  $$("[data-ptab]").forEach(x => { const on = x.dataset.ptab === k; x.setAttribute("aria-selected", String(on)); x.setAttribute("aria-pressed", String(on)); });
+  $$(".ppane").forEach(pn => { pn.hidden = pn.dataset.pane !== k; if (!pn.hidden) { pn.classList.remove("swap-in"); void pn.offsetWidth; pn.classList.add("swap-in"); setTimeout(() => pn.classList.remove("swap-in"), 300); } });
+  const v = $("#view-profile"); if (v) v.scrollTop = 0;
+}
 function renderProfile() {
   const p = state.profile;
   const cs = p.criteria;
   const wsum = cs.reduce((a, c) => a + (c.weight > 0 ? c.weight : 0), 0);
   const avail = Object.keys(LIB).filter(id => !cs.some(c => c.id === id));
+  const tabs = [["recherche", "Recherche"], ["quartier", "Quartier"], ["logement", "Logement"], ["compte", "Compte"]];
+  if (!tabs.some(t => t[0] === ptab)) ptab = "recherche";
+  const pane = (k, html) => `<div class="ppane" data-pane="${k}" ${ptab === k ? "" : "hidden"}>${html}</div>`;
   $("#prof").innerHTML = `
-    <div>
-      <h1>Votre profil</h1>
-      <p class="lead">Heden règle vos critères à partir de vos réponses, puis les affine avec vos choix. Tout reste ajustable.</p>
-    </div>
-    ${accountHTML()}
-    ${profileSummaryHTML()}
-
+    <div class="prof__top"><h1>Votre profil</h1>
+      <div class="seg ptabs" role="tablist" aria-label="Sections du profil">${tabs.map(([k, l]) => `<button type="button" role="tab" data-ptab="${k}" aria-selected="${ptab === k}" aria-pressed="${ptab === k}">${l}</button>`).join("")}</div></div>
+    ${pane("recherche", profileSummaryHTML() + `
+    ${projet() !== "location" ? `<section class="sec setrow">
+      <div><h3 class="sub3">Financement</h3>
+      <p class="hint2">Apport ${finance().apport ? fmtInt(finance().apport) + " €" : "supposé de 10 %"}, prêt à ${String(finance().taux).replace(".", ",")}&nbsp;% sur ${finance().duree}&nbsp;ans.</p></div>
+      <button class="btn btn--sm btn--clair" type="button" id="finProf">Modifier</button>
+    </section>` : ""}
+    ${projet() !== "achat" ? `<section class="sec setrow">
+      <div><h3 class="sub3">Location</h3>
+      <p class="hint2">${(() => { const lo = homeProfile().loc || {}; return [lo.loyerMax ? `Loyer maximum ${fmtInt(lo.loyerMax)} € par mois` : "Pas de loyer maximum", lo.revenus ? `revenus de ${fmtInt(lo.revenus)} € par mois` : "revenus non indiqués", {vide: "vide", meuble: "meublé", indiff: "meublé ou vide"}[lo.meuble || "indiff"]].join(", ") + "."; })()}</p></div>
+      <button class="btn btn--sm btn--clair" type="button" id="locProf">Modifier</button>
+    </section>` : ""}
+`)}
+    ${pane("quartier", `
     <section class="sec">
-      <h2>Vous</h2>
-      <div class="field">
-        <label class="label" for="pname">Prénom</label>
-        <input type="text" id="pname" value="${esc(p.name)}" placeholder="Affiché sur les zones que vous notez" maxlength="40">
-      </div>
-    </section>
-
-    ${sharedHTML()}
-
-    <details class="adv" id="advanced" ${(() => { try { return localStorage.getItem("heden.adv") ? "open" : ""; } catch (e) { return ""; } })()}>
-    <summary><span><b>Personnalisation avancée</b><small>Critères de zone et leurs poids, logement idéal, filtres, financement</small></span></summary>
-    <div class="adv__in">
-
-    <section class="sec">
-      <h2>Budget des zones</h2>
-      ${projet() !== "location" ? `<div class="field">
-        <label class="label" for="pbudget">Budget max €/m²${projet() === "deux" ? " à l’achat" : ""}</label>
-        <input type="number" id="pbudget" inputmode="numeric" min="0" step="100" value="${p.budget ?? ""}" placeholder="Facultatif">
-      </div>` : ""}
-      ${projet() !== "achat" ? `<p class="hint2">Location : ${rentPpmBudget() ? `${fmt1(rentPpmBudget())} €/m² par mois au plus, d’après votre loyer maximum et la taille recherchée.` : "indiquez un loyer maximum ci-dessous pour juger le prix des zones."}</p>` : ""}
-      <p class="hint2">${projet() !== "location" && homeProfile().setup && homeProfile().setup.budget ? "Déduit de votre budget total et de la taille recherchée. " : ""}Au-dessus, une zone apparaît en pointillés et passe en bas du classement.</p>
-    </section>
-
-    <section class="sec">
-      <h2>Partir d’un profil type</h2>
-      <p class="hint2">Choisir un profil remplace vos critères actuels. Vos notes déjà saisies sont conservées.</p>
-      <div class="presets">
-        ${PRESETS.map(pr => {
-          const top = Object.entries(pr.w).sort((a, b) => b[1] - a[1]).slice(0, 4);
-          const cur = p.presetId === pr.id && !p.modified;
-          return `<button class="preset" type="button" data-p="${pr.id}" aria-pressed="${cur}">
-            ${cur ? `<span class="cur">Profil actuel</span>` : ""}
-            <b>${esc(pr.name)}</b><p>${esc(pr.tagline)}</p>
-            <div class="mini">${top.map(([id, w]) => `<div><span>${esc(LIB[id].name)}</span><i style="--w:${Math.min(100, w * 4)}%"></i><em>${w} %</em></div>`).join("")}</div>
-          </button>`;
-        }).join("")}
-      </div>
-    </section>
-
-    <section class="sec">
-      <h2>Critères et pondération</h2>
-      <p class="hint2">${p.modified ? `Profil personnalisé${PRESETS.find(x => x.id === p.presetId) ? ", à partir de « " + esc(PRESETS.find(x => x.id === p.presetId).name) + " »" : ""}.` : "Touchez un nom pour le renommer."} Les poids n’ont pas besoin de faire 100 : la part de chaque critère est calculée automatiquement.</p>
+      <h2>Ce qui compte dans un quartier</h2>
       <div class="cards">
         ${cs.map((c, i) => `
           <div class="crow" data-i="${i}">
@@ -3086,57 +3093,62 @@ function renderProfile() {
             <button class="x" type="button" aria-label="Retirer ${esc(c.name)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>`).join("")}
       </div>
-      <div class="halfrow">
-        <button class="chip" id="halfP" type="button" aria-pressed="${!!p.halfPoints}">Notes au demi-point</button>
-        <span class="hint2">Ajoute un bouton +½ à chaque critère pour noter 3,5 par exemple.</span>
-      </div>
-      <div class="totals"><span class="num" id="wtot">Total des poids : ${wsum}${wsum === 100 ? "" : " (ramené à 100 %)"}</span></div>
       <div class="addrow">
         <select id="addSel" aria-label="Ajouter un critère">
           <option value="">Ajouter un critère…</option>
           ${avail.map(id => `<option value="${id}">${esc(LIB[id].name)}</option>`).join("")}
           <option value="__custom">Critère personnalisé</option>
         </select>
-      </div>
+        <button class="chip" id="halfP" type="button" aria-pressed="${!!p.halfPoints}">Notes au demi-point</button>
+      </div><span id="wtot" hidden></span>
     </section>
 
-    ${homeSectionHTML()}
+    <section class="sec">
+      <h3 class="sub3">Partir d’un profil type</h3>
+      <div class="chips">${PRESETS.map(pr => `<button class="chip pchip" type="button" data-p="${pr.id}" aria-pressed="${p.presetId === pr.id && !p.modified}" title="${esc(pr.tagline)}">${esc(pr.name)}</button>`).join("")}</div>
+      <p class="hint2">${(() => { const cur = PRESETS.find(x => x.id === p.presetId); return cur && !p.modified ? esc(cur.tagline) + "." : p.modified ? "Profil ajusté à la main." : ""; })()} Changer remplace vos critères, garde vos notes.</p>
+    </section>
+    <section class="sec">
+      <h3 class="sub3">Budget des zones</h3>
+      ${projet() !== "location" ? `<div class="field">
+        <label class="label" for="pbudget">Budget max €/m²${projet() === "deux" ? " à l’achat" : ""}</label>
+        <input type="number" id="pbudget" inputmode="numeric" min="0" step="100" value="${p.budget ?? ""}" placeholder="Facultatif">
+      </div>` : ""}
+      ${projet() !== "achat" ? `<p class="hint2">Location : ${rentPpmBudget() ? `${fmt1(rentPpmBudget())} €/m² par mois au plus, d’après votre loyer maximum.` : "indiquez un loyer maximum dans Logement."}</p>` : ""}
+      <p class="hint2">Au-dessus, la zone passe en pointillés.</p>
+    </section>
 
-    ${projet() !== "location" ? `<section class="sec">
-      <h2>Financement</h2>
-      <p class="hint2">Pour le coût par mois des annonces : apport ${finance().apport ? fmtInt(finance().apport) + " €" : "supposé de 10 %"}, prêt à ${String(finance().taux).replace(".", ",")} % sur ${finance().duree} ans.</p>
-      <div><button class="btn" type="button" id="finProf">Modifier</button></div>
-    </section>` : ""}
-    ${projet() !== "achat" ? `<section class="sec">
-      <h2>Location</h2>
-      <p class="hint2">${(() => { const lo = homeProfile().loc || {}; return [lo.loyerMax ? `Loyer maximum ${fmtInt(lo.loyerMax)} € par mois` : "Pas de loyer maximum", lo.revenus ? `revenus de ${fmtInt(lo.revenus)} € par mois` : "revenus non indiqués", {vide: "vide", meuble: "meublé", indiff: "meublé ou vide"}[lo.meuble || "indiff"]].join(", ") + "."; })()}</p>
-      <div><button class="btn" type="button" id="locProf">Modifier</button></div>
-    </section>` : ""}
-    </div>
-    </details>
-
+`)}
+    ${pane("logement", homeSectionHTML())}
+    ${pane("compte", accountHTML() + `
+    <section class="sec">
+      <h2>Vous</h2>
+      <div class="field">
+        <label class="label" for="pname">Prénom</label>
+        <input type="text" id="pname" value="${esc(p.name)}" placeholder="Affiché sur les zones que vous notez" maxlength="40">
+      </div>
+    </section>
+    ${sharedHTML()}
     <section class="sec">
       <h2>Vos données</h2>
-      <p class="hint2">${cloud.user ? "Vos zones sont enregistrées dans votre compte. L’export reste utile pour garder une copie ou partager un fichier." : "Les zones restent dans ce navigateur. Exportez-les pour les sauvegarder ou les envoyer à votre binôme : à l’import, ses zones s’ajoutent aux vôtres et sont notées selon votre profil."}</p>
       <div class="datarow">
         <button class="btn" id="exp" type="button">Exporter mes zones</button>
         <button class="btn" id="imp" type="button">Importer un fichier</button>
         <button class="btn btn--ghost btn--danger" id="wipe" type="button">Tout effacer</button>
       </div>
       <p class="hint2 num">${state.zones.length} zone${state.zones.length > 1 ? "s" : ""} enregistrée${state.zones.length > 1 ? "s" : ""}${storageOk ? "" : " · stockage local bloqué par ce navigateur"}.</p>
-    </section>`;
-
+    </section>`)}`;
+  $$("[data-ptab]", $("#prof")).forEach(b => b.onclick = () => showPtab(b.dataset.ptab));
   bindAccount($("#prof"));
   bindHomeSection();
   bindProfileSummary();
   const fp = $("#finProf"); if (fp) fp.onclick = openFinance;
   const lp = $("#locProf"); if (lp) lp.onclick = openRentSettings;
-  $("#advanced").ontoggle = e => { try { if (e.target.open) localStorage.setItem("heden.adv", "1"); else localStorage.removeItem("heden.adv"); } catch (err) {} };
   bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
   $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); toast(p.halfPoints ? "Notes au demi-point activées" : "Notes au demi-point désactivées"); };
   if ($("#pbudget")) $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
-  $$(".preset").forEach(b => b.onclick = () => {
+  $$(".pchip").forEach(b => b.onclick = () => {
     const pr = PRESETS.find(x => x.id === b.dataset.p);
     p.criteria = presetCriteria(pr); p.presetId = pr.id; p.modified = false; save(); renderProfile();
     toast(`Profil « ${pr.name} » appliqué`);
@@ -3152,7 +3164,7 @@ function renderProfile() {
       const tot = cs.reduce((a, x) => a + (x.weight > 0 ? x.weight : 0), 0);
       $$(".crow[data-i]").forEach(r2 => { const c2 = cs[+r2.dataset.i]; $(".ws", r2).textContent = (tot ? Math.round(Math.max(0, c2.weight) / tot * 100) : 0) + " %"; });
       $("#wtot").textContent = `Total des poids : ${tot}${tot === 100 ? "" : " (ramené à 100 %)"}`;
-      $$(".preset").forEach(pb => { pb.setAttribute("aria-pressed", "false"); const t = $(".cur", pb); if (t) t.remove(); });
+      $$(".pchip").forEach(pb => pb.setAttribute("aria-pressed", "false"));
     };
     $(".x", row).onclick = () => { cs.splice(+row.dataset.i, 1); p.modified = true; save(); renderProfile(); };
   });
@@ -3848,7 +3860,7 @@ function inviteHTML(inv) {
   return `<div class="invite">
     <span class="label">Invitation, valable 14 jours</span>
     <div class="invite__code num">${esc(inv.code)}</div>
-    <p class="hint2">Envoyez ce lien à votre binôme. Il se connecte avec son e-mail et arrive directement sur la carte.</p>
+    <p class="hint2">Votre binôme se connecte avec son e-mail et arrive sur la carte.</p>
     <div class="datarow"><button class="btn btn--sm btn--primary" type="button" data-act="share">${navigator.share ? "Envoyer le lien" : "Copier le lien"}</button>${navigator.share ? `<button class="btn btn--sm" type="button" data-act="copy">Copier le lien</button>` : ""}</div>
   </div>`;
 }
@@ -3863,7 +3875,7 @@ function sharedHTML() {
   const shared = cloud.maps.filter(m => m.kind === "partagee");
   return `<section class="sec" id="duoSec">
     <h2>Carte à deux</h2>
-    <p class="hint2">Une carte commune, en plus de la vôtre : vous y tracez les zones à deux, chacun les note avec son profil, et la couleur montre votre note commune.</p>
+    <p class="hint2">Tracez et notez à deux, chacun avec son profil.</p>
     ${shared.map(m => `<div class="mapcard" data-m="${m.id}">
       <div><b>${esc(m.name)}</b><p class="hint2">${esc(membersLabel(m))}</p></div>
       ${cloud.invite && cloud.invite.mapId === m.id ? inviteHTML(cloud.invite) : ""}
@@ -4467,7 +4479,7 @@ function renderListingsView() {
   const counts = {actives: all.filter(x => x.f.status !== "ecartee").length, gardees: all.filter(x => x.f.status === "gardee" || x.f.status === "visite").length, ecartees: all.filter(x => x.f.status === "ecartee").length};
   box.innerHTML = `
     <div class="ann__head">
-      <div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1><p class="lead">${all.length ? `${plural(counts.actives, "annonce à voir", "annonces à voir")}, classées selon votre profil, vos zones et les ${isRent() ? "loyers" : "ventes"} du quartier.` : "Heden lit les annonces, les place sur la carte et les classe selon votre profil, vos zones et les ventes du quartier."}</p></div>
+      <div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1><p class="lead">${all.length ? `${plural(counts.actives, "annonce à voir", "annonces à voir")}.` : "Heden lit les annonces, les place sur la carte et les classe selon votre profil, vos zones et les ventes du quartier."}</p></div>
       <button class="btn btn--primary" type="button" id="addListing">+ Ajouter une annonce</button>
     </div>
     ${all.length ? `<div class="ann__bar">
@@ -4537,7 +4549,7 @@ function renderListingDetail(id) {
     </div>
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
     <div class="feel" role="group" aria-label="Votre avis sur la note"><span>Cette note vous semble</span>${[["juste", "Juste"], ["haut", "Trop haute"], ["bas", "Trop basse"]].map(([k, l]) => `<button class="chip chip--sm" type="button" data-feel="${k}" aria-pressed="${!!(f.feel && f.feel.v === k)}">${l}</button>`).join("")}
-      ${f.feel && f.feel.v !== "juste" ? `<p class="feel__next">Merci : Heden en tient compte pour vos priorités. S’il a mal lu quelque chose (lumière, calme, quartier…), <button class="link" type="button" id="feelFix">corrigez-le</button>.</p>` : ""}</div>
+      ${f.feel && f.feel.v !== "juste" ? `<p class="feel__next">Noté. Une info mal lue ? <button class="link" type="button" id="feelFix">Corrigez-la</button>.</p>` : ""}</div>
     ${freshHTML(f)}
     ${contactHTML(f)}
     <section class="lsec">
@@ -4598,7 +4610,8 @@ function freshHTML(f) {
   const ago = days == null ? "" : days < 1 ? "aujourd’hui" : days === 1 ? "hier" : `il y a ${days} jours`;
   const txt = f.gone ? `<b>Plus en ligne</b> depuis le ${esc(fmtDate(new Date(f.gone).toISOString().slice(0, 10)))}. Gardez-la pour comparer, ou supprimez-la.`
     : `En ligne, vue ${ago}${f.priceHistory && f.priceHistory.length ? ` · ${f.priceHistory.length} changement${f.priceHistory.length > 1 ? "s" : ""} de prix` : ""}.`;
-  return `<div class="fresh ${f.gone ? "fresh--off" : days != null && days > 14 ? "fresh--old" : ""}"><span class="fresh__dot" aria-hidden="true"></span><p>${txt}</p>${f.url ? `<button class="btn btn--sm btn--clair" type="button" id="lrecheck">Revérifier</button>` : ""}</div>`;
+  if (!f.gone && !(days > 14)) return f.url ? `<p class="fresh fresh--line"><span class="fresh__dot" aria-hidden="true"></span>${txt.replace(/\.$/, "")} · <button class="link" type="button" id="lrecheck">Revérifier</button></p>` : "";
+  return `<div class="fresh ${f.gone ? "fresh--off" : "fresh--old"}"><span class="fresh__dot" aria-hidden="true"></span><p>${txt}</p>${f.url ? `<button class="btn btn--sm btn--clair" type="button" id="lrecheck">Revérifier</button>` : ""}</div>`;
 }
 
 /* ---------- Contacter l'agence (ou le particulier) depuis Heden ---------- */
@@ -4613,7 +4626,7 @@ function contactHTML(f) {
   const subject = `Annonce ${f.ref ? "réf. " + f.ref + " : " : ""}${f.title || listingTitle(f)}`;
   return `<section class="contact" aria-label="Contact">
     <div class="contact__who"><span class="contact__ic" aria-hidden="true">${part ? "P" : "A"}</span><span><small>${part ? "Particulier" : "Agence"}${f.ref ? ` · réf. ${esc(f.ref)}` : ""}</small><b>${esc(f.agencyName || (part ? "Vendu par un particulier" : any ? "Agence" : "Coordonnées non trouvées"))}</b>${f.agencyAddress ? `<small>${esc(f.agencyAddress)}</small>` : ""}</span></div>
-    ${any ? "" : `<p class="hint2">La page ne montrait pas les coordonnées. Sur le site, touchez « Afficher le numéro » puis + Heden : Heden les récupère. Ou ajoutez-les vous-même.</p>`}
+    ${any ? "" : `<p class="hint2">Pas de coordonnées sur la page : touchez « Afficher le numéro » sur le site, puis + Heden.</p>`}
     <div class="contact__acts">
       ${tel ? `<a class="btn btn--sm btn--primary" href="tel:${tel}">Appeler ${esc(fmtPhone(tel))}</a>` : ""}
       ${mail ? `<a class="btn btn--sm" href="mailto:${mail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(visitMessage(f))}">Écrire</a>` : ""}
@@ -4652,8 +4665,8 @@ function openScoreFix(f) {
   const draw = () => {
     const r = preview(), qa = raw.quartier != null ? Math.round(raw.quartier / 20) : null;
     card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Corriger la note</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <div class="fixsum"><b class="fixsum__s num" style="--c:${colorFor(r.total)}">${r.total ?? "–"}</b><span><b>${r.hasFix ? "Avec vos corrections" : "Analyse de Heden"}</b><small>${r.hasFix && raw.total != null ? `Heden seul : ${raw.total}. ` : ""}Vos corrections valent aussi pour votre binôme ; chacun garde ses priorités.</small></span></div>
-      <section class="fixsec"><h3>Le logement</h3><p class="hint2">Les cases en pointillés montrent la lecture de Heden. Touchez la bonne valeur ; touchez-la encore pour revenir à l’analyse.</p>
+      <div class="fixsum"><b class="fixsum__s num" style="--c:${colorFor(r.total)}">${r.total ?? "–"}</b><span><b>${r.hasFix ? "Avec vos corrections" : "Analyse de Heden"}</b><small>${r.hasFix && raw.total != null ? `Heden seul : ${raw.total}.` : ""}${isShared() ? " Vaut aussi pour votre binôme." : ""}</small></span></div>
+      <section class="fixsec"><h3>Le logement</h3><p class="hint2">En pointillés : la lecture de Heden.</p>
         ${crits.map(id => `<div class="fixrow"><div class="fixrow__l"><b>${esc(HOME_LIB[id].name)}</b><small>${fx.crit[id] != null ? `Heden : ${autoKnown[id] ? fmtNote(Math.round(auto[id] * 2) / 2) : "pas dans l’annonce"}` : autoKnown[id] ? "Lu dans l’annonce" : "Pas dans l’annonce, valeur moyenne"}</small></div>${scale("c:" + id, fx.crit[id], Math.round(auto[id]))}</div>`).join("")}
       </section>
       <section class="fixsec"><h3>Le quartier</h3>
@@ -4661,7 +4674,7 @@ function openScoreFix(f) {
       </section>
       <section class="fixsec"><h3>La note finale</h3>
         <label class="fixtot"><input type="checkbox" id="fxT" ${fx.total != null ? "checked" : ""}><span>Fixer la note moi-même</span></label>
-        ${fx.total != null ? `<div class="fixrange"><input type="range" id="fxR" min="0" max="100" step="1" value="${fx.total}" aria-label="Note finale"><b class="num" id="fxV">${fx.total}</b></div><p class="hint2">La note ne bougera plus avec l’analyse ni avec vos priorités, tant qu’elle est fixée.</p>` : `<p class="hint2">À garder pour les cas où rien ci-dessus ne rend compte de votre avis.</p>`}
+        ${fx.total != null ? `<div class="fixrange"><input type="range" id="fxR" min="0" max="100" step="1" value="${fx.total}" aria-label="Note finale"><b class="num" id="fxV">${fx.total}</b></div><p class="hint2">Elle ne bougera plus avec l’analyse.</p>` : ""}
       </section>
       <div class="auth__foot fixfoot">${r.hasFix || (f.fix && Object.keys(f.fix).length) ? `<button class="btn btn--clair" type="button" id="fxReset">Revenir à l’analyse</button>` : ""}<button class="btn btn--primary btn--block" type="button" id="fxSave">Enregistrer</button></div>`;
     $$(".scale button", card).forEach(b => b.onclick = () => {
@@ -4747,13 +4760,13 @@ function openAddListing(existing, imported) {
   if (existing || imported) review(existing ? Object.assign(clone(existing), {found: existing.found || {}}) : imported);
   else {
     card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Ajouter une annonce</h2>${close}</div>
-      <p class="auth__txt">Collez le lien de l’annonce et son texte (description, caractéristiques). Heden en tire le prix, la surface, l’étage, le DPE et le reste.</p>
+      <p class="auth__txt">Collez le lien et le texte de l’annonce.</p>
       <form class="auth__form" id="lpaste">
         <input type="url" id="lurl" placeholder="https://… lien de l’annonce" inputmode="url">
         <textarea id="ltext" rows="7" placeholder="Collez ici le texte de l’annonce"></textarea>
         <button class="btn btn--primary btn--block" type="submit">Analyser l’annonce</button>
       </form>
-      <p class="auth__small">Plus rapide : installez le bouton Heden dans vos favoris, il envoie l’annonce ouverte en un geste (voir en bas de l’onglet Annonces).</p>`;
+      <p class="auth__small">Plus rapide : le bouton + Heden, en bas de l’onglet Annonces.</p>`;
     $("#lpaste").onsubmit = e => {
       e.preventDefault();
       const url = $("#lurl").value.trim(), text = $("#ltext").value;
@@ -4770,7 +4783,7 @@ function homeSectionHTML() {
   const num = (id, label, val, unit, step = 1) => `<div class="field"><label class="label" for="${id}">${label}</label><input type="number" id="${id}" inputmode="numeric" min="0" step="${step}" value="${val ?? ""}" placeholder="${unit}"></div>`;
   return `<section class="sec" id="homeSec">
     <h2>Votre logement idéal</h2>
-    <p class="hint2">Ces filtres et ces critères servent à calculer la correspondance de chaque annonce. Une annonce qui ne passe pas un filtre reste visible, avec une note plafonnée.</p>
+    <p class="hint2">Une annonce hors filtre reste visible, avec une note plafonnée.</p>
     ${projet() === "deux" ? `<div class="row2">${num("hBudget", "Prix max à l’achat", h.budgetMax, "Ex. 550 000 €", 5000)}${num("hLoyer", "Loyer max, charges comprises", (h.loc || {}).loyerMax, "€ par mois", 50)}</div>
     <div class="row2">${num("hSurf", "Surface min", h.surfaceMin, "m²")}<span></span></div>`
       : `<div class="row2">${projet() === "location" ? num("hLoyer", "Loyer max, charges comprises", (h.loc || {}).loyerMax, "€ par mois", 50) : num("hBudget", "Budget total max", h.budgetMax, "Ex. 550 000 €", 5000)}${num("hSurf", "Surface min", h.surfaceMin, "m²")}</div>`}
@@ -5072,7 +5085,7 @@ async function openBatchImport(items, pageUrl) {
   const paint = () => {
     const nOn = rows.filter(r => r.on).length, nNew = rows.filter(r => !r.ex).length;
     card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">${rows.length} annonce${rows.length > 1 ? "s" : ""} sur ${esc(src || "cette page")}</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <p class="auth__txt">${rows.length ? `${nNew} nouvelle${nNew > 1 ? "s" : ""} pour Heden. Celles hors de vos critères sont décochées ; cochez celles qui vous intéressent quand même.` : "Heden n’a pas trouvé d’annonce lisible sur cette page. Ouvrez une annonce et réessayez, ou collez son texte."}</p>
+      <p class="auth__txt">${rows.length ? `${nNew} nouvelle${nNew > 1 ? "s" : ""} pour Heden. Celles hors critères sont décochées.` : "Heden n’a pas trouvé d’annonce lisible sur cette page. Ouvrez une annonce et réessayez, ou collez son texte."}</p>
       <div class="blist">${rows.map((r, i) => `<label class="brow${r.ex ? " brow--ex" : ""}">
           <input type="checkbox" data-i="${i}" ${r.on ? "checked" : ""} ${r.ex ? "disabled" : ""}>
           <span class="brow__ph">${r.f.photos && r.f.photos[0] ? `<img src="${esc(r.f.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span>
@@ -5362,7 +5375,7 @@ function paintQuiz() {
   let body = "";
   const replaces = !homeProfile().setup && (state.profile.modified || homeProfile().custom || state.zones.some(z => !z.example));
   const buy = s.projet !== "location", rent = s.projet === "location" || s.projet === "deux";
-  if (st === 0) body = head("Votre projet", "Sept questions, une minute : Heden règle vos critères, leurs poids et vos filtres. Tout reste modifiable." + (replaces ? " Vos réglages actuels seront remplacés ; vos notes de zones restent." : "")) + `<div class="qgrid qgrid--3">${chips(QUIZ_PROJ, s.projet, false, "pj")}</div>` + foot(!!s.projet);
+  if (st === 0) body = head("Votre projet", replaces ? "Vos réglages actuels seront remplacés ; vos notes de zones restent." : "") + `<div class="qgrid qgrid--3">${chips(QUIZ_PROJ, s.projet, false, "pj")}</div>` + foot(!!s.projet);
   else if (st === 1) body = head("Vous cherchez…", s.projet === "deux" ? "Pour l’achat comme pour la location." : "") + `<div class="qgrid">${chips(s.projet === "location" ? QUIZ_WHO_LOC : QUIZ_WHO, s.who, false, "who")}</div>` + foot(!!s.who);
   else if (st === 2) body = head("Votre budget", buy && rent ? "Pour l’achat et pour la location." : rent ? "Le loyer que vous pouvez payer chaque mois." : "Le prix affiché maximum, hors frais de notaire.") + (buy ? `
       ${rent ? `<h3 class="qsub">Achat</h3>` : ""}<div class="field"><label class="label" for="qzBudget">Prix maximum</label><input type="number" id="qzBudget" inputmode="numeric" step="5000" min="0" value="${s.budget ?? ""}" placeholder="Ex. 600 000 €"></div>
@@ -5421,7 +5434,7 @@ function paintQuiz() {
     };
   });
   const go = $("#qzDone"); if (go) go.onclick = () => { closeQuiz(); lui.openId = null; rerenderAll(); renderProfile(); toast("Profil réglé : vos zones et annonces sont recalculées"); };
-  const adv = $("#qzAdv"); if (adv) adv.onclick = () => { closeQuiz(); rerenderAll(); try { localStorage.setItem("heden.adv", "1"); } catch (e) {} setTab("profile"); renderProfile(); setTimeout(() => { const a = $("#advanced"); if (a) a.scrollIntoView({behavior: "smooth"}); }, 60); };
+  const adv = $("#qzAdv"); if (adv) adv.onclick = () => { closeQuiz(); rerenderAll(); ptab = "quartier"; setTab("profile"); showPtab("quartier"); };
 }
 function quizResultHTML() {
   const p = state.profile, h = homeProfile(), s = h.setup || qz.s;
@@ -5434,7 +5447,6 @@ function quizResultHTML() {
     <p class="auth__txt">${esc(profileLine(s))}</p>
     <div class="qres"><div><h3>Dans un quartier</h3>${bars(zs.map(c => [c.name, c.weight]), zAll)}</div>
       <div><h3>Dans un logement</h3>${bars(hs.map(([id, w]) => [HOME_LIB[id].name, w]), hAll)}</div></div>
-    <p class="hint2">Heden affinera ces poids à mesure que vous gardez ou écartez des annonces.</p>
     <div class="quiz__foot"><button class="btn btn--ghost" type="button" id="qzAdv">Ajuster en détail</button><button class="btn btn--primary" type="button" id="qzDone">C’est parti</button></div>`;
 }
 function profileLine(s) {
@@ -5446,7 +5458,7 @@ function profileSummaryHTML() {
   const h = homeProfile(), s = h.setup, L = learning();
   if (!s) return `<section class="sec psum psum--new">
       <h2>Réglez Heden en une minute</h2>
-      <p class="hint2">Sept questions sur votre recherche : Heden en déduit vos critères, leurs poids et vos filtres. Vous pourrez tout ajuster ensuite.</p>
+      <p class="hint2">Sept questions, une minute : Heden règle le reste.</p>
       <div><button class="btn btn--primary" type="button" id="quizGo">Répondre aux questions</button></div>
     </section>`;
   const prios = (s.prios || []).map(id => (PRIOS.find(q => q.id === id) || {}).name).filter(Boolean);
@@ -5456,10 +5468,9 @@ function profileSummaryHTML() {
       <div class="psum__head"><div><h2>Votre recherche</h2><p class="psum__line">${esc(profileLine(s))}</p></div><button class="btn btn--sm" type="button" id="quizGo">Refaire le questionnaire</button></div>
       ${prios.length ? `<div class="chips">${prios.map(n => `<span class="tag">${esc(n)}</span>`).join("")}</div>` : ""}
       <dl class="meta">${nos.length ? `<dt>Refus</dt><dd>${esc(nos.join(", "))}</dd>` : ""}${pl.length ? `<dt>Trajets</dt><dd>${esc(pl.map(p => `${p.label || p.q} (${MODES[p.mode || "tc"][0].toLowerCase()})`).join(", "))}</dd>` : ""}</dl>
-      <div class="plearn">${L.n < 4 ? `<p class="hint2">Heden apprend de vos choix : gardez ou écartez quelques annonces (${L.n} pour l’instant), il ajustera vos priorités.</p>`
-        : L.notes.length ? `<b>Appris de vos ${L.n} choix</b><ul>${L.notes.map(n => `<li class="${n.up ? "up" : "down"}">${esc(n.txt)}</li>`).join("")}</ul>` : `<p class="hint2">Vos ${L.n} choix confirment vos priorités : rien à ajuster pour l’instant.</p>`}
-        ${L.n >= 4 ? `<button class="chip" type="button" id="learnTg" aria-pressed="${h.learn !== false}">Apprendre de mes choix</button>` : ""}</div>
-      ${h.custom || state.profile.modified ? `<p class="hint2">Ajusté à la main dans la personnalisation avancée.</p>` : ""}
+      ${L.n < 4 ? "" : `<div class="plearn">${L.notes.length ? `<b>Appris de vos ${L.n} choix</b><ul>${L.notes.map(n => `<li class="${n.up ? "up" : "down"}">${esc(n.txt)}</li>`).join("")}</ul>` : `<p class="hint2">Vos ${L.n} choix confirment vos priorités : rien à ajuster pour l’instant.</p>`}
+        <button class="chip" type="button" id="learnTg" aria-pressed="${h.learn !== false}">Apprendre de mes choix</button></div>`}
+
     </section>`;
 }
 function bindProfileSummary() {
@@ -5565,7 +5576,7 @@ function tripsHTML(f) {
   const com = commutes(f);
   return com.length ? `<section class="lsec"><h2>Vos trajets</h2><div class="trips">${com.map(({p, min}) => `<a class="trip" href="https://www.google.com/maps/dir/?api=1&origin=${f.lat},${f.lng}&destination=${p.lat},${p.lng}&travelmode=${MODES[p.mode || "tc"][3]}" target="_blank" rel="noopener noreferrer">
         <b class="num">${min} min</b><span>${esc(p.label || p.q)} · ${MODES[p.mode || "tc"][0].toLowerCase()}</span><em>Itinéraire ↗</em></a>`).join("")}</div>
-      <p class="hint2">Estimation d’après la distance${f.precise ? "" : " et une position approximative"}. Touchez un trajet pour l’itinéraire exact.</p></section>` : "";
+      <p class="hint2">Estimation à vol d’oiseau${f.precise ? "" : ", position approximative"}.</p></section>` : "";
 }
 /* ---------- Location : encadrement, coût d'entrée, taux d'effort, points de vigilance ----------
    Règles en vigueur : dépôt de garantie d'un mois hors charges (vide) ou deux (meublé) ; honoraires du locataire
@@ -5616,7 +5627,7 @@ function rentAnalysisHTML(f) {
   const entry = x.cc ? `<section class="lsec"><h2>Coût d’entrée</h2>
       <div class="cost"><b class="num">${f.deposit == null || (!x.part && f.agencyFee == null) ? "≤ " : ""}${eur(tot)}</b><span>à payer à la signature</span></div>
       <dl class="cost__leg">${rows.map(([n, v, t]) => `<div><dt>${n}<small> · ${t}</small></dt><dd class="num">${v != null ? eur(v) : "–"}</dd></div>`).join("")}</dl>
-      <p class="hint2">Le dépôt de garantie est rendu au départ, moins les éventuelles réparations.</p></section>` : "";
+</section>` : "";
   // Taux d'effort
   let eff = "";
   if (x.cc) {
@@ -5639,7 +5650,7 @@ function rentAnalysisHTML(f) {
   if (x.verdict === "over") al.push(["over", `Loyer au-dessus du plafond de l’encadrement, d’environ ${eur(x.over)} par mois.`]);
   if (f.complement && (f.dpe === "F" || f.dpe === "G")) al.push(["over", "Complément de loyer interdit pour un logement classé F ou G."]);
   if (x.mb) al.push(["info", "Meublé : la loi impose un équipement minimum (literie, plaques, four ou micro-ondes, frigo avec congélateur, vaisselle, rangements, luminaires, rideaux dans les chambres). À vérifier à la visite."]);
-  const vig = `<section class="lsec"><h2>Points de vigilance</h2>${al.length ? `<ul class="vig">${al.map(([c, t]) => `<li class="vig--${c}">${t}</li>`).join("")}</ul>` : `<p class="hint2">Rien à signaler d’après l’annonce.</p>`}</section>`;
+  const vig = al.length ? `<section class="lsec"><h2>Points de vigilance</h2><ul class="vig">${al.map(([c, t]) => `<li class="vig--${c}">${t}</li>`).join("")}</ul></section>` : "";
   return enc + entry + eff + vig + tripsHTML(f);
 }
 function analysisHTML(f) {
@@ -5676,7 +5687,7 @@ function fairHTML(f, cmp, ng) {
     <p class="hint2">${cmp.n} ventes d’appartements${f.surface ? " de taille proche" : ""} à moins de ${fmtInt(Math.round(cmp.R / 50) * 50)} m, sur 3 ans${cmp.adj ? ", ramenées aux prix d’aujourd’hui" : ""}. La bande montre la moitié centrale.</p>
     <ul class="comps">${cmp.near.map(x => `<li><span class="num">${fmtDist(x.d)}</span><span class="num">${fmtInt(x.s)} m²</span><span>${esc(monthLabel(x.m))}</span><b class="num">${fmtInt(x.pa)}&#8239;€/m²</b></li>`).join("")}</ul>
     ${ng ? `<div class="nego"><div><span class="label">Offre de départ envisageable</span><b class="num">${fmtInt(ng.offer)}&#8239;€</b><small class="num">−${Math.round(ng.m * 100)} % sur le prix affiché</small></div>
-      <ul class="lwhy">${ng.why.map(w => `<li>${esc(w)}</li>`).join("")}</ul><p class="hint2">Indicatif : à confronter aux visites et à l’avis d’un professionnel.</p></div>` : ""}`;
+      <ul class="lwhy">${ng.why.map(w => `<li>${esc(w)}</li>`).join("")}</ul><p class="hint2">Indicatif.</p></div>` : ""}`;
 }
 async function paintFair(f) {
   const el = $("#lfair"); if (!el) return;
