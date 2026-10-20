@@ -1100,6 +1100,8 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .mapf__opt:active{transform:scale(.96)}
 @media (prefers-reduced-motion: reduce){.mapf__opt{transform:none}}
 /* Location */
+.crow__note{display:block;margin-top:3px;font-size:12px;line-height:16px}
+.ann__other{margin:0}
 .qsub{margin:6px 0 -4px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--zinc)}
 .permo{font-size:.62em;font-weight:600;margin-left:2px;opacity:.75}
 .modesel{align-self:flex-start;margin-bottom:10px}
@@ -1327,7 +1329,9 @@ let cloud = {client: null, user: null, mapId: null, personalMapId: null, maps: [
 let state = load() || defaultState();
 if (!state.profile || !Array.isArray(state.zones)) state = defaultState();
 
-const crit = () => state.profile.criteria;
+/* Critères de zone selon le projet affiché : en location, la revente ne compte pas et le prix devient le loyer */
+const modeCrit = cs => !isRent() ? cs : (cs || []).filter(c => c.id !== "revente").map(c => c.id === "prix" ? Object.assign({}, c, {name: "Loyer au m² / budget", desc: "5 = nettement sous votre loyer maximum, 0 = au-dessus"}) : c);
+const crit = () => modeCrit(state.profile.criteria);
 
 /* Géométrie des zones : projection locale en mètres (suffisante à l'échelle d'un quartier) */
 function toXY(p, lat0) { return [p[1] * 111320 * Math.cos(lat0 * Math.PI / 180), p[0] * 110540]; }
@@ -1488,7 +1492,7 @@ const personName = id => (cloud.people[id] && cloud.people[id].name) || cloud.na
 function partnerScores(z) {
   return (z.others || []).filter(hasRated).map(o => {
     const p = cloud.people[o.userId] || {};
-    const cs = Array.isArray(p.criteria) && p.criteria.length ? p.criteria : crit();
+    const cs = Array.isArray(p.criteria) && p.criteria.length ? modeCrit(p.criteria) : crit();
     return {userId: o.userId, name: personName(o.userId), fav: o.fav, comment: o.comment, s: scoreWith(z, o.ratings, cs, p.budget)};
   });
 }
@@ -2212,10 +2216,10 @@ function renderRating() {
             <input type="date" id="zdate" value="${esc(draft.date || "")}" aria-label="Date de visite">
           </label>
         </div>
-        <div class="field">
+        ${isRent() ? "" : `<div class="field">
           <label class="label" for="zprice">Prix observé €/m²</label>
           <input type="number" id="zprice" inputmode="numeric" min="0" step="100" value="${draft.price ?? ""}" placeholder="Facultatif">
-        </div>
+        </div>`}
       </div>
       <div class="field">
         <span class="label">Moment de la visite</span>
@@ -2253,7 +2257,7 @@ function renderRating() {
   const zd = $("#zdate");
   zd.oninput = zd.onchange = e => { draft.date = e.target.value; $("#zdateTxt").textContent = draft.date ? fmtDate(draft.date) : "Choisir"; };
   zd.onclick = () => { try { zd.showPicker && zd.showPicker(); } catch (err) {} };
-  $("#zprice").oninput = e => { const v = parseFloat(e.target.value); draft.price = isFinite(v) && v > 0 ? v : null; updateScoreBox(); };
+  if ($("#zprice")) $("#zprice").oninput = e => { const v = parseFloat(e.target.value); draft.price = isFinite(v) && v > 0 ? v : null; updateScoreBox(); };
   $("#zcom").oninput = e => draft.comment = e.target.value;
   $$("#zmoment .chip").forEach(b => b.onclick = () => {
     draft.moment = draft.moment === b.textContent ? "" : b.textContent;
@@ -2434,7 +2438,7 @@ function renderDetail() {
       ${s.estimated ? `<p class="bd-leg"><i></i>Valeurs estimées d’après les données du quartier, à confirmer en notant la zone</p>` : ""}
       <dl class="meta">
         ${z.date ? `<dt>Visite</dt><dd>${esc(fmtDate(z.date))}${z.moment ? ", " + esc(z.moment.toLowerCase()) : ""}</dd>` : ""}
-        ${z.price && !(z.est && z.est.prix) ? `<dt>Prix observé</dt><dd class="num">${fmtInt(z.price)} €/m²</dd>` : ""}
+        ${!isRent() && z.price && !(z.est && z.est.prix) ? `<dt>Prix observé</dt><dd class="num">${fmtInt(z.price)} €/m²</dd>` : ""}
         <dt>Surface</dt><dd class="num">${fmtArea(z.area || polyArea(z.points))}, environ ${walkAround(z.perimeter || polyPerimeter(z.points))} min pour en faire le tour à pied</dd>
         ${z.author ? `<dt>Notée par</dt><dd>${esc(z.author)}</dd>` : ""}
       </dl>
@@ -2468,7 +2472,7 @@ function renderDetail() {
 function duoTable(z, partners) {
   const people = [{name: "Vous", ratings: z.ratings, criteria: crit(), budget: zoneBudget()},
     ...partners.map(p => { const o = (z.others || []).find(x => x.userId === p.userId) || {}, pp = cloud.people[p.userId] || {};
-      return {name: p.name, ratings: o.ratings || {}, criteria: pp.criteria && pp.criteria.length ? pp.criteria : crit(), budget: pp.budget}; })];
+      return {name: p.name, ratings: o.ratings || {}, criteria: pp.criteria && pp.criteria.length ? modeCrit(pp.criteria) : crit(), budget: pp.budget}; })];
   const rows = [];
   people.forEach(pe => pe.criteria.forEach(c => { if (c.weight > 0 && !rows.some(r => r.id === c.id)) rows.push({id: c.id, name: c.name}); }));
   const cell = (pe, id) => {
@@ -3062,6 +3066,7 @@ function renderProfile() {
             <div style="min-width:0">
               <input class="nm" value="${esc(c.name)}" aria-label="Nom du critère" maxlength="40">
               <input class="ds" value="${esc(c.desc || "")}" placeholder="Ce qu’on observe sur place" aria-label="Description" maxlength="120">
+              ${c.id === "revente" && projet() !== "achat" ? `<span class="hint2 crow__note">Ne compte pas pour une location.</span>` : c.id === "prix" && projet() !== "achat" ? `<span class="hint2 crow__note">En location, comparé à votre loyer maximum.</span>` : ""}
             </div>
             <div class="wctl">
               <input type="range" min="0" max="40" step="5" value="${c.weight}" aria-label="Poids de ${esc(c.name)}">
@@ -3970,6 +3975,7 @@ async function cloudRefresh(force) {
 
 function rerenderAll() {
   if (typeof renderZones !== "function") return;
+  paintModeSel();
   renderZones(); renderListingPins();
   if (currentTab === "annonces") renderListings();
   else if (currentTab === "map") { if (ui.mode === "list" || ui.mode === "detail") renderPanel(); }
@@ -4407,6 +4413,7 @@ function renderListingsView() {
       <div class="seg seg--sm" role="group" aria-label="Filtrer">${[["actives", "À voir"], ["gardees", "Gardées"], ["ecartees", "Écartées"]].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${lui.filter === k}">${l}<span class="num">${counts[k]}</span></button>`).join("")}</div>
       <label class="ann__sort">Trier par <select id="lsort"><option value="match" ${lui.sort === "match" ? "selected" : ""}>Correspondance</option><option value="prix" ${lui.sort === "prix" ? "selected" : ""}>Prix</option><option value="recent" ${lui.sort === "recent" ? "selected" : ""}>Ajout récent</option></select></label>
     </div>` : ""}
+    ${(() => { const other = projet() === "deux" ? 0 : listings().filter(f => kindOf(f) !== curMode()).length; return other ? `<p class="hint2 ann__other">${plural(other, curMode() === "achat" ? "annonce de location masquée" : "annonce de vente masquée", curMode() === "achat" ? "annonces de location masquées" : "annonces de vente masquées")} : votre projet est ${curMode() === "achat" ? "l’achat" : "la location"}. <button class="link" type="button" id="addOther">Ajouter ${curMode() === "achat" ? "la location" : "l’achat"} à mon projet</button></p>` : ""; })()}
     ${best ? heroHTML(best.f, best.s) : ""}
     ${all.length ? `<div class="ann__list">
       ${shown.filter(x => x !== best).map(({f, s}) => `<button type="button" class="lcard${f.status === "ecartee" || f.gone ? " lcard--off" : ""}" data-id="${f.id}">
@@ -4425,6 +4432,7 @@ function renderListingsView() {
   const so = $("#lsort"); if (so) so.onchange = e => { lui.sort = e.target.value; renderListings(); };
   $$(".lcard", box).forEach(b => b.onclick = () => { lui.openId = b.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; });
   bindSources(); bindModeSel(box);
+  const ao = $("#addOther", box); if (ao) ao.onclick = () => { const h = homeProfile(), k = curMode() === "achat" ? "location" : "achat"; h.projet = "deux"; if (h.setup) h.setup.projet = "deux"; save(); setMode(k); toast(k === "location" ? "Location ajoutée : passez de l’un à l’autre en haut des annonces" : "Achat ajouté : passez de l’un à l’autre en haut des annonces"); };
   const hero = $(".hero", box);
   if (hero) {
     hero.onclick = e => { if (e.target.closest("[data-hst]")) return; lui.openId = hero.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; };
@@ -4691,7 +4699,9 @@ function homeSectionHTML() {
   return `<section class="sec" id="homeSec">
     <h2>Votre logement idéal</h2>
     <p class="hint2">Ces filtres et ces critères servent à calculer la correspondance de chaque annonce. Une annonce qui ne passe pas un filtre reste visible, avec une note plafonnée.</p>
-    <div class="row2">${num("hBudget", "Budget total max", h.budgetMax, "Ex. 550 000 €", 5000)}${num("hSurf", "Surface min", h.surfaceMin, "m²")}</div>
+    ${projet() === "deux" ? `<div class="row2">${num("hBudget", "Prix max à l’achat", h.budgetMax, "Ex. 550 000 €", 5000)}${num("hLoyer", "Loyer max, charges comprises", (h.loc || {}).loyerMax, "€ par mois", 50)}</div>
+    <div class="row2">${num("hSurf", "Surface min", h.surfaceMin, "m²")}<span></span></div>`
+      : `<div class="row2">${projet() === "location" ? num("hLoyer", "Loyer max, charges comprises", (h.loc || {}).loyerMax, "€ par mois", 50) : num("hBudget", "Budget total max", h.budgetMax, "Ex. 550 000 €", 5000)}${num("hSurf", "Surface min", h.surfaceMin, "m²")}</div>`}
     <div class="row2">${num("hRooms", "Pièces min", h.roomsMin, "Ex. 3")}${num("hBeds", "Chambres min", h.bedroomsMin, "Ex. 2")}</div>
     <div class="row2">
       <div class="field"><label class="label" for="hElev">Ascenseur indispensable</label><select id="hElev">${[[0, "Jamais"], [2, "Dès le 2e étage"], [3, "Dès le 3e étage"], [4, "Dès le 4e étage"], [5, "Dès le 5e étage"]].map(([v, l]) => `<option value="${v}" ${+h.elevatorFrom === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
@@ -4707,7 +4717,7 @@ function homeSectionHTML() {
         <div class="wctl"><input type="range" min="0" max="30" step="5" value="${h.weights[id] || 0}" aria-label="Poids de ${esc(HOME_LIB[id].name)}"><output class="num"><span class="wv">${h.weights[id] || 0}</span><small class="ws">${Math.round(Math.max(0, h.weights[id] || 0) / ws * 100)} %</small></output></div>
       </div>`).join("")}</div>
     <h3 class="sub3">Dans la note d’une annonce</h3>
-    <div class="cards">${[["logement", "Le logement", "Vos critères ci-dessus"], ["quartier", "Le quartier", "La note de vos zones, ou l’estimation du coin"], ["prix", "Le prix", "Comparé aux ventes réelles du quartier"]].map(([k, n, d]) => `<div class="crow crow--home" data-mix="${k}">
+    <div class="cards">${[["logement", "Le logement", "Vos critères ci-dessus"], ["quartier", "Le quartier", "La note de vos zones, ou l’estimation du coin"], ["prix", projet() === "location" ? "Le loyer" : "Le prix", {achat: "Comparé aux ventes réelles du quartier", location: "Comparé aux loyers de référence du quartier", deux: "Comparé aux ventes ou aux loyers du quartier"}[projet()]]].map(([k, n, d]) => `<div class="crow crow--home" data-mix="${k}">
         <div style="min-width:0"><b class="nm">${n}</b><span class="ds">${d}</span></div>
         <div class="wctl"><input type="range" min="0" max="60" step="5" value="${h.mix[k]}" aria-label="Part de ${n}"><output class="num"><span class="wv">${h.mix[k]}</span><small class="ws">${Math.round(h.mix[k] / ((h.mix.logement + h.mix.quartier + h.mix.prix) || 1) * 100)} %</small></output></div>
       </div>`).join("")}</div>
@@ -4717,7 +4727,9 @@ function bindHomeSection() {
   const sec = $("#homeSec"); if (!sec) return;
   const h = homeProfile(), save = () => { h.custom = true; learnMemo.key = null; saveState(); };
   const numIn = (id, key) => { $("#" + id).oninput = e => { const v = parseFloat(e.target.value); h[key] = isFinite(v) && v > 0 ? v : null; save(); }; };
-  numIn("hBudget", "budgetMax"); numIn("hSurf", "surfaceMin"); numIn("hRooms", "roomsMin"); numIn("hBeds", "bedroomsMin");
+  if ($("#hBudget")) numIn("hBudget", "budgetMax");
+  const hl = $("#hLoyer"); if (hl) hl.oninput = e => { const v = parseFloat(e.target.value); h.loc = Object.assign({}, h.loc, {loyerMax: isFinite(v) && v > 0 ? Math.round(v) : null}); save(); };
+  numIn("hSurf", "surfaceMin"); numIn("hRooms", "roomsMin"); numIn("hBeds", "bedroomsMin");
   $("#hElev").onchange = e => { h.elevatorFrom = +e.target.value || 0; save(); };
   $("#hDpe").onchange = e => { h.dpeMax = e.target.value; save(); };
   $("#hGround").onclick = e => { h.noGround = !h.noGround; e.currentTarget.setAttribute("aria-pressed", String(h.noGround)); save(); };
@@ -5335,7 +5347,7 @@ function paintQuiz() {
       }, 400);
     };
   });
-  const go = $("#qzDone"); if (go) go.onclick = () => { closeQuiz(); rerenderAll(); renderProfile(); toast("Profil réglé : vos zones et annonces sont recalculées"); };
+  const go = $("#qzDone"); if (go) go.onclick = () => { closeQuiz(); lui.openId = null; rerenderAll(); renderProfile(); toast("Profil réglé : vos zones et annonces sont recalculées"); };
   const adv = $("#qzAdv"); if (adv) adv.onclick = () => { closeQuiz(); rerenderAll(); try { localStorage.setItem("heden.adv", "1"); } catch (e) {} setTab("profile"); renderProfile(); setTimeout(() => { const a = $("#advanced"); if (a) a.scrollIntoView({behavior: "smooth"}); }, 60); };
 }
 function quizResultHTML() {
