@@ -984,8 +984,18 @@ body{background-color:var(--pierre)}
 @media (max-width:899px){.hero{grid-template-columns:1fr;padding:14px 14px 18px;gap:16px}.hero__ph{aspect-ratio:16/11}.hero h2{font-size:26px;line-height:29px}}
 
 /* ---- Mouvement ---- */
-@keyframes vue-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.view--in>*{animation:vue-in .42s var(--ease-sortie) both}
+@keyframes vue-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.view--in>*{animation:vue-in .22s var(--ease-sortie) both}
+@keyframes carte-in{from{opacity:.35}to{opacity:1}}
+@keyframes feuille-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes feuille-in-g{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+#view-map.view--in #map{animation:carte-in .24s ease-out both}
+#view-map.view--in .panel{animation:feuille-in .26s var(--ease-sortie) both}
+@media (min-width:900px){#view-map.view--in .panel{animation-name:feuille-in-g}}
+/* liste d'annonces ↔ fiche : glissement court dans le sens de la navigation */
+@keyframes glisse-in{from{opacity:0;transform:translateX(calc(var(--dx,1) * 14px))}to{opacity:1;transform:none}}
+#annonces.swap-in{animation:glisse-in .2s var(--ease-sortie) both}
+.panel.swap-in .panel__head,.panel.swap-in .panel__body{animation:vue-in .2s var(--ease-sortie) both}
 @keyframes galet-in{0%{opacity:0;transform:scale(.2) rotate(-25deg)}70%{opacity:1}100%{opacity:1;transform:none}}
 body.intro .brand svg .lg{animation:galet-in .7s var(--ease-ressort) both}
 body.intro .brand svg .lg:nth-of-type(2){animation-delay:.08s}
@@ -1000,7 +1010,7 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 @keyframes trace{from{stroke-dashoffset:var(--len,1400)}to{stroke-dashoffset:0}}
 @keyframes remplit{from{fill-opacity:0}}
 .zone-new{stroke-dasharray:var(--len,1400);animation:trace 1.1s var(--ease-sortie) both,remplit .9s .5s ease both}
-@media (prefers-reduced-motion: reduce){.view--in>*,body.intro .brand svg .lg,body.intro .brand b,.galets path,.zone-new{animation:none!important}}
+@media (prefers-reduced-motion: reduce){#annonces.swap-in,#view-map.view--in #map,#view-map.view--in .panel,.view--in>*,body.intro .brand svg .lg,body.intro .brand b,.galets path,.zone-new{animation:none!important}}
 
 /* ---- Ouverture ---- */
 #splash{position:fixed;inset:0;z-index:5000;display:grid;place-content:center;justify-items:center;gap:14px;background:var(--pierre) var(--grain);background-size:180px 180px;pointer-events:none;transition:opacity .45s var(--ease-sortie),transform .45s var(--ease-sortie)}
@@ -1586,11 +1596,21 @@ function setTab(t) {
   if (t === "map") { setTimeout(() => map.invalidateSize(), 0); renderZones(); renderPanel(); renderListingPins(); }
   else if (t === "annonces") renderListings();
   else renderProfile();
-  const vw = t === "annonces" ? $("#view-annonces") : t === "profile" ? $("#view-profile") : null;
-  if (vw) { vw.classList.remove("view--in"); void vw.offsetWidth; vw.classList.add("view--in"); }
+  const vw = $(t === "annonces" ? "#view-annonces" : t === "profile" ? "#view-profile" : "#view-map");
+  if (vw) { vw.classList.remove("view--in"); void vw.offsetWidth; vw.classList.add("view--in"); setTimeout(() => vw.classList.remove("view--in"), 400); }
   try { if (!/(access_token|error_description|error_code|import)=/.test(location.hash)) history.replaceState(null, "", t === "profile" ? "#profil" : t === "annonces" ? "#annonces" : "#carte"); } catch (e) {}
 }
-$$("[data-tab]").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+$$("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab === currentTab ? tabHome(b.dataset.tab) : setTab(b.dataset.tab)));
+/* Onglet déjà ouvert : on revient à son menu (liste des annonces, liste des zones, haut du profil) */
+function tabHome(t) {
+  const smooth = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+  if (t === "annonces") {
+    if (lui.openId) { lui.openId = null; renderListings(); }
+    else $("#view-annonces").scrollTo({top: 0, behavior: smooth});
+  } else if (t === "map") {
+    if (ui.mode === "detail") { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); const pn = $(".panel"); if (pn) { pn.classList.remove("swap-in"); void pn.offsetWidth; pn.classList.add("swap-in"); setTimeout(() => pn.classList.remove("swap-in"), 300); } }
+  } else $("#view-profile").scrollTo({top: 0, behavior: smooth});
+}
 
 /* =========================================================
    Carte
@@ -2460,7 +2480,7 @@ function stopGeo() {
   $("#locate").setAttribute("aria-pressed", "false");
 }
 $("#locate").onclick = () => startGeo(true);
-$("#brandHome").onclick = () => setTab("map");
+$("#brandHome").onclick = () => currentTab === "map" ? tabHome("map") : setTab("map");
 
 /* ---------- Filtres de la carte : les options sortent du bouton en galets ---------- */
 function paintMapFilter() {
@@ -4152,6 +4172,18 @@ function scoreListing(f, raw = false) {
 const LSTAT = {nouvelle: "À trier", gardee: "Gardée", visite: "Visite prévue", ecartee: "Écartée"};
 let lui = {filter: "actives", sort: "match", openId: null};
 function renderListings() {
+  const vw = $("#view-annonces"), box = $("#annonces");
+  const view = lui.openId && listings().some(x => x.id === lui.openId) ? "d:" + lui.openId : "list", prev = lui.lastView;
+  if (prev && prev !== view && prev === "list" && vw) lui.listScroll = vw.scrollTop;
+  renderListingsView();
+  if (prev && prev !== view && box) {
+    box.style.setProperty("--dx", view === "list" ? -1 : 1);
+    box.classList.remove("swap-in"); void box.offsetWidth; box.classList.add("swap-in"); clearTimeout(lui.swapT); lui.swapT = setTimeout(() => box.classList.remove("swap-in"), 300);
+    if (vw) vw.scrollTop = view === "list" ? (lui.listScroll || 0) : 0;
+  }
+  lui.lastView = lui.openId && listings().some(x => x.id === lui.openId) ? "d:" + lui.openId : "list";
+}
+function renderListingsView() {
   const box = $("#annonces"); if (!box) return;
   if (lui.openId && listings().some(x => x.id === lui.openId)) return renderListingDetail(lui.openId);
   const all = listings().map(f => ({f, s: scoreListing(f)}));
