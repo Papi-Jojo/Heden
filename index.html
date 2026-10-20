@@ -868,7 +868,9 @@ body[data-mode="placing"] #walkBtn,body[data-mode="rating"] #walkBtn{display:non
   .panel.dragging{transition:none}
   .panel .grip,.panel .panel__head{touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   .grip::before{content:"";position:absolute;inset:-12px -60px}
-  .panel[data-sheet="peek"]{box-shadow:0 -4px 18px rgba(38,35,31,.10)}
+  .panel[data-sheet="peek"],.panel[data-sheet="mini"]{box-shadow:0 -4px 18px rgba(38,35,31,.10)}
+  .panel[data-mode="list"] .panel__head .grow>*{transition:opacity .22s ease}
+  .panel[data-sheet="mini"] .panel__head .grow>:not(.mapsw):not(h2),.panel[data-sheet="mini"] .panel__head .grow:has(.mapsw)>h2{opacity:0;pointer-events:none}
   .panel__foot{padding-bottom:12px}
   .fab-col{bottom:auto;top:66px}
   .leaflet-control-zoom{display:none}
@@ -2226,8 +2228,23 @@ function renderPanel() { setTimeout(() => tipsKick(), 0);
    ========================================================= */
 let sheetDrag = null, suppressClick = false;
 function peekHeight() { const h = panel.querySelector(".panel__head"); return h ? h.offsetTop + h.offsetHeight : 76; }
-function sheetMax() { return Math.max(0, panel.offsetHeight - peekHeight()); }
-function sheetOffset() { return ui.sheet === "peek" ? sheetMax() : 0; }
+/* Liste des zones : trois crans. Ouvert, intermédiaire (titre), réduit (cartes et + Zone seulement). */
+function miniHeight() {
+  const top = panel.getBoundingClientRect().top;
+  const els = [panel.querySelector(".panel__head #newZone"), panel.querySelector(".panel__head .mapsw")].filter(Boolean);
+  if (!els.length) return peekHeight();
+  const sw = !!panel.querySelector(".panel__head .mapsw");
+  if (!sw) { const h2 = panel.querySelector(".panel__head h2"); if (h2) els.push(h2); }
+  return Math.min(peekHeight(), Math.max(...els.map(el => el.getBoundingClientRect().bottom - top)) + (sw ? 14 : 12));
+}
+const hasMini = () => ui.mode === "list";
+function sheetStops() {
+  const h = panel.offsetHeight, st = [["open", 0], ["peek", Math.max(0, h - peekHeight())]];
+  if (hasMini()) st.push(["mini", Math.max(0, h - miniHeight())]);
+  return st;
+}
+function sheetMax() { const st = sheetStops(); return st[st.length - 1][1]; }
+function sheetOffset() { if (ui.sheet === "mini" && !hasMini()) ui.sheet = "peek"; const f = sheetStops().find(([k]) => k === ui.sheet); return f ? f[1] : 0; }
 function setSheetVar(off) {
   const visible = isDesktop() ? 0 : panel.offsetHeight - off;
   document.getElementById("map").style.setProperty("--sheet-h", visible + "px");
@@ -2259,11 +2276,21 @@ function endSheetDrag(e) {
   const d = sheetDrag; if (!d || e.pointerId !== d.id) return;
   sheetDrag = null; panel.classList.remove("dragging");
   if (!d.moved) {
-    if (e.type === "pointerup" && !e.target.closest("button, a, input, select, textarea")) { ui.sheet = ui.sheet === "peek" ? "open" : "peek"; applySheet(); }
+    if (e.type === "pointerup" && !e.target.closest("button, a, input, select, textarea")) { ui.sheet = ui.sheet === "open" ? "peek" : ui.sheet === "mini" ? "peek" : "open"; applySheet(); }
     return;
   }
   const v = (e.clientY - d.y0) / Math.max(1, performance.now() - d.t0);
-  ui.sheet = v > 0.35 ? "peek" : v < -0.35 ? "open" : (d.off > d.max / 2 ? "peek" : "open");
+  const st = sheetStops();
+  let i = st.reduce((bi, s2, k) => Math.abs(s2[1] - d.off) < Math.abs(st[bi][1] - d.off) ? k : bi, 0);
+  if (Math.abs(v) > 0.35) {
+    const cur = st.findIndex(([k]) => k === ui.sheet);
+    const dir = v > 0 ? 1 : -1;
+    const next = st.findIndex(([, o]) => dir > 0 ? o > d.off + 4 : false);
+    if (dir > 0) i = next >= 0 ? next : st.length - 1;
+    else { let j = -1; st.forEach(([, o], k) => { if (o < d.off - 4) j = k; }); i = j >= 0 ? j : 0; }
+    if (cur >= 0 && Math.abs(i - cur) > 1 && Math.abs(v) < 1.2) i = cur + dir;
+  }
+  ui.sheet = st[Math.max(0, Math.min(st.length - 1, i))][0];
   suppressClick = true; setTimeout(() => { suppressClick = false; }, 60);
   applySheet();
 }
