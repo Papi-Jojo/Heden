@@ -43,7 +43,7 @@ LAT0 = 48.8566
 KX, KY = 111320 * math.cos(math.radians(LAT0)), 110540  # mètres par degré, à la latitude de Paris
 xy = lambda lat, lng: (lng * KX, lat * KY)
 ll = lambda x, y: [round(y / KY, 5), round(x / KX, 5)]
-RAYON, MAX_PTS, MIN_HA = 450, 18, 2
+RAYON, MAX_PTS, MIN_HA = 650, 18, 2
 
 
 def q_connus():
@@ -159,7 +159,12 @@ def build(raw, connus=None):
         n = arr_of(pt)
         if not n: continue
         if g is not None and g.area < 4e6: shape = g.intersection(paris)          # contour dessiné dans OSM
-        else: shape = by_pt.get(i, pt.buffer(RAYON)).intersection(arrs[n]).intersection(pt.buffer(RAYON, 16))
+        else:
+            # bornée par ses voisins (Voronoï), son arrondissement et son quartier administratif (dont les limites suivent les rues),
+            # le quartier élargi de 120 m pour ne pas couper net un lieu posé sur sa limite ; le disque n'est qu'un garde-fou
+            q = next((g2 for _, g2 in quartiers if g2.contains(pt)), None)
+            shape = by_pt.get(i, pt.buffer(RAYON)).intersection(arrs[n]).intersection(pt.buffer(RAYON, 32))
+            if q is not None: shape = shape.intersection(q.buffer(120))
         if shape.is_empty or shape.area < MIN_HA * 1e4: continue
         p = small(shape)
         if p: out[str(n)].append({"n": name, "k": "lieu", "p": p})
