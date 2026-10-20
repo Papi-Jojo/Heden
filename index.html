@@ -4,6 +4,135 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Heden</title>
+<script>/* Heden — traduction à l’affichage (anglais). Le français reste la langue du code. */
+(function () {
+  var lang = "fr";
+  try { lang = localStorage.getItem("heden.lang") === "en" ? "en" : "fr"; } catch (e) {}
+  window.HEDEN_LANG = lang;
+  if (lang !== "en") return;
+  var root = document.documentElement;
+  root.lang = "en"; root.classList.add("i18n-wait");
+  var reveal = function () { root.classList.remove("i18n-wait"); };
+  setTimeout(reveal, 1500);
+  var NUM = /\d(?:[\d    .,]*\d)?/g;
+  var MO = {"janv.": "Jan", "févr.": "Feb", "mars": "Mar", "avr.": "Apr", "mai": "May", "juin": "Jun", "juil.": "Jul", "août": "Aug", "sept.": "Sep", "oct.": "Oct", "nov.": "Nov", "déc.": "Dec"};
+  var MORE = /(\d) (janv\.|févr\.|mars|avr\.|mai|juin|juil\.|août|sept\.|oct\.|nov\.|déc\.)(?=[\s,.)]|$)/g;
+  var EX = null, BK = {}, GEN = [], memo = new Map();
+  var esc = function (c) { return c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); };
+  function compile(k, v) {
+    var re = "^", kinds = [], lit = 0;
+    for (var i = 0; i < k.length; i++) {
+      var c = k[i];
+      if (c === "*") { re += "([\\s\\S]*?)"; kinds.push("*"); }
+      else if (c === "§") { re += "(s?)"; kinds.push("*"); }
+      else if (c === "#") { re += "(\\d(?:[\\d\\u00a0\\u202f\\u2009 .,]*\\d)?)"; kinds.push("#"); }
+      else { re += esc(c); lit++; }
+    }
+    return {re: new RegExp(re + "$"), kinds: kinds, v: v, lit: lit, nw: kinds.filter(function (x) { return x === "*"; }).length};
+  }
+  function byLit(a, b) { return b.lit - a.lit || a.nw - b.nw; }
+  function ordinal(s) {
+    return s.replace(/\b(\d+)th\b/g, function (m, n) { var x = +n % 100, y = +n % 10; return n + (x > 10 && x < 14 ? "th" : y === 1 ? "st" : y === 2 ? "nd" : y === 3 ? "rd" : "th"); });
+  }
+  function fill(v, nums, wild, depth) {
+    var ni = 0, wi = 0;
+    return ordinal(v.replace(/([*#])([1-9])?/g, function (m, t, ix) {
+      if (t === "#") { var n = ix ? nums[ix - 1] : nums[ni++]; return n == null ? "" : n; }
+      var w = ix ? wild[ix - 1] : wild[wi++]; return w == null ? "" : tr(w, depth + 1);
+    }));
+  }
+  function tr(s, depth) {
+    depth = depth || 0;
+    if (!s || depth > 8 || !/[A-Za-zÀ-ÿ]/.test(s)) return s;
+    if (!depth && memo.has(s)) return memo.get(s);
+    var lead = s.match(/^\s*/)[0], trail = s.slice(lead.length).match(/\s*$/)[0];
+    var core = s.slice(lead.length, s.length - trail.length).replace(/\s+/g, " ");
+    var c2 = core.replace(MORE, function (m, d, mo) { return d + " " + MO[mo]; });
+    var out = null, nums = [];
+    var k = c2.replace(NUM, function (m) { nums.push(m); return "#"; });
+    var v = EX[k];
+    if (v != null) out = fill(v, nums, [], depth);
+    else {
+      var list = (BK[c2.slice(0, 2)] || []).concat(/^\d/.test(c2) ? BK["#"] || [] : [], GEN).sort(byLit);
+      var cm = depth && c2.indexOf(", ") >= 0;
+      for (var i = 0; i < list.length && out == null; i++) {
+        var p = list[i]; if (cm && p.k.indexOf(",") < 0) continue;
+        var m = p.re.exec(c2);
+        if (!m) continue;
+        var ns = [], ws = [];
+        for (var j = 0; j < p.kinds.length; j++) (p.kinds[j] === "#" ? ns : ws).push(m[j + 1]);
+        out = fill(p.v, ns, ws, depth);
+      }
+      if (out == null && /\.$/.test(c2) && c2.length > 3) { var t0 = tr(c2.slice(0, -1), depth + 1); if (t0 !== c2.slice(0, -1)) out = t0 + "."; }
+      if (out == null && cm) {
+        var parts = c2.split(", "), acc = [];
+        for (var q = 0; q < parts.length; q++) {
+          var two = q + 1 < parts.length ? parts[q] + ", " + parts[q + 1] : null;
+          if (two && EX[two.replace(NUM, "#")] != null) { acc.push(tr(two, depth + 1)); q++; } else acc.push(tr(parts[q], depth + 1));
+        }
+        out = acc.join(", ");
+      }
+      if (out == null) out = c2 === core ? null : c2;
+    }
+    var res = out == null ? s : lead + out + trail;
+    if (!depth) { if (memo.size > 6000) memo.clear(); memo.set(s, res); }
+    return res;
+  }
+  window.__t = function (s) { return EX ? tr(String(s)) : String(s); };
+  var SKIP = "script,style,textarea,noscript,[data-i18n-skip],.leaflet-tile-pane,.maplibregl-map,.leaflet-control-attribution";
+  var ATTRS = ["placeholder", "aria-label", "title", "alt"];
+  var seen = new WeakMap();
+  var FIL = {acceptNode: function (n) { if (n.nodeType === 1 && n.matches(SKIP)) { if (n.matches("textarea")) doAttrs(n); return 2; } return 1; }};
+  function doText(n, known) {
+    var v = n.nodeValue;
+    if (!v || seen.get(n) === v) return;
+    if (!known) { var p = n.parentElement; if (!p || p.closest(SKIP)) return; }
+    var t = tr(v); seen.set(n, t);
+    if (t !== v) n.nodeValue = t;
+  }
+  function doAttrs(el) {
+    for (var i = 0; i < ATTRS.length; i++) {
+      var a = ATTRS[i], v = el.getAttribute(a);
+      if (!v || el.__i18n && el.__i18n[a] === v) continue;
+      if (el.closest("[data-i18n-skip],script,style")) return;
+      var t = tr(v); (el.__i18n = el.__i18n || {})[a] = t;
+      if (t !== v) el.setAttribute(a, t);
+    }
+  }
+  function doVal(el) {
+    if (el.__i18nv || el.tagName !== "INPUT" || !el.hasAttribute("data-i18n-val")) return;
+    el.__i18nv = 1; var tv = tr(el.value); if (tv !== el.value) el.value = tv;
+  }
+  function doTree(node) {
+    if (node.nodeType === 3) return doText(node);
+    if (node.nodeType !== 1) return;
+    if (node.closest(SKIP)) { if (node.matches("textarea")) doAttrs(node); return; }
+    doAttrs(node);
+    var w = document.createTreeWalker(node, 5, FIL), n;
+    doVal(node);
+    while ((n = w.nextNode())) { if (n.nodeType === 3) doText(n, true); else { doAttrs(n); doVal(n); } }
+  }
+  var mo = new MutationObserver(function (recs) {
+    if (!EX) return;
+    for (var i = 0; i < recs.length; i++) {
+      var r = recs[i];
+      if (r.type === "childList") for (var j = 0; j < r.addedNodes.length; j++) doTree(r.addedNodes[j]);
+      else if (r.type === "characterData") doText(r.target);
+      else if (r.type === "attributes" && r.target.nodeType === 1) doAttrs(r.target);
+    }
+  });
+  mo.observe(root, {subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS});
+  fetch("i18n/en.json?v=1").then(function (r) { return r.json(); }).then(function (d) {
+    EX = d.exact;
+    var ps = Object.keys(d.pat).map(function (k) { var p = compile(k, d.pat[k]); p.k = k; return p; });
+    ps.sort(byLit);
+    ps.forEach(function (p) { var h = p.k.slice(0, 2); if (/[*#]/.test(h[0])) { if (h[0] === "#") (BK["#"] = BK["#"] || []).push(p); else GEN.push(p); } else if (/[*#]/.test(h[1])) GEN.push(p); else (BK[h] = BK[h] || []).push(p); });
+    var go = function () { document.title = tr(document.title); if (document.body) doTree(document.body); reveal(); };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go();
+  }).catch(reveal);
+})();
+</script>
+<style>html.i18n-wait body{visibility:hidden}</style>
 <meta name="description" content="Notez les coins de Paris que vous visitez et repérez ceux qui vous correspondent.">
 <meta name="theme-color" content="#F8F2EC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#271D16" media="(prefers-color-scheme: dark)">
@@ -1130,6 +1259,13 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .addrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .fresh--line{display:flex;align-items:center;gap:8px;margin:0;padding:0;border:0;background:none;font-size:13px;color:var(--zinc)}
 .fresh--line .link{font-size:13px}
+/* Supprimer à portée de main : une poubelle discrète, rouge au survol et au toucher */
+.x--del{color:color-mix(in srgb,var(--alerte) 75%,var(--zinc));opacity:.85;transition:color .14s,background-color .14s,opacity .14s}
+.x--del:hover,.x--del:focus-visible,.x--del:active{color:var(--alerte);opacity:1;background:color-mix(in srgb,var(--alerte) 10%,transparent)}
+.ldet__top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:-6px}
+.ldet__top .ann__back{margin:0}
+.panel__head .x--del{margin-left:auto}
+.panel__head .x--del+.x{margin-left:0}
 /* Tri des annonces : trois piles, actions rapides, annulation */
 .ann__list{border:0;background:none;gap:8px;overflow:visible}
 .lrow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px;border-radius:22px;background:var(--calcaire);border:1px solid var(--trait);overflow:hidden;transition:transform .26s var(--ease-sortie),opacity .22s,height .26s .1s var(--ease-sortie),margin .26s .1s,border-width .26s .1s}
@@ -2313,7 +2449,7 @@ function renderRating() {
       </div>
       <div class="field">
         <span class="label">Moment de la visite</span>
-        <div class="chips" id="zmoment">${MOMENTS.map(m => `<button class="chip" type="button" aria-pressed="${draft.moment === m}">${m}</button>`).join("")}</div>
+        <div class="chips" id="zmoment">${MOMENTS.map(m => `<button class="chip" type="button" data-m="${m}" aria-pressed="${draft.moment === m}">${m}</button>`).join("")}</div>
       </div>
       <div class="field">
         <span class="label">Photos</span>
@@ -2350,8 +2486,8 @@ function renderRating() {
   if ($("#zprice")) $("#zprice").oninput = e => { const v = parseFloat(e.target.value); draft.price = isFinite(v) && v > 0 ? v : null; updateScoreBox(); };
   $("#zcom").oninput = e => draft.comment = e.target.value;
   $$("#zmoment .chip").forEach(b => b.onclick = () => {
-    draft.moment = draft.moment === b.textContent ? "" : b.textContent;
-    $$("#zmoment .chip").forEach(x => x.setAttribute("aria-pressed", String(x.textContent === draft.moment)));
+    draft.moment = draft.moment === b.dataset.m ? "" : b.dataset.m;
+    $$("#zmoment .chip").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.m === draft.moment)));
   });
   $("#zfav").onclick = e => { draft.fav = !draft.fav; e.currentTarget.setAttribute("aria-pressed", String(draft.fav)); };
   $$(".crit", panel).forEach(row => {
@@ -2496,6 +2632,7 @@ function renderDetail() {
         <span class="plaque" title="${esc(z.name || "Sans nom")}"><span>${z.place ? `<small>${esc(z.place)}</small>` : ""}${esc(z.name || "Sans nom")}</span></span>
         ${z.area ? `<div class="sub num" style="margin-top:8px">${fmtArea(z.area)}</div>` : ""}
       </div>
+      <button class="x x--del" id="del" type="button" aria-label="${duo ? "Supprimer la zone pour vous deux" : "Supprimer la zone"}" title="Supprimer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
       <button class="x" id="close" type="button" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="panel__body">
@@ -2535,7 +2672,6 @@ function renderDetail() {
       ${z.comment ? `<div class="note">${esc(z.comment)}</div>` : ""}
       ${linkedMap || z.link ? `<div class="twin"><span>Aussi sur la carte commune${linkedMap ? ` « ${esc(linkedMap.name)} »` : ""}, avec les mêmes notes et photos.</span><button class="link" type="button" id="openTwin">Voir</button></div>` : ""}
       ${copyTargets.length ? `<div class="datarow">${copyTargets.map(m => `<button class="btn btn--sm" data-copy="${m.id}" type="button">Ajouter à « ${esc(m.name)} »</button>`).join("")}</div>` : ""}
-      <div><button class="btn btn--sm btn--danger" id="del" type="button">${duo ? "Supprimer la zone pour vous deux" : "Supprimer la zone"}</button></div>
     </div>
     <div class="panel__foot">
       <button class="btn" id="adj" type="button">Ajuster le tracé</button>
@@ -3131,7 +3267,7 @@ function renderProfile() {
         ${cs.map((c, i) => `
           <div class="crow" data-i="${i}">
             <div style="min-width:0">
-              <input class="nm" value="${esc(c.name)}" aria-label="Nom du critère" maxlength="40">
+              <input class="nm" value="${esc(c.name)}" aria-label="Nom du critère" maxlength="40" data-i18n-val>
               <input class="ds" value="${esc(c.desc || "")}" placeholder="Ce qu’on observe sur place" aria-label="Description" maxlength="120">
               ${c.id === "revente" && projet() !== "achat" ? `<span class="hint2 crow__note">Ne compte pas pour une location.</span>` : c.id === "prix" && projet() !== "achat" ? `<span class="hint2 crow__note">En location, comparé à votre loyer maximum.</span>` : ""}
             </div>
@@ -3177,6 +3313,10 @@ function renderProfile() {
         <input type="text" id="pname" value="${esc(p.name)}" placeholder="Affiché sur les zones que vous notez" maxlength="40">
       </div>
     </section>
+    <section class="sec setrow">
+      <div><h3 class="sub3">Langue · Language</h3></div>
+      <div class="seg seg--sm" id="langSel" role="group" aria-label="Langue · Language" data-i18n-skip>${[["fr", "Français"], ["en", "English"]].map(([k, l]) => `<button type="button" data-lang="${k}" aria-pressed="${(window.HEDEN_LANG || "fr") === k}">${l}</button>`).join("")}</div>
+    </section>
     ${sharedHTML()}
     <section class="sec">
       <h2>Vos données</h2>
@@ -3195,6 +3335,12 @@ function renderProfile() {
   const lp = $("#locProf"); if (lp) lp.onclick = openRentSettings;
   bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
+  $$("#langSel [data-lang]").forEach(b => b.onclick = () => {
+    if (b.dataset.lang === (window.HEDEN_LANG || "fr")) return;
+    try { localStorage.setItem("heden.lang", b.dataset.lang); } catch (e) {}
+    $$("#langSel [data-lang]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    setTimeout(() => location.reload(), 120);
+  });
   $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); toast(p.halfPoints ? "Notes au demi-point activées" : "Notes au demi-point désactivées"); };
   if ($("#pbudget")) $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
   $$(".pchip").forEach(b => b.onclick = () => {
@@ -4612,7 +4758,7 @@ function renderListingDetail(id) {
   const bar = (label, val, hint) => `<div class="mbar"><span>${label}</span><span class="bar"><i style="width:${val ?? 0}%;--c:${traitFor(val)}"></i></span><b class="num">${val ?? "–"}</b>${hint ? `<small>${hint}</small>` : ""}</div>`;
   const crits = Object.entries(homeWeights()).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]);
   box.innerHTML = `
-    <button class="link ann__back" type="button" id="lback">‹ Toutes les annonces</button>
+    <div class="ldet__top"><button class="link ann__back" type="button" id="lback">‹ Toutes les annonces</button><button class="x x--del" type="button" id="ldel" aria-label="Supprimer l’annonce" title="Supprimer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></div>
     ${f.photos && f.photos.length ? `<div class="lgal">${f.photos.map(u => `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : ""}
     <div class="ldet__head">
       <div><h1>${esc(f.title || listingTitle(f))}</h1>
@@ -4660,7 +4806,6 @@ function renderListingDetail(id) {
     <div class="datarow">
       <button class="btn" type="button" id="ledit">Corriger les informations</button>
       ${f.lat ? `<button class="btn" type="button" id="lmap">Voir sur la carte</button>` : ""}
-      <button class="btn btn--ghost btn--danger" type="button" id="ldel">Supprimer</button>
     </div>`;
   $("#lback").onclick = () => { lui.openId = null; renderListings(); };
   countUp(box);
