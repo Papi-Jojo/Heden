@@ -90,3 +90,7 @@ input,textarea{caret-color:var(--email)}
 .lieux__l .chip:disabled{opacity:.55}
 .lieux .link{align-self:flex-start}
 @media (max-width: 360px){ .lieux__a{grid-template-columns:repeat(3,minmax(0,1fr))} }
+.lieux__h{margin:4px 0 -4px;font:600 12.5px/1.3 var(--sans);letter-spacing:.02em;color:var(--zinc)}
+
+/* Fil d'annonces long : le navigateur ne met en page que les cartes proches de l'écran. */
+.ann__feed .hero{content-visibility:auto;contain-intrinsic-size:auto 560px}

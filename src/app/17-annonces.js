@@ -855,8 +855,10 @@ function bindHomeSection() {
     if (p.gone) return toast("Cette annonce n’est plus en ligne : rien à ajouter");
     openAddListing(null, p);
   };
+  // seule la page qui vient d'ouvrir Heden avec le bouton + Heden peut envoyer une annonce (pas un autre site)
+  const fromBtn = /importer=\d/.test(location.search);
   window.addEventListener("message", e => {
-    const m = e.data; if (!m || m.type !== "heden-import" || !m.data) return;
+    const m = e.data; if (!fromBtn || !e.source || e.source !== window.opener || !m || m.type !== "heden-import" || !m.data) return;
     try { e.source && e.source.postMessage("heden-recu", "*"); } catch (err) {}
     use(m.data);
   });

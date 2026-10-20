@@ -24,18 +24,21 @@ area["boundary"="administrative"]["admin_level"="8"]["name"="Paris"]->.p;
  relation["place"~"^(neighbourhood|quarter)$"]["name"](area.p););
 out geom;"""
 # Lieux que tout le monde cite, absents d'OSM comme « place » : on les situe par leur station, leur parc, leur rue ou leur place
-CONNUS = ["Les Halles", "Palais-Royal", "Place Vendôme", "Île de la Cité", "Montorgueil", "Sentier", "Bourse", "Grands Boulevards",
-  "Haut Marais", "Arts et Métiers", "Square du Temple", "Rue de Bretagne", "Le Marais", "Saint-Paul", "Île Saint-Louis", "Hôtel de Ville",
-  "Place des Vosges", "Quartier latin", "Rue Mouffetard", "Panthéon", "Jardin des Plantes", "Maubert", "Odéon", "Jardin du Luxembourg",
-  "Saint-Sulpice", "Notre-Dame-des-Champs", "Rue Cler", "Champ-de-Mars", "Madeleine", "Parc Monceau", "Europe", "Pigalle", "Rue des Martyrs",
-  "Saint-Georges", "Square Montholon", "Canal Saint-Martin", "Faubourg Saint-Denis", "Gare de l'Est", "Château d'Eau", "Oberkampf", "Bastille",
-  "Roquette", "Folie-Méricourt", "Charonne", "Parmentier", "Aligre", "Bercy Village", "Nation", "Daumesnil", "Place d'Italie",
-  "Bibliothèque François Mitterrand", "Maison Blanche", "Montparnasse", "Denfert-Rochereau", "Alésia", "Pernety", "Parc Montsouris",
-  "Commerce", "Convention", "Vaugirard", "Beaugrenelle", "Cambronne", "Parc Georges Brassens", "Passy", "Auteuil", "Trocadéro", "La Muette",
-  "Porte Dauphine", "Batignolles", "Ternes", "Épinettes", "Rue de Lévis", "Abbesses", "Montmartre", "Lamarck - Caulaincourt", "Goutte d'Or",
-  "Jules Joffrin", "Buttes-Chaumont", "Bassin de la Villette", "Jourdain", "Place des Fêtes", "Parc de la Villette", "Ménilmontant", "Gambetta",
-  "Père Lachaise", "Pyrénées", "Plaine Monceau", "Square des Batignolles", "Martin Nadaud", "Mouton-Duvernet", "Cité Universitaire"]
+CONNUS = {1: ["Les Halles", "Palais-Royal", "Place Vendôme", "Île de la Cité"], 2: ["Montorgueil", "Sentier", "Bourse", "Grands Boulevards"],
+  3: ["Haut Marais", "Arts et Métiers", "Square du Temple", "Rue de Bretagne"], 4: ["Le Marais", "Saint-Paul", "Île Saint-Louis", "Hôtel de Ville", "Place des Vosges"],
+  5: ["Quartier latin", "Rue Mouffetard", "Panthéon", "Jardin des Plantes", "Maubert"], 6: ["Odéon", "Jardin du Luxembourg", "Saint-Sulpice", "Notre-Dame-des-Champs"],
+  7: ["Rue Cler", "Champ-de-Mars"], 8: ["Madeleine", "Parc Monceau", "Europe"], 9: ["Pigalle", "Rue des Martyrs", "Saint-Georges", "Square Montholon"],
+  10: ["Canal Saint-Martin", "Faubourg Saint-Denis", "Gare de l'Est", "Château d'Eau"], 11: ["Oberkampf", "Bastille", "Roquette", "Folie-Méricourt", "Charonne", "Parmentier"],
+  12: ["Aligre", "Bercy Village", "Nation", "Daumesnil"], 13: ["Place d'Italie", "Bibliothèque François Mitterrand", "Maison Blanche"],
+  14: ["Montparnasse", "Denfert-Rochereau", "Alésia", "Pernety", "Parc Montsouris", "Mouton-Duvernet", "Cité Universitaire"],
+  15: ["Commerce", "Convention", "Vaugirard", "Beaugrenelle", "Cambronne", "Parc Georges Brassens"], 16: ["Passy", "Auteuil", "Trocadéro", "La Muette", "Porte Dauphine"],
+  17: ["Batignolles", "Ternes", "Épinettes", "Rue de Lévis", "Plaine Monceau"], 18: ["Abbesses", "Montmartre", "Lamarck - Caulaincourt", "Goutte d'Or", "Jules Joffrin"],
+  19: ["Buttes-Chaumont", "Bassin de la Villette", "Jourdain", "Place des Fêtes", "Parc de la Villette"],
+  20: ["Belleville", "Ménilmontant", "Gambetta", "Père Lachaise", "Pyrénées", "Martin Nadaud"]}
+ARR_DE = {n: a for a, ns in CONNUS.items() for n in ns}
 norm = lambda s: s.lower().replace("’", "'").replace("-", " ").replace("  ", " ").strip()
+# « Quartier de l'Odéon » et « Odéon » sont le même lieu
+base = lambda s: re.sub(r"^(?:quartier (?:de la |de l'|du |des |de )?|le |la |les |l')", "", norm(s))
 LAT0 = 48.8566
 KX, KY = 111320 * math.cos(math.radians(LAT0)), 110540  # mètres par degré, à la latitude de Paris
 xy = lambda lat, lng: (lng * KX, lat * KY)
@@ -45,7 +48,7 @@ RAYON, MAX_PTS, MIN_HA = 450, 18, 2
 
 def q_connus():
     pat = lambda n: re.sub(r"[- ]+", "[- ]+", re.sub(r"([.^$*+?()\[\]{}|\\])", r"\\\1", n.replace("’", "'"))).replace("'", "['’]")
-    alt = "|".join(sorted({pat(n) for n in CONNUS}))
+    alt = "|".join(sorted({pat(n) for n in ARR_DE}))
     return f"""[out:json][timeout:240];
 area["boundary"="administrative"]["admin_level"="8"]["name"="Paris"]->.p;
 nwr["name"~"^({alt})$",i](area.p);
@@ -117,24 +120,24 @@ def build(raw, connus=None):
             else:
                 g = poly_of(el)
                 if g is not None and g.area > 1: lieux.append((t["name"].strip(), g.representative_point(), g))
+    if len(arrs) < 20: raise SystemExit(f"arrondissements incomplets : {sorted(arrs)}")
+    paris = unary_union(list(arrs.values()))
+    arr_of = lambda pt: next((n for n, g in arrs.items() if g.contains(pt)), None)
     # lieux connus : un repère par nom (le meilleur rang ; pour une rue ou un canal, le centre de ses morceaux)
     best = {}
     for el in (connus or {}).get("elements", []):
         t = el.get("tags", {}); nm = t.get("name", ""); c = el.get("center") or ({"lat": el["lat"], "lon": el["lon"]} if "lat" in el else None)
         if not nm or not c: continue
-        key = next((n for n in CONNUS if norm(n) == norm(nm)), None)
-        if not key: continue
+        key = next((n for n in ARR_DE if norm(n) == norm(nm)), None)
+        if not key or arr_of(Point(*xy(c["lat"], c["lon"]))) not in (ARR_DE[key], None): continue  # homonyme dans un autre arrondissement
         r = rang(t); cur = best.get(key)
         if cur is None or r < cur[0]: best[key] = [r, [(c["lat"], c["lon"])]]
         elif r == cur[0] and r >= 3: cur[1].append((c["lat"], c["lon"]))
-    have = {norm(n) for n, _, _ in lieux} | {norm(n) for n, _ in quartiers}  # déjà là sous un autre statut
+    have = {base(n) for n, _, _ in lieux} | {base(n) for n, _ in quartiers}  # déjà là sous un autre statut
     for key, (r, cs) in best.items():
-        if norm(key) in have: continue
+        if base(key) in have: continue
         la, lo = sum(c[0] for c in cs) / len(cs), sum(c[1] for c in cs) / len(cs)
         lieux.append((key, Point(*xy(la, lo)), None))
-    if len(arrs) < 20: raise SystemExit(f"arrondissements incomplets : {sorted(arrs)}")
-    paris = unary_union(list(arrs.values()))
-    arr_of = lambda pt: next((n for n, g in arrs.items() if g.contains(pt)), None)
     out = {str(n): [] for n in range(1, 21)}
     # quartiers administratifs : la forme officielle
     for name, g in quartiers:
@@ -144,7 +147,7 @@ def build(raw, connus=None):
     # lieux : un seul par nom, dans Paris
     seen, pts = set(), []
     for name, pt, g in lieux:
-        key = name.lower()
+        key = base(name)
         if key in seen or not paris.contains(pt): continue
         seen.add(key); pts.append((name, pt, g))
     cells = voronoi_polygons(MultiPoint([p for _, p, _ in pts]), extend_to=paris.envelope)
@@ -169,7 +172,7 @@ if __name__ == "__main__":
     raw = json.load(open(sys.argv[2])) if len(sys.argv) > 2 else fetch()
     connus = json.load(open(sys.argv[3])) if len(sys.argv) > 3 else fetch(q_connus())
     res = build(raw, connus)
-    print("lieux connus situés :", sum(1 for v in res["arr"].values() for x in v if x["k"] == "lieu" and x["n"] in CONNUS), "/", len(CONNUS))
+    print("lieux connus situés :", sum(1 for v in res["arr"].values() for x in v if x["k"] == "lieu" and x["n"] in ARR_DE), "/", len(ARR_DE))
     n_l = sum(1 for v in res["arr"].values() for x in v if x["k"] == "lieu")
     n_q = sum(1 for v in res["arr"].values() for x in v if x["k"] == "quartier")
     print(f"{n_l} lieux, {n_q} quartiers administratifs")
