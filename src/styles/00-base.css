@@ -1,0 +1,31 @@
+/* Heden — pierre, émail, laiton. La carte et les notes portent la couleur ; l'interface se tait. */
+:root{
+  --pierre:#ECE7DF; --calcaire:#F8F5F0; --enduit:#E2DCD2; --trait:#D5CDC1; --trait-fort:#857B6E;
+  --ardoise:#26231F; --ardoise-2:#4F4943; --zinc:#5F5951;
+  --email:#1F3A6E; --email-doux:#DCE2EC; --on-email:#F8F5F0;
+  --laiton:#76591F; --laiton-vif:#A07B33; --alerte:#9E3A27; --on-score:#221F1B;
+  --ombre-flottant:0 1px 2px rgba(38,35,31,.08),0 6px 18px rgba(38,35,31,.10);
+  --ombre-feuille:0 -8px 28px rgba(38,35,31,.14);
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --sans:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --rayon-s:6px; --rayon-m:10px; --rayon-l:18px; --pilule:999px;
+  --panel-w:384px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --pierre:#191714; --calcaire:#221F1B; --enduit:#2C2823; --trait:#3A352F; --trait-fort:#7A7166;
+    --ardoise:#EEE8DF; --ardoise-2:#CFC7BB; --zinc:#A39B90;
+    --email:#A9BCE4; --email-doux:#27334B; --on-email:#191714;
+    --laiton:#D4AF63; --laiton-vif:#C79B4A; --alerte:#E68B73;
+    --ombre-flottant:0 1px 2px rgba(0,0,0,.45),0 8px 24px rgba(0,0,0,.5); --ombre-feuille:0 -8px 28px rgba(0,0,0,.55);
+    color-scheme:dark; }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--pierre);color:var(--ardoise);font:400 15px/1.47 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--email);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.label{font-size:13px;font-weight:600;color:var(--ardoise-2)}

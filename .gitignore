@@ -1,1 +1,3 @@
 .cache-donnees/
+node_modules/
+dist/
