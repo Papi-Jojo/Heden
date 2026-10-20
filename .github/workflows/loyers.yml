@@ -1,0 +1,36 @@
+name: Loyers (encadrement Paris + carte des loyers)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 5 12 7,10 *"   # après la mise à jour annuelle de l'encadrement (juillet), et en octobre
+
+permissions:
+  contents: write
+
+concurrency:
+  group: donnees
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Préparer les loyers
+        run: |
+          set -o pipefail
+          python -u scripts/donnees/loyers.py data 2>&1 | tee loyers.log
+      - name: Publier
+        run: |
+          git config user.name "heden-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/loyers.json
+          if git diff --cached --quiet; then echo "Rien de nouveau"; exit 0; fi
+          git commit -m "Données : loyers de référence et carte des loyers"
+          git pull --rebase origin main
+          git push origin HEAD:main
