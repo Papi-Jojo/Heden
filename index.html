@@ -1124,10 +1124,15 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .vig li::before{content:"";position:absolute;left:13px;top:15px;width:11px;height:9px;border-radius:var(--galet-a);background:var(--trait-fort)}
 .vig--over::before{background:var(--alerte)!important}
 .vig--mid::before{background:var(--laiton)!important}
-.mapf__opt[hidden]{display:none}
-.mapf__optseg{padding:3px;gap:0}
-.mapf__optseg .seg{border:0;background:none;padding:0}
-.mapf__optseg .seg button{height:32px}
+/* Achat | Location sur la carte : discret, sous la recherche ; un galet glisse d'un côté à l'autre */
+.mapmode{position:absolute;z-index:600;left:14px;top:66px;display:grid;grid-template-columns:1fr 1fr;padding:3px;border-radius:var(--pilule);background:color-mix(in srgb,var(--calcaire) 82%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--trait);box-shadow:var(--ombre-flottant)}
+.mapmode[hidden]{display:none}
+.mapmode::before{content:"";position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:var(--galet-a);background:var(--ardoise);transition:transform .38s var(--ease-ressort),border-radius .38s}
+.mapmode.is-loc::before{transform:translateX(100%);border-radius:var(--galet-b)}
+.mapmode button{position:relative;z-index:1;height:28px;padding:0 12px;border:0;background:none;font:650 12.5px var(--sans);color:var(--ardoise-2);transition:color .2s}
+.mapmode button[aria-pressed="true"]{color:var(--pierre)}
+body.walking .mapmode,body[data-mode="placing"] .mapmode,body[data-mode="rating"] .mapmode,body.kbd-panel .mapmode{display:none}
+@media (min-width:900px){.mapmode{top:72px}}
 /* Notifications : placées par toast() dans un espace libre, jamais sur une barre ou une consigne */
 .toast{left:50%;right:auto;bottom:auto;transform:translateX(-50%);max-width:min(440px,calc(100% - 32px));box-sizing:border-box;text-wrap:pretty}
 @media (max-width:899px){body[data-tab="map"] .toast{max-width:calc(100% - 132px)}}
@@ -1168,6 +1173,7 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
           </div>
         </div>
         <div class="walkbar" id="walkbar" hidden></div>
+        <div class="mapmode" id="mapMode" role="group" aria-label="Projet affiché sur la carte" hidden><button type="button" data-proj="achat" aria-pressed="true">Achat</button><button type="button" data-proj="location" aria-pressed="false">Location</button></div>
         <div class="fab-col">
           <div class="mapf" id="mapf">
             <button class="icon-btn mapf__btn" id="mapfBtn" type="button" aria-expanded="false" aria-controls="mapfList" title="Filtres" aria-label="Filtres de la carte">
@@ -1178,7 +1184,6 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
             <div class="mapf__list" id="mapfList" role="group" aria-label="Afficher sur la carte">
               <button class="mapf__opt" type="button" data-mf="zones" aria-pressed="true" style="--i:0"><svg class="mapf__eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/><path class="mapf__slash" d="M4 4l16 16"/></svg><span>Zones</span></button>
               <button class="mapf__opt" type="button" data-mf="annonces" aria-pressed="true" style="--i:1"><svg class="mapf__eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/><path class="mapf__slash" d="M4 4l16 16"/></svg><span>Annonces</span></button>
-              <div class="mapf__opt mapf__optseg" id="mapfProj" style="--i:2" hidden><div class="seg seg--sm" role="group" aria-label="Projet affiché"><button type="button" data-proj="achat" aria-pressed="true">Achat</button><button type="button" data-proj="location" aria-pressed="false">Location</button></div></div>
             </div>
           </div>
           <button class="icon-btn" id="walkBtn" type="button" title="Tracer une balade" aria-label="Tracer une balade">
@@ -1388,7 +1393,7 @@ function modeSelHTML(cls = "") {
 function bindModeSel(root = document) { $$("[data-proj]", root).forEach(b => b.onclick = () => setMode(b.dataset.proj)); }
 function paintModeSel() {
   $$("[data-proj]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.proj === curMode())));
-  const row = $("#mapfProj"); if (row) row.hidden = projet() !== "deux";
+  const mm = $("#mapMode"); if (mm) { mm.hidden = projet() !== "deux"; mm.classList.toggle("is-loc", curMode() === "location"); }
 }
 /* budget de zone en €/m² : prix de vente pour l'achat, loyer par mois pour la location */
 function rentPpmBudget() {
@@ -1814,7 +1819,7 @@ dark.addEventListener?.("change", () => { renderZones(); if (draft) drawDraft();
 applyBase();
 
 /* Les contrôles posés sur la carte (recherche, Plan/Satellite, position, consigne) ne doivent jamais poser de point */
-document.querySelectorAll("#map .map-top, #map .fab-col, #map .hint, #map .walkbar").forEach(el => { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); });
+document.querySelectorAll("#map .map-top, #map .fab-col, #map .hint, #map .walkbar, #map .mapmode").forEach(el => { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); });
 function updateFar() { const zm = map.getZoom(); map.getContainer().classList.toggle("map--far", zm < 13); map.getContainer().classList.toggle("map--near", zm >= 15); }
 map.on("zoomend", updateFar); updateFar();
 
@@ -2644,7 +2649,7 @@ $$("#mapf [data-mf]").forEach(b => b.onclick = () => {
 });
 document.addEventListener("pointerdown", e => { if (!e.target.closest("#mapf")) openMapFilter(false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#mapf").classList.contains("is-open")) { openMapFilter(false); $("#mapfBtn").focus(); } });
-paintMapFilter(); paintModeSel(); bindModeSel($("#mapf"));
+paintMapFilter(); paintModeSel(); bindModeSel($("#mapMode"));
 
 /* =========================================================
    Balade : on trace le parcours, puis on propose une zone
@@ -3204,7 +3209,7 @@ let toastT = null;
 /* La notification cherche une place libre : sous les barres et consignes du haut, sinon au-dessus
    de la feuille ou de la barre du bas. Elle ne recouvre jamais une barre de balade, une consigne
    de tracé, la recherche, les boutons de carte ou une fenêtre ouverte. */
-const TOAST_AVOID = ".topbar, .tabbar, .map-top, .walkbar, .hint, .fab-col, #mapf.is-open .mapf__opt, .panel, .ask__card, .auth__card, .lsheet, .quiz, .leaflet-control-attribution";
+const TOAST_AVOID = ".topbar, .tabbar, .map-top, .walkbar, .mapmode, .hint, .fab-col, #mapf.is-open .mapf__opt, .panel, .ask__card, .auth__card, .lsheet, .quiz, .leaflet-control-attribution";
 function placeToast(t) {
   const vv = window.visualViewport, vh = vv ? vv.height : innerHeight, vw = innerWidth, gap = 10;
   t.style.top = "0px";
