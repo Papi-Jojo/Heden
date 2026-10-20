@@ -482,7 +482,7 @@ function heroHTML(f, s, k = 0) {
     <b class="hero__s num"${k === 0 && s.total != null ? ` data-count="${s.total}"` : ""}>${s.total ?? "–"}</b>
     <div class="hero__b">
       <span class="hero__k">${esc(heroKicker(f, s, k))}</span>
-      <h2>${esc(f.title || listingTitle(f))}</h2>
+      <h2${(f.title || listingTitle(f)).length > 70 ? ' class="is-long"' : ""}>${esc(f.title || listingTitle(f))}</h2>
       <p class="hero__p num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer ?" : "Prix ?"}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
       ${why.length ? `<ul class="hero__why">${why.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="hero__why hero__why--none">${f.lat ? "À compléter" : "Placement sur la carte…"}</p>`}
       <div class="hero__acts">${acts}</div>
@@ -498,7 +498,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
     <div class="ldet__top"><button class="link ann__back" type="button" id="lback">‹ Toutes les annonces</button><button class="x x--del" type="button" id="ldel" aria-label="Supprimer l’annonce" title="Supprimer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></div>
     ${f.photos && f.photos.length ? `<div class="lgal">${f.photos.map(u => `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : ""}
     <div class="ldet__head">
-      <div><h1>${esc(f.title || listingTitle(f))}</h1>
+      <div><h1${(f.title || listingTitle(f)).length > 70 ? ' class="is-long"' : ""}>${esc(f.title || listingTitle(f))}</h1>
         <p class="ldet__price num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer non trouvé" : "Prix non trouvé"}${s.ppm ? ` <small>${ppmTxt(f)}</small>` : ""}</p>
         ${f.priceHistory && f.priceHistory.length ? `<p class="ldet__hist num">${f.priceHistory.map(x => `<s>${fmtInt(x.price)}&#8239;€</s>`).join(" ")} ${f.dropped ? "<em class=\"drop\">Baisse de prix</em>" : ""}</p>` : ""}
         <p class="hint2">${esc([...(f.sources || [f.source]).filter(Boolean)].join(", "))}${f.source || f.sources ? ", " : ""}${f.origin === "alerte" ? "reçue par alerte le" : "ajoutée le"} ${esc(fmtDate(new Date(f.firstSeen || f.addedAt || Date.now()).toISOString().slice(0, 10)))}</p></div>
@@ -510,7 +510,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
     </div>
     <div class="lact">
       ${isKept(f) ? `<button class="chip chip--sm" type="button" data-st="visite" aria-pressed="${f.status === "visite"}">${ICO.visit}Visite prévue</button>` : ""}
-      ${f.url ? `<a class="chip chip--sm" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
+      ${cleanWeb(f.url) ? `<a class="chip chip--sm" href="${esc(cleanWeb(f.url))}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
     </div>
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
     <div class="feel" role="group" aria-label="Votre avis sur la note"><span>Cette note vous semble</span>${[["juste", "Juste"], ["haut", "Trop haute"], ["bas", "Trop basse"]].map(([k, l]) => `<button class="chip chip--sm" type="button" data-feel="${k}" aria-pressed="${!!(f.feel && f.feel.v === k)}">${l}</button>`).join("")}
@@ -610,7 +610,7 @@ function bindContact(f, box) {
   };
   const e = $("#lcontactEdit", box); if (e) e.onclick = () => openAddListing(f);
   const r = $("#lrecheck", box); if (r) r.onclick = () => {
-    window.open(f.url, "_blank", "noopener");
+    if (cleanWeb(f.url)) window.open(cleanWeb(f.url), "_blank", "noopener");
     toast("Ouvrez l’annonce et touchez + Heden pour la mettre à jour");
   };
 }

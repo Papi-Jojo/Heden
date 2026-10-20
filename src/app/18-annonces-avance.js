@@ -854,7 +854,7 @@ function fairHTML(f, cmp, ng) {
     <div class="strip" aria-label="Prix au m² des ventes comparables">
       <span class="strip__iq" style="left:${pos(cmp.q1)}%;width:${(pos(cmp.q3) - pos(cmp.q1)).toFixed(1)}%"></span>
       ${cmp.all.map(x => `<i style="left:${pos(x.pa)}%"></i>`).join("")}
-      ${ppm ? `<b class="strip__me" style="left:${pos(ppm)}%"><span class="num">${fmtInt(ppm)}</span></b>` : ""}
+      ${ppm ? `<b class="strip__me${pos(ppm) > 88 ? " strip__me--fin" : pos(ppm) < 12 ? " strip__me--debut" : ""}" style="left:${pos(ppm)}%"><span class="num">${fmtInt(ppm)}</span></b>` : ""}
     </div>
     <div class="strip__ax num"><span>${fmtInt(lo)}</span><span>€/m²</span><span>${fmtInt(hi)}</span></div>
     <p class="hint2">${cmp.n} ventes d’appartements${f.surface ? " de taille proche" : ""} à moins de ${fmtInt(Math.round(cmp.R / 50) * 50)} m, sur 3 ans${cmp.adj ? ", ramenées aux prix d’aujourd’hui" : ""}. La bande montre la moitié centrale.</p>

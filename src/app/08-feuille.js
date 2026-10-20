@@ -44,7 +44,8 @@ window.addEventListener("pointermove", e => {
     d.moved = true; panel.classList.add("dragging");
     try { panel.setPointerCapture(d.id); } catch (err) {}
   }
-  d.off = Math.min(d.max, Math.max(0, d.off0 + dy));
+  const raw = d.off0 + dy; // au-delà du plus bas cran, le panneau freine au lieu de buter
+  d.off = raw > d.max ? d.max + Math.sqrt(raw - d.max) * 4 : Math.max(0, raw);
   panel.style.transform = `translateY(${d.off}px)`;
   setSheetVar(d.off);
 }, {passive: true});

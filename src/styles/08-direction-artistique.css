@@ -80,8 +80,8 @@ body{background-color:var(--pierre)}
 .tag{border-radius:var(--pilule);padding:3px 9px;border-color:var(--trait-fort)}
 .tag--new{background:var(--email);border-color:var(--email);color:var(--on-email)}
 .seg{background:var(--calcaire);border-color:transparent}
-.seg button[aria-pressed="true"]{background:var(--ardoise);color:var(--pierre)}
-@media (prefers-color-scheme: dark){.seg button[aria-pressed="true"]{background:var(--bourgeon);color:var(--on-bourgeon)}}
+.seg button[aria-pressed="true"],.seg button[aria-selected="true"]{background:var(--ardoise);color:var(--pierre)}
+@media (prefers-color-scheme: dark){.seg button[aria-pressed="true"],.seg button[aria-selected="true"]{background:var(--bourgeon);color:var(--on-bourgeon)}}
 .field input[type=text],.field input[type=number],.field input[type=date],.field textarea,.field select,.lf input,.lf select,.datebox,.addrow select,.ann__sort select,.lsheet textarea,.lsheet .auth__form input{border-radius:14px;border-color:var(--trait);background:var(--calcaire)}
 .field input:focus,.field textarea:focus,.field select:focus,.lf input:focus,.lf select:focus{border-color:var(--ardoise);box-shadow:0 0 0 3px color-mix(in srgb,var(--bourgeon) 60%,transparent)}
 :focus-visible{outline:2px solid var(--ardoise);outline-offset:3px;box-shadow:0 0 0 5px color-mix(in srgb,var(--bourgeon) 55%,transparent)}

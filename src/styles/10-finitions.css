@@ -1,0 +1,67 @@
+/* ---------- Finitions : comportement d'app installée sur téléphone ----------
+   Les :hover sont réservés aux souris par la construction (vite.config.js). */
+html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:none}
+body{overscroll-behavior:none}
+
+/* Les contrôles réagissent tout de suite et ne se sélectionnent pas à l'appui long ; le texte, lui, reste copiable. */
+button,a,[role="button"],[role="tab"],label.sw,summary{touch-action:manipulation}
+button,[role="button"],[role="tab"],.chip,.tab,.grip{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+
+/* iOS zoome sur tout champ en dessous de 16 px et ne dézoome pas. */
+@media (pointer: coarse){
+  input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,
+  input.nm,input.ds,#view-profile .crow .nm{font-size:16px}
+}
+
+/* Retour à l'appui sur tout ce qui n'en avait pas (100 à 160 ms, sortie franche). */
+.tab,.seg button,.x,.preset,.trip,.results button,.mapmode button,.ph,.linkbtn,.acct-line,.tip__skip,.toast__act{transition:transform .14s var(--ease-sortie),background-color .14s,color .14s,border-color .14s}
+.tab:active,.seg button:active,.preset:active,.trip:active,.results button:active,.mapmode button:active,.ph:active{transform:scale(.97)}
+.x:active{transform:scale(.9)}
+.linkbtn:active,.acct-line:active,.tip__skip:active{opacity:.7}
+.scale button:active{transform:scale(.92)}
+.scale button[aria-pressed="true"]:active{transform:scale(.98)}
+.tabbar button:active svg{transform:scale(.88)}
+.tabbar button[aria-selected="true"]:active svg{transform:translateY(-1px) scale(.92)}
+.hero:active{transform:scale(.99)}
+
+/* Sortie : plus courte que l'entrée, jamais en ease-in (l'élément part au moment où l'œil le regarde). */
+.tip.is-out{transition:opacity .14s var(--ease-sortie),transform .16s var(--ease-sortie)}
+.tiphalo.is-out{transition:opacity .14s var(--ease-sortie),transform .18s var(--ease-sortie)}
+.toast.is-out{animation:toast-out .16s var(--ease-sortie) both}
+
+/* Panneau du bas : la courbe des tiroirs iOS, un peu plus de temps pour se poser. */
+@media (max-width: 899px){
+  .panel{transition:transform .34s cubic-bezier(.32,.72,0,1)}
+  .panel.dragging{transition:none}
+}
+
+/* Cibles tactiles : la piste des curseurs fait 16 px de haut, la zone d'appui en fait 32. */
+input[type=range]{min-height:32px;margin-block:-8px;cursor:pointer}
+.ann__back,.acct-line{padding-block:8px;margin-block:-8px}
+
+/* Surfaces du navigateur aux couleurs de Heden. */
+::selection{background:color-mix(in srgb,var(--email) 22%,transparent);color:inherit}
+input,textarea{caret-color:var(--email)}
+@media (hover: hover) and (pointer: fine){
+  .panel__body,#view-profile,#view-annonces,.auth__card,.ldet{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--trait-fort) 55%,transparent) transparent}
+}
+
+/* Mouvement réduit : plus de déplacement ni de rebond, mais les fondus courts restent (ils disent ce qui change). */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition-property:opacity,color,background-color,border-color!important;transition-duration:.12s!important;transition-delay:0s!important}
+}
+
+/* Titres d'annonce très longs : trois lignes dans le fil, un corps plus petit sur la fiche. */
+.hero h2.is-long{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+.ldet__head h1.is-long{font-size:24px;line-height:29px}
+@media (max-width: 899px){ .ldet__head h1.is-long{font-size:20px;line-height:25px} }
+
+/* Onglets du profil : les quatre tiennent sur un téléphone étroit au lieu de déborder. */
+@media (max-width: 400px){
+  .prof__top .ptabs{display:grid;grid-auto-flow:column;grid-auto-columns:auto;width:100%;align-self:stretch}
+  .prof__top .ptabs button{padding-inline:10px;font-size:13.5px}
+}
+
+/* Repère « votre annonce » sur la frise des prix : l'étiquette reste dans la frise aux extrémités. */
+.strip__me--fin span{left:auto;right:-1px;transform:none}
+.strip__me--debut span{left:-1px;transform:none}

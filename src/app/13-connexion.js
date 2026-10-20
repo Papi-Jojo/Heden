@@ -104,7 +104,7 @@ function renderAuth() {
 let ptab = (() => { try { return localStorage.getItem("heden.ptab") || "recherche"; } catch (e) { return "recherche"; } })();
 function showPtab(k) {
   ptab = k; try { localStorage.setItem("heden.ptab", k); } catch (e) {}
-  $$("[data-ptab]").forEach(x => { const on = x.dataset.ptab === k; x.setAttribute("aria-selected", String(on)); x.setAttribute("aria-pressed", String(on)); });
+  $$("[data-ptab]").forEach(x => { const on = x.dataset.ptab === k; x.setAttribute("aria-selected", String(on)); x.tabIndex = on ? 0 : -1; });
   $$(".ppane").forEach(pn => { pn.hidden = pn.dataset.pane !== k; if (!pn.hidden) { pn.classList.remove("swap-in"); void pn.offsetWidth; pn.classList.add("swap-in"); setTimeout(() => pn.classList.remove("swap-in"), 300); } });
   const v = $("#view-profile"); if (v) v.scrollTop = 0;
 }
@@ -118,7 +118,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
   const pane = (k, html) => `<div class="ppane" data-pane="${k}" ${ptab === k ? "" : "hidden"}>${html}</div>`;
   $("#prof").innerHTML = `
     <div class="prof__top"><h1>Votre profil</h1>
-      <div class="seg ptabs" role="tablist" aria-label="Sections du profil">${tabs.map(([k, l]) => `<button type="button" role="tab" data-ptab="${k}" aria-selected="${ptab === k}" aria-pressed="${ptab === k}">${l}</button>`).join("")}</div></div>
+      <div class="seg ptabs" role="tablist" aria-label="Sections du profil">${tabs.map(([k, l]) => `<button type="button" role="tab" data-ptab="${k}" aria-selected="${ptab === k}" tabindex="${ptab === k ? 0 : -1}">${l}</button>`).join("")}</div></div>
     ${pane("recherche", profileSummaryHTML() + `
     ${projet() !== "location" ? `<section class="sec setrow">
       <div><h3 class="sub3">Financement</h3>

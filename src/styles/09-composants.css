@@ -238,7 +238,7 @@ body.walking .mapmode,body[data-mode="placing"] .mapmode,body[data-mode="rating"
 @keyframes tip-ligne{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 @keyframes tip-souffle{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bourgeon) 55%,transparent)}70%,100%{box-shadow:0 0 0 12px color-mix(in srgb,var(--bourgeon) 0%,transparent)}}
 @media (prefers-reduced-motion: reduce){.tip,.tip[data-side="haut"],.tiphalo{transform:none}.tiphalo.is-in{animation:none}}
-@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
 
 /* Cartes de groupe : critères communs, plafond rédhibitoire */
 .cgrp,.bd .n small.cgrp{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:var(--pilule);font:650 10.5px/1.5 var(--sans);letter-spacing:.02em;color:var(--laiton);background:color-mix(in srgb,var(--laiton) 12%,transparent);vertical-align:2px}
