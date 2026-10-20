@@ -152,24 +152,6 @@ def cas_extremes(pw):
 
 
 @essai
-def glisser(pw):
-    """Sur téléphone, glisser une annonce à droite la garde, à gauche l'écarte ; un petit geste ne fait rien."""
-    e = Essai(pw, 390, 844, has_touch=True, is_mobile=True); pg = e.page()
-    pg.evaluate("() => { const s = __heden.state(); s.listings = []; for (let i = 0; i < 3; i++) s.listings.push({id: 'l' + i, title: 'T' + i, price: 420000 + i * 45000, surface: 40 + i * 6, rooms: 2 + i, postcode: '75017', status: 'nouvelle', photos: [], addedAt: Date.now() - i * 1e8, firstSeen: Date.now() - i * 1e8}); __heden.save(); }")
-    e.onglet(pg, "annonces"); pg.wait_for_timeout(600)
-    def glisse(dx):
-        bx = pg.locator(".hero").first.bounding_box(); x, y = bx["x"] + bx["width"] / 2, bx["y"] + 120; i = pg.evaluate("document.querySelector('.hero').dataset.id")
-        pg.mouse.move(x, y); pg.mouse.down()
-        for k in range(1, 13): pg.mouse.move(x + dx * k / 12, y + 2); pg.wait_for_timeout(16 if abs(dx) != 50 else 40)
-        pg.mouse.up(); pg.wait_for_timeout(900)
-        return pg.evaluate(f"__heden.state().listings.find(f => f.id === '{i}').status")
-    assert glisse(50) == "nouvelle" and not pg.locator(".ldet").count(), "un petit geste a changé l'annonce"
-    assert glisse(75) == "nouvelle", "une petite pichenette a suffi à faire partir l'annonce"
-    assert glisse(230) == "gardee" and glisse(-230) == "ecartee" and not pg.locator(".ldet").count()
-    assert not e.erreurs, e.erreurs; e.fermer()
-
-
-@essai
 def annuler(pw):
     """« Annuler » dans la notification remet l'annonce, même après une synchronisation entre-temps."""
     e = Essai(pw); pg = e.page(); e.connexion(pg, "johan@x.fr", "Johan")

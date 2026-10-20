@@ -95,15 +95,6 @@ input,textarea{caret-color:var(--email)}
 /* Fil d'annonces long : le navigateur ne met en page que les cartes proches de l'écran. */
 .ann__feed .hero{content-visibility:auto;contain-intrinsic-size:auto 560px}
 
-/* Glisser une annonce : la carte suit le doigt, son contour annonce le choix (clair : garder, rouge : écarter). */
-@media (pointer: coarse){ .ann__feed .hero{touch-action:pan-y} }
-.hero.hero--drag{transition:none;z-index:2}
-.hero[data-swipe="keep"]{box-shadow:0 0 0 3px var(--bourgeon),0 14px 30px -18px rgba(38,35,31,.5)}
-.hero[data-swipe="drop"]{box-shadow:0 0 0 3px var(--alerte),0 14px 30px -18px rgba(38,35,31,.5)}
-.hero__swipe{position:absolute;top:18px;z-index:3;padding:7px 14px;border-radius:var(--pilule);font:700 14px/1 var(--sans);color:var(--on-email);pointer-events:none;box-shadow:0 6px 16px -8px rgba(0,0,0,.5)}
-.hero__swipe--keep{left:92px;background:var(--bourgeon);color:var(--on-bourgeon);transform:rotate(5deg)}
-.hero__swipe--drop{right:18px;background:var(--alerte);color:#fff;transform:rotate(-5deg)}
-
 /* Fiche annonce : sections repliables sous leur titre, chevron à droite. */
 .lsec h2[data-fold]{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;-webkit-user-select:none;user-select:none}
 .lsec__head h2[data-fold]{justify-content:flex-start}

@@ -10,7 +10,6 @@ const TIPS = [
   {id: "carte-projet", sel: "#mapMode", when: () => currentTab === "map" && ui.mode === "list", txt: "Passez de l’achat à la location, sur la carte comme dans les annonces."},
   {id: "carte-filtres", sel: "#mapfBtn", when: () => currentTab === "map" && ui.mode === "list" && state.listings && state.listings.length > 0, txt: "Masquez les zones ou les annonces pour y voir plus clair."},
   {id: "zone-notes", sel: ".panel .crit", when: () => currentTab === "map" && ui.mode === "rating", txt: "Notez chaque critère de 0 à 5. En pointillés : l’estimation de Heden, à remplacer par votre ressenti."},
-  {id: "annonces-glisser", sel: ".ann__feed .hero", when: () => currentTab === "annonces" && !lui.openId && lui.filter === "atrier" && matchMedia("(pointer: coarse)").matches && !!document.querySelector(".ann__feed .hero__keep"), txt: "Glissez une annonce vers la droite pour la garder, vers la gauche pour l’écarter."},
   {id: "annonces-ajout", sel: "#addListing", when: () => currentTab === "annonces" && !lui.openId, txt: "Collez une annonce, ou installez le bouton + Heden pour l’importer en un clic."},
   {id: "annonces-tri", sel: ".lrow .lqa", when: () => currentTab === "annonces" && !lui.openId, txt: "Gardez ou écartez d’un geste. Rien n’est perdu : chaque annonce reste dans sa pile."},
   {id: "annonce-avis", sel: ".feel", when: () => currentTab === "annonces" && !!lui.openId, txt: "La note ne vous semble pas juste ? Dites-le : Heden ajuste vos priorités."},

@@ -464,9 +464,8 @@ function renderListingsView() {
   $$("[data-f]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.f; renderListings(); });
   const so = $("#lsort"); if (so) so.onchange = e => { lui.sort = e.target.value; renderListings(); };
   $$(".hero", box).forEach(card => {
-    bindSwipe(card);
     card.onclick = e => {
-      if (e.target.closest("[data-hst]") || card.dataset.dragged) return;
+      if (e.target.closest("[data-hst]")) return;
       const vw = $("#view-annonces"); lui.listScroll = vw.scrollTop;
       morph([[card.querySelector(".hero__ph"), "lph"], [card.querySelector(".hero__s"), "lsc"]],
         () => { lui.openId = card.dataset.id; renderListings(); vw.scrollTop = 0; },
@@ -499,45 +498,6 @@ function trustSignals(f, s) {
   const all = listings(), shared = (f.photos || []).some(u => { const w = all.filter(x => x.id !== f.id && (x.photos || []).includes(u)); return w.length === 1 && !sameListing(w[0], f); });
   if (shared) risk.push("mêmes photos qu’une autre annonce");
   return {risk, photo: f.aiPhoto || [], level: risk.length > 1 || (f.scam || []).length ? "fort" : risk.length ? "moyen" : null};
-}
-/* Glisser une carte au doigt : à droite pour garder, à gauche pour écarter. La carte suit le doigt 1:1 ;
-   elle part si on la lâche au-delà de 40 % de sa largeur, ou d'un geste franc (rapide et au-delà de 25 %), sinon elle revient. */
-function bindSwipe(card) {
-  if (!matchMedia("(pointer: coarse)").matches || !card.querySelector(".hero__keep")) return;
-  let d = null;
-  const reset = () => { card.classList.remove("hero--drag"); delete card.dataset.swipe; if (d && d.tag) d.tag.remove(); };
-  card.addEventListener("pointerdown", e => { if (!e.isPrimary || e.target.closest("button, a")) return; d = {x: e.clientX, y: e.clientY, id: e.pointerId, on: false, dx: 0, pts: []}; });
-  card.addEventListener("pointermove", e => {
-    if (!d || e.pointerId !== d.id) return;
-    const rx = e.clientX - d.x, ry = e.clientY - d.y;
-    if (!d.on) {
-      if (Math.abs(ry) > 8 && Math.abs(ry) > Math.abs(rx)) { d = null; return; }   // défilement vertical : la page garde la main
-      if (Math.abs(rx) < 12) return;
-      d.on = true; d.x0 = e.clientX; card.classList.add("hero--drag"); try { card.setPointerCapture(e.pointerId); } catch (err) {}
-      d.tag = document.createElement("span"); card.appendChild(d.tag);
-    }
-    const dx = d.dx = e.clientX - d.x0, w = card.offsetWidth;   // départ à zéro au moment où le geste est reconnu : pas de saut
-    d.pts.push([performance.now(), e.clientX]); if (d.pts.length > 6) d.pts.shift();
-    card.style.transform = `translateX(${dx}px) rotate(${dx / 70}deg)`;
-    const on = Math.abs(dx) > w * .25;
-    card.dataset.swipe = on ? (dx > 0 ? "keep" : "drop") : "";
-    const lab = (dx > 0 ? card.querySelector(".hero__keep") : card.querySelector(".hero__drop")).textContent.trim();
-    if (d.tag.textContent !== lab) d.tag.textContent = lab;
-    d.tag.className = "hero__swipe hero__swipe--" + (dx > 0 ? "keep" : "drop"); d.tag.style.opacity = Math.min(1, Math.max(0, (Math.abs(dx) - 20) / (w * .25)));
-  });
-  const end = e => {
-    if (!d || e.pointerId !== d.id) return;
-    const g = d; reset(); d = null; if (!g.on) return;
-    card.dataset.dragged = "1"; setTimeout(() => delete card.dataset.dragged, 400);
-    const w = card.offsetWidth, a = g.pts[0], b = g.pts[g.pts.length - 1];
-    const v = a && b && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0, sign = Math.sign(g.dx);   // vitesse des derniers instants, en px/ms
-    const go = e.type === "pointerup" && (Math.abs(g.dx) > w * .4 || (Math.abs(g.dx) > w * .25 && Math.sign(v) === sign && Math.abs(v) > .6));
-    const btn = go && card.querySelector(sign > 0 ? ".hero__keep" : ".hero__drop");
-    if (!btn) { card.style.transform = ""; return; }   // retour en place, avec la transition de la carte
-    card.style.transform = `translateX(${sign * 115}%) rotate(${sign * 6}deg)`; card.style.opacity = "0";
-    btn.click();
-  };
-  card.addEventListener("pointerup", end); card.addEventListener("pointercancel", end);
 }
 /* Passage fil ↔ fiche : la photo et la note glissent d'un écran à l'autre (View Transitions), sinon changement direct */
 function morph(from, update, to) {
