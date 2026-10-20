@@ -17,6 +17,7 @@
   var NUM = /\d(?:[\d    .,]*\d)?/g;
   var MO = {"janv.": "Jan", "févr.": "Feb", "mars": "Mar", "avr.": "Apr", "mai": "May", "juin": "Jun", "juil.": "Jul", "août": "Aug", "sept.": "Sep", "oct.": "Oct", "nov.": "Nov", "déc.": "Dec"};
   var MORE = /(\d) (janv\.|févr\.|mars|avr\.|mai|juin|juil\.|août|sept\.|oct\.|nov\.|déc\.)(?=[\s,.)]|$)/g;
+  var MOY = /(^|[\s(])(janv\.|févr\.|mars|avr\.|mai|juin|juil\.|août|sept\.|oct\.|nov\.|déc\.)(?= \d{4})/g;
   var EX = null, BK = {}, GEN = [], memo = new Map();
   var esc = function (c) { return c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); };
   function compile(k, v) {
@@ -41,20 +42,20 @@
       var w = ix ? wild[ix - 1] : wild[wi++]; return w == null ? "" : tr(w, depth + 1);
     }));
   }
-  function tr(s, depth) {
+  function tr(s, depth, free) {
     depth = depth || 0;
     if (!s || depth > 8 || !/[A-Za-zÀ-ÿ]/.test(s)) return s;
     if (!depth && memo.has(s)) return memo.get(s);
     var lead = s.match(/^\s*/)[0], trail = s.slice(lead.length).match(/\s*$/)[0];
     var core = s.slice(lead.length, s.length - trail.length).replace(/\s+/g, " ");
-    var c2 = core.replace(MORE, function (m, d, mo) { return d + " " + MO[mo]; });
+    var c2 = core.replace(MORE, function (m, d, mo) { return d + " " + MO[mo]; }).replace(MOY, function (m, d, mo) { return d + MO[mo]; });
     var out = null, nums = [];
     var k = c2.replace(NUM, function (m) { nums.push(m); return "#"; });
     var v = EX[k];
     if (v != null) out = fill(v, nums, [], depth);
     else {
       var list = (BK[c2.slice(0, 2)] || []).concat(/^\d/.test(c2) ? BK["#"] || [] : [], GEN).sort(byLit);
-      var cm = depth && c2.indexOf(", ") >= 0;
+      var cm = depth && !free && c2.indexOf(", ") >= 0;
       for (var i = 0; i < list.length && out == null; i++) {
         var p = list[i]; if (cm && p.k.indexOf(",") < 0) continue;
         var m = p.re.exec(c2);
@@ -63,14 +64,19 @@
         for (var j = 0; j < p.kinds.length; j++) (p.kinds[j] === "#" ? ns : ws).push(m[j + 1]);
         out = fill(p.v, ns, ws, depth);
       }
-      if (out == null && /\.$/.test(c2) && c2.length > 3) { var t0 = tr(c2.slice(0, -1), depth + 1); if (t0 !== c2.slice(0, -1)) out = t0 + "."; }
-      if (out == null && cm) {
+      if (out == null && /\.$/.test(c2) && c2.length > 3) { var t0 = tr(c2.slice(0, -1), depth + 1, free); if (t0 !== c2.slice(0, -1)) out = t0 + "."; }
+      if (out == null && / ·$/.test(c2)) { var t3 = tr(c2.slice(0, -2), depth + 1, free); if (t3 !== c2.slice(0, -2)) out = t3 + " ·"; }
+      if (out == null && !free && c2.indexOf(" · ") > 0) {
+        var t1 = c2.split(" · ").map(function (x) { return tr(x, depth + 1); }).join(" · ");
+        if (t1 !== c2) out = t1;
+      }
+      if (out == null && !free && c2.indexOf(", ") >= 0) {
         var parts = c2.split(", "), acc = [];
         for (var q = 0; q < parts.length; q++) {
-          var two = q + 1 < parts.length ? parts[q] + ", " + parts[q + 1] : null;
-          if (two && EX[two.replace(NUM, "#")] != null) { acc.push(tr(two, depth + 1)); q++; } else acc.push(tr(parts[q], depth + 1));
+          var two = q + 1 < parts.length && parts[q] && parts[q + 1] ? parts[q] + ", " + parts[q + 1] : null;
+          if (two && EX[two.replace(NUM, "#")] != null) { acc.push(tr(two, depth + 1, true)); q++; } else acc.push(tr(parts[q], depth + 1));
         }
-        out = acc.join(", ");
+        var t2 = acc.join(", "); if (t2 !== c2) out = t2;
       }
       if (out == null) out = c2 === core ? null : c2;
     }
@@ -83,11 +89,14 @@
   var ATTRS = ["placeholder", "aria-label", "title", "alt"];
   var seen = new WeakMap();
   var FIL = {acceptNode: function (n) { if (n.nodeType === 1 && n.matches(SKIP)) { if (n.matches("textarea")) doAttrs(n); return 2; } return 1; }};
+  var DBG = false; try { DBG = localStorage.getItem("heden.i18ndebug") === "1"; } catch (e) {}
+  var FRW = /[éèêàùçâîôœ]|\b(le|la|les|des|du|une?|et|vos|votre|pour|sur|dans|avec|pas|est|au|aux|sans|par|cette|ce|à|zone|annonce|loyer|prix|carte|note)\b/i;
+  function miss(v, t) { if (DBG && FRW.test(t)) console.log("I18NMISS|" + v.replace(/\s+/g, " ").trim() + "|" + t.replace(/\s+/g, " ").trim()); }
   function doText(n, known) {
     var v = n.nodeValue;
     if (!v || seen.get(n) === v) return;
     if (!known) { var p = n.parentElement; if (!p || p.closest(SKIP)) return; }
-    var t = tr(v); seen.set(n, t);
+    var t = tr(v); seen.set(n, t); miss(v, t);
     if (t !== v) n.nodeValue = t;
   }
   function doAttrs(el) {
@@ -95,13 +104,13 @@
       var a = ATTRS[i], v = el.getAttribute(a);
       if (!v || el.__i18n && el.__i18n[a] === v) continue;
       if (el.closest("[data-i18n-skip],script,style")) return;
-      var t = tr(v); (el.__i18n = el.__i18n || {})[a] = t;
+      var t = tr(v); (el.__i18n = el.__i18n || {})[a] = t; miss(v, t);
       if (t !== v) el.setAttribute(a, t);
     }
   }
   function doVal(el) {
     if (el.__i18nv || el.tagName !== "INPUT" || !el.hasAttribute("data-i18n-val")) return;
-    el.__i18nv = 1; var tv = tr(el.value); if (tv !== el.value) el.value = tv;
+    el.__i18nv = 1; var tv = tr(el.value); miss(el.value, tv); if (tv !== el.value) el.value = tv;
   }
   function doTree(node) {
     if (node.nodeType === 3) return doText(node);
@@ -122,7 +131,7 @@
     }
   });
   mo.observe(root, {subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS});
-  fetch("i18n/en.json?v=1").then(function (r) { return r.json(); }).then(function (d) {
+  fetch("i18n/en.json?v=2").then(function (r) { return r.json(); }).then(function (d) {
     EX = d.exact;
     var ps = Object.keys(d.pat).map(function (k) { var p = compile(k, d.pat[k]); p.k = k; return p; });
     ps.sort(byLit);
@@ -1239,6 +1248,7 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .sec.setrow{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border-radius:20px;background:var(--calcaire);border:1px solid var(--trait)}
 .ppane .sec.setrow+.sec.setrow{margin-top:-18px}
 .setrow>div{min-width:0}
+.setrow>.seg{flex:none}
 .setrow .sub3{margin:0 0 2px}
 .setrow .hint2{margin:0}
 #view-profile .crow{grid-template-columns:minmax(0,1fr) auto 32px;grid-template-areas:"nm out x" "rg rg rg";gap:2px 10px;padding:10px 14px}
@@ -1366,6 +1376,31 @@ body.walking .mapmode,body[data-mode="placing"] .mapmode,body[data-mode="rating"
 .toast{left:50%;right:auto;bottom:auto;transform:translateX(-50%);max-width:min(440px,calc(100% - 32px));box-sizing:border-box;text-wrap:pretty}
 @media (max-width:899px){body[data-tab="map"] .toast{max-width:calc(100% - 132px)}}
 
+
+/* Astuces */
+.tip{position:fixed;z-index:2900;left:0;top:0;width:max-content;max-width:min(300px,calc(100vw - 24px));box-sizing:border-box;padding:14px 16px 10px;border-radius:20px;background:var(--ardoise);color:var(--pierre);box-shadow:0 2px 6px rgba(42,29,20,.14),0 14px 34px rgba(42,29,20,.22);opacity:0;pointer-events:none;
+  transform-origin:var(--ax,50%) 0;transform:translateY(-8px) scale(.92)}
+.tip[data-side="haut"]{transform-origin:var(--ax,50%) 100%;transform:translateY(8px) scale(.92)}
+.tip::after{content:"";position:absolute;left:var(--ax,50%);top:-5px;width:12px;height:12px;margin-left:-6px;background:inherit;border-radius:3px 0 0 0;transform:rotate(45deg)}
+.tip[data-side="haut"]::after{top:auto;bottom:-5px;border-radius:0 0 3px 0}
+.tip.is-in{opacity:1;pointer-events:auto;transform:none;transition:opacity .2s ease-out,transform .5s var(--ease-ressort,cubic-bezier(.2,1.3,.35,1))}
+.tip.is-out{opacity:0;transition:opacity .18s ease-in,transform .22s ease-in;transform:translateY(-4px) scale(.96)}
+.tip[data-side="haut"].is-out{transform:translateY(4px) scale(.96)}
+.tip__txt{margin:0;font-size:14px;line-height:1.42;text-wrap:pretty;display:flex;gap:10px;align-items:baseline}
+.tip__txt::before{content:"";flex:none;width:11px;height:9px;border-radius:var(--galet-a);background:var(--bourgeon);transform:translateY(-1px)}
+.tip.is-in .tip__txt{animation:tip-ligne .42s .06s var(--ease-sortie) both}
+.tip__acts{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:8px;padding-left:21px}
+.tip.is-in .tip__acts{animation:tip-ligne .42s .14s var(--ease-sortie) both}
+.tip__skip{border:0;background:none;padding:6px 0;font:500 12.5px var(--sans);color:color-mix(in srgb,var(--pierre) 62%,transparent);cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--pierre) 30%,transparent)}
+.tip__skip:hover{color:var(--pierre)}
+.tip__ok{border:0;height:32px;padding:0 15px;border-radius:var(--pilule);background:var(--bourgeon);color:var(--on-bourgeon);font:700 13px var(--sans);cursor:pointer;transition:transform .14s var(--ease-sortie)}
+.tip__ok:active{transform:scale(.95)}
+.tiphalo{position:fixed;z-index:2899;pointer-events:none;box-sizing:border-box;border:2px solid var(--bourgeon);opacity:0;transform:scale(1.25)}
+.tiphalo.is-in{opacity:1;transform:none;transition:opacity .25s ease-out,transform .55s var(--ease-ressort,cubic-bezier(.2,1.3,.35,1));animation:tip-souffle 2.6s .7s ease-out infinite}
+.tiphalo.is-out{opacity:0;transform:scale(1.08);transition:opacity .2s ease-in,transform .25s ease-in}
+@keyframes tip-ligne{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes tip-souffle{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bourgeon) 55%,transparent)}70%,100%{box-shadow:0 0 0 12px color-mix(in srgb,var(--bourgeon) 0%,transparent)}}
+@media (prefers-reduced-motion: reduce){.tip,.tip[data-side="haut"],.tiphalo{transform:none}.tiphalo.is-in{animation:none}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -1944,7 +1979,7 @@ function countUp(root = document) {
     el.textContent = "0"; requestAnimationFrame(step);
   });
 }
-function setTab(t) {
+function setTab(t) { setTimeout(() => tipsKick(), 0);
   currentTab = t;
   document.body.dataset.tab = t;
   $$("[data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
@@ -2173,7 +2208,7 @@ function setHint(t) { const h = $("#hint"); h.hidden = !t; if (t) h.textContent 
 function placeLabel(z) { return [z.place, z.area ? fmtArea(z.area) : ""].filter(Boolean).join(", "); }
 
 let lastMode = null;
-function renderPanel() {
+function renderPanel() { setTimeout(() => tipsKick(), 0);
   panel.dataset.mode = ui.mode;
   document.body.dataset.mode = ui.mode;
   /* chaque nouveau mode ouvre la feuille ; la liste démarre repliée sur mobile */
@@ -3237,7 +3272,7 @@ function showPtab(k) {
   $$(".ppane").forEach(pn => { pn.hidden = pn.dataset.pane !== k; if (!pn.hidden) { pn.classList.remove("swap-in"); void pn.offsetWidth; pn.classList.add("swap-in"); setTimeout(() => pn.classList.remove("swap-in"), 300); } });
   const v = $("#view-profile"); if (v) v.scrollTop = 0;
 }
-function renderProfile() {
+function renderProfile() { setTimeout(() => tipsKick(), 0);
   const p = state.profile;
   const cs = p.criteria;
   const wsum = cs.reduce((a, c) => a + (c.weight > 0 ? c.weight : 0), 0);
@@ -3317,6 +3352,10 @@ function renderProfile() {
       <div><h3 class="sub3">Langue · Language</h3></div>
       <div class="seg seg--sm" id="langSel" role="group" aria-label="Langue · Language" data-i18n-skip>${[["fr", "Français"], ["en", "English"]].map(([k, l]) => `<button type="button" data-lang="${k}" aria-pressed="${(window.HEDEN_LANG || "fr") === k}">${l}</button>`).join("")}</div>
     </section>
+    <section class="sec setrow">
+      <div><h3 class="sub3">Astuces</h3><p class="hint2">Une bulle au premier usage de chaque écran${tipsState().seen.length && !tipsState().off ? ` · <button class="linkbtn" type="button" id="tipsReset">Tout revoir</button>` : ""}</p></div>
+      <div class="seg seg--sm" id="tipsSel" role="group" aria-label="Astuces">${[[1, "Oui"], [0, "Non"]].map(([k, l]) => `<button type="button" data-on="${k}" aria-pressed="${!tipsState().off === !!k}">${l}</button>`).join("")}</div>
+    </section>
     ${sharedHTML()}
     <section class="sec">
       <h2>Vos données</h2>
@@ -3335,6 +3374,13 @@ function renderProfile() {
   const lp = $("#locProf"); if (lp) lp.onclick = openRentSettings;
   bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
+  $$("#tipsSel [data-on]").forEach(b => b.onclick = () => {
+    const on = b.dataset.on === "1"; const st = tipsState();
+    if (on === !st.off) return;
+    st.off = !on; if (on) st.seen = []; else tipHide(false);
+    tipsSave(); renderProfile(); toast(on ? "Astuces activées" : "Astuces désactivées");
+  });
+  if ($("#tipsReset")) $("#tipsReset").onclick = () => { tipsState().seen = []; tipsSave(); renderProfile(); toast("Les astuces reviendront au fil des écrans"); };
   $$("#langSel [data-lang]").forEach(b => b.onclick = () => {
     if (b.dataset.lang === (window.HEDEN_LANG || "fr")) return;
     try { localStorage.setItem("heden.lang", b.dataset.lang); } catch (e) {}
@@ -3432,7 +3478,7 @@ let toastT = null;
 /* La notification cherche une place libre : sous les barres et consignes du haut, sinon au-dessus
    de la feuille ou de la barre du bas. Elle ne recouvre jamais une barre de balade, une consigne
    de tracé, la recherche, les boutons de carte ou une fenêtre ouverte. */
-const TOAST_AVOID = ".topbar, .tabbar, .map-top, .walkbar, .mapmode, .hint, .fab-col, #mapf.is-open .mapf__opt, .panel, .ask__card, .auth__card, .lsheet, .quiz, .leaflet-control-attribution";
+const TOAST_AVOID = ".tip.is-in, .topbar, .tabbar, .map-top, .walkbar, .mapmode, .hint, .fab-col, #mapf.is-open .mapf__opt, .panel, .ask__card, .auth__card, .lsheet, .quiz, .leaflet-control-attribution";
 function placeToast(t) {
   const vv = window.visualViewport, vh = vv ? vv.height : innerHeight, vw = innerWidth, gap = 10;
   t.style.top = "0px";
@@ -3469,6 +3515,99 @@ try {
 /* Clavier ouvert (mobile) : on masque tout ce qui ne sert pas à la saisie */
 const isTextField = el => !!el && (el.tagName === "TEXTAREA" || el.tagName === "SELECT" ||
   (el.tagName === "INPUT" && !/^(range|checkbox|radio|button|submit|file|color|hidden)$/.test(el.type)));
+
+/* =========================================================
+   Astuces : une bulle au premier usage de chaque écran, ancrée sur l’élément.
+   Rien ne bloque : on peut continuer à utiliser l’app, ou tout passer.
+   ========================================================= */
+var TIPS_KEY = "heden.tips", tipsSt = null, tipCur = null, tipTimer = null, tipRaf = 0;
+const TIPS = [
+  {id: "carte-zone", sel: "#newZone", when: () => currentTab === "map" && ui.mode === "list", txt: "Tracez le coin que vous visitez, point par point, puis notez-le."},
+  {id: "carte-balade", sel: "#walkBtn", when: () => currentTab === "map" && ui.mode === "list", txt: "En balade, lancez le suivi : Heden propose la zone d’après votre parcours."},
+  {id: "carte-projet", sel: "#mapMode", when: () => currentTab === "map" && ui.mode === "list", txt: "Passez de l’achat à la location, sur la carte comme dans les annonces."},
+  {id: "carte-filtres", sel: "#mapfBtn", when: () => currentTab === "map" && ui.mode === "list" && state.listings && state.listings.length > 0, txt: "Masquez les zones ou les annonces pour y voir plus clair."},
+  {id: "zone-notes", sel: ".panel .crit", when: () => currentTab === "map" && ui.mode === "rating", txt: "Notez chaque critère de 0 à 5. En pointillés : l’estimation de Heden, à remplacer par votre ressenti."},
+  {id: "annonces-ajout", sel: "#addListing", when: () => currentTab === "annonces" && !lui.openId, txt: "Collez une annonce, ou installez le bouton + Heden pour l’importer en un clic."},
+  {id: "annonces-tri", sel: ".lrow .lqa", when: () => currentTab === "annonces" && !lui.openId, txt: "Gardez ou écartez d’un geste. Rien n’est perdu : chaque annonce reste dans sa pile."},
+  {id: "annonce-avis", sel: ".feel", when: () => currentTab === "annonces" && !!lui.openId, txt: "La note ne vous semble pas juste ? Dites-le : Heden ajuste vos priorités."},
+  {id: "profil-onglets", sel: ".ptabs", when: () => currentTab === "profile", txt: "Vos critères se règlent ici. La carte à deux et la langue sont dans Compte."}
+];
+function tipsState() {
+  if (tipsSt) return tipsSt;
+  try { tipsSt = JSON.parse(localStorage.getItem(TIPS_KEY) || "{}"); } catch (e) { tipsSt = {}; }
+  tipsSt.seen = tipsSt.seen || [];
+  if (tipsSt.off == null && navigator.webdriver && !localStorage.getItem("__tips")) tipsSt.off = true;
+  return tipsSt;
+}
+function tipsSave() { try { localStorage.setItem(TIPS_KEY, JSON.stringify({off: !!tipsSt.off, seen: tipsSt.seen})); } catch (e) {} }
+function tipVisible(el) {
+  if (!el || el.closest("[hidden]")) return false;
+  const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+  return r.width > 4 && r.height > 4 && r.bottom > 8 && r.top < innerHeight - 8 && cs.visibility !== "hidden" && +cs.opacity > .3;
+}
+function tipOverlay() { return !!document.querySelector("#quiz.is-open, .ask, .auth.is-open, #mapf.is-open") || ($("#lsheet") && !$("#lsheet").hidden && $("#lsheet").classList.contains("is-open")); }
+function tipBlocked() {
+  return tipOverlay() ||
+    isTextField(document.activeElement) || !$("#toast").hidden || document.body.classList.contains("walking") || sheetDrag;
+}
+function tipsKick(delay) {
+  try {
+    const st = tipsState(); if (st.off) return;
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(() => {
+      if (tipCur) { if (!tipCur.tip.when() || !document.contains(tipCur.target)) tipHide(false); else return; }
+      if (tipBlocked()) return tipsKick(1600);
+      const t = TIPS.find(t => !st.seen.includes(t.id) && t.when() && tipVisible($(t.sel)));
+      if (t) tipShow(t);
+    }, delay ?? 900);
+  } catch (e) {}
+}
+function tipPlace() {
+  if (!tipCur) return;
+  const {el, halo, tip} = tipCur;
+  let target = tipCur.target;
+  if (!document.contains(target)) { const nt = $(tip.sel); if (nt) tipCur.target = target = nt; }
+  if (!tipVisible(target) || !tip.when() || tipOverlay()) { tipHide(false); return tipsKick(1600); }
+  const r = target.getBoundingClientRect(), vw = innerWidth, vh = (window.visualViewport ? visualViewport.height : innerHeight);
+  const pad = 5, rad = parseFloat(getComputedStyle(target).borderTopLeftRadius) || 12;
+  halo.style.cssText = `left:${r.left - pad}px;top:${r.top - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;border-radius:${Math.min(rad + pad, (r.height + pad * 2) / 2)}px`;
+  const w = el.offsetWidth, h = el.offsetHeight, gap = 14;
+  const bar = $(".tabbar"), bottomLimit = bar && tipVisible(bar) ? bar.getBoundingClientRect().top : vh;
+  const below = r.bottom + pad + gap + h <= bottomLimit - 8, above = r.top - pad - gap - h >= 8;
+  const down = below && (!above || r.top + r.height / 2 < vh * 0.55);
+  const y = down ? r.bottom + pad + gap : r.top - pad - gap - h;
+  const cx = r.left + r.width / 2, x = Math.round(Math.max(12, Math.min(cx - w / 2, vw - w - 12)));
+  el.style.left = x + "px"; el.style.top = Math.round(y) + "px";
+  el.dataset.side = down ? "bas" : "haut";
+  el.style.setProperty("--ax", Math.round(Math.max(18, Math.min(cx - x, w - 18))) + "px");
+}
+function tipLoop() { tipPlace(); if (tipCur) tipRaf = requestAnimationFrame(tipLoop); }
+function tipShow(tip) {
+  const target = $(tip.sel); if (!target) return;
+  const halo = document.createElement("div"); halo.className = "tiphalo"; halo.setAttribute("aria-hidden", "true");
+  const el = document.createElement("div"); el.className = "tip"; el.setAttribute("role", "dialog"); el.setAttribute("aria-live", "polite");
+  const n = TIPS.filter(t => !tipsState().seen.includes(t.id)).length;
+  el.innerHTML = `<p class="tip__txt">${esc(tip.txt)}</p><div class="tip__acts"><button type="button" class="tip__skip">Passer les astuces</button><button type="button" class="tip__ok">Compris</button></div>`;
+  document.body.append(halo, el);
+  tipCur = {tip, target, el, halo};
+  tipPlace();
+  requestAnimationFrame(() => { el.classList.add("is-in"); halo.classList.add("is-in"); });
+  cancelAnimationFrame(tipRaf); tipRaf = requestAnimationFrame(tipLoop);
+  el.querySelector(".tip__ok").onclick = () => tipHide(true);
+  el.querySelector(".tip__skip").onclick = () => { tipsState().off = true; tipsSave(); tipHide(true); if (currentTab === "profile") renderProfile(); toast("Astuces désactivées : réactivez-les dans Profil, Compte"); };
+}
+function tipHide(seen) {
+  if (!tipCur) return;
+  const {tip, el, halo} = tipCur; tipCur = null; cancelAnimationFrame(tipRaf);
+  if (seen && !tipsState().seen.includes(tip.id)) { tipsSt.seen.push(tip.id); tipsSave(); }
+  el.classList.remove("is-in"); el.classList.add("is-out"); halo.classList.remove("is-in"); halo.classList.add("is-out");
+  setTimeout(() => { el.remove(); halo.remove(); }, 260);
+  if (seen) tipsKick(1100);
+}
+document.addEventListener("pointerdown", e => { if (tipCur && !tipCur.el.contains(e.target) && tipCur.target.contains(e.target)) tipHide(true); }, true);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && tipCur) tipHide(true); });
+window.addEventListener("resize", () => tipPlace());
+document.addEventListener("scroll", () => { if (!tipCur && tipsSt && !tipsSt.off) tipsKick(700); }, true);
 document.addEventListener("focusin", e => {
   if (isDesktop() || !isTextField(e.target)) return;
   document.body.classList.add("kbd");
@@ -4668,7 +4807,7 @@ function setStatus(f, st, after) {
   if (after) after(); else renderListings();
   toast({gardee: "Annonce gardée", visite: "Visite prévue", ecartee: "Annonce écartée", nouvelle: "Annonce remise à trier"}[st], {label: "Annuler", fn: () => { f.status = prev; f.updatedAt = Date.now(); learnMemo.key = null; save(); renderListingPins(); renderListings(); }});
 }
-function renderListings() {
+function renderListings() { setTimeout(() => tipsKick(), 0);
   const vw = $("#view-annonces"), box = $("#annonces");
   const view = lui.openId && listings().some(x => x.id === lui.openId) ? "d:" + lui.openId : "list", prev = lui.lastView;
   if (prev && prev !== view && prev === "list" && vw) lui.listScroll = vw.scrollTop;
@@ -4752,7 +4891,7 @@ function heroHTML(f, s) {
     </div>
   </article>`;
 }
-function renderListingDetail(id) {
+function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
   const f = listings().find(x => x.id === id), box = $("#annonces"); if (!f) { lui.openId = null; return renderListings(); }
   const s = scoreListing(f), h = homeProfile();
   const bar = (label, val, hint) => `<div class="mbar"><span>${label}</span><span class="bar"><i style="width:${val ?? 0}%;--c:${traitFor(val)}"></i></span><b class="num">${val ?? "–"}</b>${hint ? `<small>${hint}</small>` : ""}</div>`;
@@ -5595,7 +5734,7 @@ function openQuiz() {
   el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
   paintQuiz();
 }
-function closeQuiz() { const el = $("#quiz"); if (!el) return; el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); }
+function closeQuiz() { const el = $("#quiz"); if (!el) return; setTimeout(() => tipsKick(1200), 0); el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); }
 const QSTEPS = 7;
 function paintQuiz() {
   const card = $("#quiz .quiz"), s = qz.s, st = qz.step;
