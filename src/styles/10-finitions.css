@@ -65,3 +65,28 @@ input,textarea{caret-color:var(--email)}
 /* Repère « votre annonce » sur la frise des prix : l'étiquette reste dans la frise aux extrémités. */
 .strip__me--fin span{left:auto;right:-1px;transform:none}
 .strip__me--debut span{left:-1px;transform:none}
+
+/* Fil d'annonces : trois colonnes au plus sur ordinateur, les titres respirent. */
+@media (min-width: 900px){ .ann__feed{grid-template-columns:repeat(auto-fill,minmax(310px,1fr))} }
+
+/* Fiabilité de l'annonce : encadré sobre, couleur d'alerte réservée au signal fort. */
+.trust{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:var(--rayon-m);border:1px solid var(--trait-fort);background:color-mix(in srgb,var(--enduit) 55%,transparent)}
+.trust p{margin:0}
+.trust--fort{border-color:color-mix(in srgb,var(--alerte) 60%,transparent);background:color-mix(in srgb,var(--alerte) 8%,var(--calcaire))}
+.trust--fort b{color:var(--alerte)}
+
+/* Choisir un lieu connu : bouton à côté de « + Zone », grille des arrondissements, puis lieux. */
+.phead__acts{display:flex;align-items:center;gap:6px;flex:none}
+.btn--ico{width:36px;padding:0;display:grid;place-items:center}
+.lieux{max-height:min(82dvh,640px);overflow:auto;overscroll-behavior:contain}
+.lieux__a{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.lieux__a button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;padding:9px 10px;border:1px solid var(--trait);border-radius:16px;background:var(--calcaire);text-align:left;transition:transform .14s var(--ease-sortie),border-color .14s,background-color .14s}
+.lieux__a button b{font-family:var(--display);font-size:17px;line-height:20px}
+.lieux__a button span{font-size:11.5px;line-height:14px;color:var(--zinc);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.lieux__a button:hover{border-color:var(--trait-fort);background:color-mix(in srgb,var(--enduit) 50%,var(--calcaire))}
+.lieux__a button:active{transform:scale(.96)}
+.lieux__l{display:flex;flex-wrap:wrap;gap:8px}
+.lieux__l .chip{min-height:40px}
+.lieux__l .chip:disabled{opacity:.55}
+.lieux .link{align-self:flex-start}
+@media (max-width: 360px){ .lieux__a{grid-template-columns:repeat(3,minmax(0,1fr))} }

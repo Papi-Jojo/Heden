@@ -501,7 +501,7 @@ function setupRealtime() {
     cloud.channel = ch.subscribe();
   } catch (e) { console.warn("Heden : temps réel", e); }
 }
-async function copyToMap(z, mapId, btn) {
+async function copyToMap(z, mapId, btn, quiet) {
   const m = cloud.maps.find(x => x.id === mapId); if (!m) return;
   if (btn) btn.disabled = true;
   try {
@@ -515,9 +515,12 @@ async function copyToMap(z, mapId, btn) {
     await cloud.client.from("zones").update({link_zone: id}).eq("id", z.id);
     z.link = id; cloud.twins[id] = z.id; save();
     if (ui.mode === "detail" && selectedId === z.id) renderPanel();
-    toast(`Ajoutée à « ${m.name} »`);
-  } catch (err) { console.warn(err); toast("Copie impossible pour l’instant"); }
+    if (!quiet) toast(`Ajoutée à « ${m.name} »`);
+    if (btn) btn.disabled = false;
+    return true;
+  } catch (err) { console.warn(err); if (!quiet) toast("Copie impossible pour l’instant"); }
   if (btn) btn.disabled = false;
+  return false;
 }
 const inviteLink = code => location.origin + location.pathname + "?rejoindre=" + encodeURIComponent(code);
 async function createSharedMap(name) {
@@ -539,9 +542,19 @@ async function joinWithCode(code) {
   const {data, error} = await cloud.client.rpc("join_map", {invite_code: code});
   if (error) { toast(/invalide|expir/i.test(error.message || "") ? "Ce code est invalide ou a expiré : demandez-en un nouveau" : "Impossible de rejoindre la carte pour le moment"); return false; }
   await loadMaps();
-  const m = cloud.maps.find(x => x.id === data);
+  const m = cloud.maps.find(x => x.id === data), nm = m ? m.name : "la carte";
+  // les zones perso ne suivent pas toutes seules : on propose de les apporter (elles restent aussi sur la carte perso)
+  const mine = cloud.mapId === cloud.personalMapId ? state.zones.filter(z => !z.example && !z.link && Array.isArray(z.points)) : [];
   await switchMap(data);
-  toast(`Vous avez rejoint « ${m ? m.name : "la carte"} »`);
+  if (cloud.mapId !== data) return false;
+  if (mine.length && await askConfirm({title: `Ajouter ${mine.length > 1 ? `vos ${mine.length} zones` : "votre zone"} à « ${nm} » ?`,
+      text: "Elles restent aussi sur votre carte perso, avec vos notes. Les autres membres les verront et pourront les noter.",
+      ok: mine.length > 1 ? "Ajouter mes zones" : "Ajouter ma zone", cancel: "Plus tard"})) {
+    let n = 0;
+    for (const z of mine) if (await copyToMap(z, data, null, true)) n++;
+    await cloudRefresh(true);
+    toast(n === mine.length ? `Vous avez rejoint « ${nm} » avec ${plural(n, "zone", "zones")}` : `${n} zone${n > 1 ? "s" : ""} sur ${mine.length} ajoutée${n > 1 ? "s" : ""} : réessayez pour les autres depuis leur fiche`);
+  } else toast(`Vous avez rejoint « ${nm} »`);
   return true;
 }
 async function unlinkMap(mapId) {

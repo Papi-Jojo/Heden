@@ -60,15 +60,17 @@ function extractCards(root, base) {
       if (sc > best) { best = sc; url = h; }
     }
     if (!url) continue;
-    let img = "", area = 0;
+    // toutes les photos de la carte (carrousel compris), la plus grande d'abord
+    const seen = new Map();
     for (const i of c.querySelectorAll("img")) {
       const s = i.currentSrc || i.getAttribute("src") || i.getAttribute("data-src") || i.getAttribute("data-lazy-src") || i.getAttribute("data-original") || (i.getAttribute("srcset") || i.getAttribute("data-srcset") || "").split(/\s/)[0];
       if (!s || /^data:|logo|pixel|spacer|tracking|icon|avatar|badge/i.test(s)) continue;
       const w = i.naturalWidth || +i.getAttribute("width") || 200, hh = i.naturalHeight || +i.getAttribute("height") || 150;
       if (w < 90 || hh < 60) continue;
-      if (w * hh > area) { area = w * hh; img = abs(s); }
+      const u = abs(s); if (u && !seen.has(u)) seen.set(u, w * hh);
     }
-    out.push({url, img, text: text.slice(0, 900)});
+    const big = [...seen].sort((a, b) => b[1] - a[1])[0], imgs = big ? [big[0], ...[...seen.keys()].filter(u => u !== big[0])].slice(0, 12) : [];
+    out.push({url, img: imgs[0] || "", imgs, text: text.slice(0, 900)});
   }
   return out;
 }
@@ -110,16 +112,18 @@ async function placeListing(f) {
   if (f.lat && !f.est) { const r = f.precise || f.placeLevel === "metro" || f.placeLevel === "quartier" ? 120 : 450; try { f.est = await estimate(circlePoints(f.lat, f.lng, r, 10)); } catch (e) {} }
   f.title = listingTitle(f);
 }
-const placeQ = {list: [], busy: false};
+const placeQ = {list: [], busy: false, tried: new Set()};
 function queuePlace(fs) {
-  placeQ.list.push(...fs.filter(f => !f.lat || !f.est));
+  placeQ.list.push(...fs.filter(f => (!f.lat || !f.est) && !placeQ.tried.has(f.id)).map(f => f.id));
   if (placeQ.busy) return;
   placeQ.busy = true;
   (async () => {
     let n = 0;
     while (placeQ.list.length) {
-      const f = placeQ.list.shift();
-      if (!listings().includes(f)) continue;
+      // par identifiant : la synchro remplace les objets annonce pendant que la file tourne
+      const id = placeQ.list.shift(), f = listings().find(x => x.id === id);
+      if (!f || placeQ.tried.has(id)) continue;
+      placeQ.tried.add(id);
       await placeListing(f); f.updatedAt = Date.now(); n++;
       if (n % 4 === 0 || !placeQ.list.length) { save(); renderListings(); renderListingPins(); }
     }
@@ -140,8 +144,9 @@ function sameListing(a, b) {
   if (!placeA || placeA !== placeB) return false;
   return Math.abs(a.price - b.price) / Math.max(a.price, b.price) < 0.2;
 }
+const cardImgs = c => Array.isArray(c.imgs) && c.imgs.length ? c.imgs : c.img ? [c.img] : [];
 function mergeCard(card, opts = {}) {
-  const f = parseListing({url: card.url, text: card.text, imgs: card.img ? [card.img] : []});
+  const f = parseListing({url: card.url, text: card.text, imgs: cardImgs(card)});
   if (!f.price || !(f.surface || f.rooms)) return {kind: "skip"};
   if (opts.onlyProject && projet() !== "deux" && kindOf(f) !== projet()) return {kind: "skip"};
   const ex = listings().find(x => sameListing(x, f));
@@ -149,6 +154,7 @@ function mergeCard(card, opts = {}) {
   if (ex) {
     if (opts.source && !(ex.sources || []).includes(opts.source)) ex.sources = (ex.sources || [ex.source].filter(Boolean)).concat(opts.source);
     ex.lastSeen = now;
+    if ((f.photos || []).length > (ex.photos || []).length) { ex.photos = [...new Set([...(ex.photos || []), ...f.photos])].slice(0, 12); ex.updatedAt = Date.now(); }
     if (f.price !== ex.price) {
       ex.priceHistory = (ex.priceHistory || []).concat({price: ex.price, at: ex.priceAt || ex.addedAt || now});
       const down = f.price < ex.price; ex.price = f.price; ex.priceAt = now; ex.updatedAt = Date.now();
@@ -160,7 +166,7 @@ function mergeCard(card, opts = {}) {
   if (opts.dryRun) return {kind: "new", f};
   Object.assign(f, {id: zoneId(), status: "nouvelle", addedAt: Date.now(), firstSeen: now, lastSeen: now, origin: opts.origin || "page",
     source: opts.source || f.source, mapId: cloud.user ? cloud.mapId : null, createdBy: cloud.user ? cloud.user.id : null});
-  if (card.img && !(f.photos || []).length) f.photos = [card.img];
+  if (!(f.photos || []).length) f.photos = cardImgs(card);
   f.title = listingTitle(f);
   listings().unshift(f);
   return {kind: "new", f};
@@ -207,9 +213,9 @@ async function kindAllowed(k) {
   save(); setMode(k); toast(loc ? "Location ajoutée à votre projet" : "Achat ajouté à votre projet");
   return true;
 }
-async function openBatchImport(items, pageUrl) {
+async function openBatchImport(items, pageUrl, oldBtn) {
   const src = siteName(hostOf(pageUrl));
-  let rows = items.map(c => { const f = parseListing({url: c.url, text: c.text, imgs: c.img ? [c.img] : []}); if (c.img && !(f.photos || []).length) f.photos = [c.img]; return {c, f}; })
+  let rows = items.map(c => { const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)}); if (!(f.photos || []).length) f.photos = cardImgs(c); return {c, f}; })
     .filter(r => r.f.price && (r.f.surface || r.f.rooms));
   const nLoc = rows.filter(r => kindOf(r.f) === "location").length, major = nLoc * 2 >= rows.length ? "location" : "achat";
   if (rows.length && !(await kindAllowed(major))) return;
@@ -224,7 +230,7 @@ async function openBatchImport(items, pageUrl) {
   const paint = () => {
     const nOn = rows.filter(r => r.on).length, nNew = rows.filter(r => !r.ex).length;
     card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">${rows.length} annonce${rows.length > 1 ? "s" : ""} sur ${esc(src || "cette page")}</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <p class="auth__txt">${rows.length ? `${nNew} nouvelle${nNew > 1 ? "s" : ""} pour Heden. Celles hors critères sont décochées.` : "Heden n’a pas trouvé d’annonce lisible sur cette page. Ouvrez une annonce et réessayez, ou collez son texte."}</p>
+      <p class="auth__txt">${rows.length ? `${nNew} nouvelle${nNew > 1 ? "s" : ""} pour Heden. Celles hors critères sont décochées.` : "Heden n’a pas trouvé d’annonce lisible sur cette page. Ouvrez une annonce et réessayez, ou collez son texte."}</p>${oldBtn && rows.length ? `<p class="hint2">Votre bouton + Heden est une ancienne version : réinstallez-le depuis Annonces, « Le bouton + Heden », pour récupérer toutes les photos de chaque annonce.</p>` : ""}
       <div class="blist">${rows.map((r, i) => `<label class="brow${r.ex ? " brow--ex" : ""}">
           <input type="checkbox" data-i="${i}" ${r.on ? "checked" : ""} ${r.ex ? "disabled" : ""}>
           <span class="brow__ph">${r.f.photos && r.f.photos[0] ? `<img src="${esc(r.f.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span>
@@ -346,7 +352,7 @@ async function comparables(f) {
   return {n: sel.length, R: Math.round(sel[sel.length - 1].d), med: r10(quant(ps, .5)), q1: r10(quant(ps, .25)), q3: r10(quant(ps, .75)), lo: ps[0], hi: ps[ps.length - 1], all: sel, near: sel.slice(0, 5), adj: !!meta.index};
 }
 function negotiation(f, cmp) {
-  if (!f.price) return null;
+  if (!f.price || f.viager) return null;
   const ppm = f.surface ? f.price / f.surface : null, ref = cmp ? cmp.med : (f.est && f.est.prix ? f.est.prix.med : null);
   const ecart = ppm && ref ? ppm / ref - 1 : null, why = [];
   let m = 0.02;
@@ -632,7 +638,7 @@ const bmkOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) ? "ios" : /Andr
 let srcUI = {os: null, open: null};
 function bookmarkletCode() {
   const H = location.origin + location.pathname;
-  const body = `const m={};document.querySelectorAll('meta[property^="og:"],meta[name="description"]').forEach(x=>m[x.getAttribute('property')||x.getAttribute('name')]=x.content);const ld=[...document.querySelectorAll('script[type="application/ld+json"]')].map(s=>s.textContent).slice(0,8);const im=[...document.images].filter(i=>i.naturalWidth>=500).map(i=>i.currentSrc||i.src).filter((v,i,a)=>a.indexOf(v)===i).slice(0,12);const hs=[];document.querySelectorAll('ul,ol,div').forEach(u=>{const k=[...u.children];if(k.length<7||k.length>8||!k.every(c=>/^[A-G]$/.test(c.textContent.trim())))return;const a=k.find(c=>/activ|select|current|highlight|\\bon\\b/i.test(c.className+' '+(c.getAttribute('aria-current')||'')));if(a)hs.push((u.parentElement.textContent||'').replace(/\\s+/g,' ').replace(/(?:\\b[A-G]\\s?){6,}/,'').trim().slice(0,40)+' : '+a.textContent.trim())});let it=[];try{it=X(document.body).slice(0,60)}catch(e){}const tl=[...document.querySelectorAll('a[href^="tel:"]')].map(a=>a.getAttribute('href').slice(4)+'|'+(a.textContent||'').trim().slice(0,60)).slice(0,6);const ml=[...document.querySelectorAll('a[href^="mailto:"]')].map(a=>a.getAttribute('href').slice(7).split('?')[0]).slice(0,4);let st='';try{for(const k of ['__NEXT_DATA__','__INITIAL_STATE__','__PRELOADED_STATE__','__NUXT__','__APOLLO_STATE__','__REDIAL_PROPS__']){const w=window[k];if(w&&typeof w==='object'&&!(w instanceof Element))st+=JSON.stringify(w).slice(0,800000)}const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')st+=nd.textContent.slice(0,800000)}catch(e){}const sn=[];for(const re of [/"(?:agency|agence|advertiser|seller|contact|owner|publisher|professional|realEstateAgency|annonceur|store)[A-Za-z]*"\\s*:\\s*\\{[^{}]{0,1500}\\}/gi,/"(?:agencyName|agency_name|advertiserName|sellerName|storeName|companyName|contactName|brandName|tradeName)"\\s*:\\s*"[^"]{2,90}"/gi,/"(?:phone|phoneNumber|telephone|mobile|phoneNumbers?)"\\s*:\\s*\\[?"\\+?[\\d .()-]{8,20}"/gi]){let q;while((q=re.exec(st))&&sn.length<24)sn.push(q[0].slice(0,1600))}const d={v:3,url:location.href,title:document.title,meta:m,ld:ld,imgs:im,text:(hs.join('\\n')+'\\n'+(document.body.innerText||'')).slice(0,40000),items:it,hints:{tels:tl,mails:ml,state:sn}};const sm=Object.assign({},d,{text:d.text.slice(0,9000),ld:ld.map(x=>x.slice(0,5000)).slice(0,2),items:it.slice(0,30).map(c=>({url:c.url,img:c.img,text:c.text.slice(0,240)})),hints:{tels:tl,mails:ml,state:sn.slice(0,6).map(x=>x.slice(0,500))}});const w=window.open(H+'?importer='+Date.now()+'#import='+encodeURIComponent(JSON.stringify(sm)),'heden');let n=0;const t=setInterval(()=>{if(!w||n++>40)return clearInterval(t);try{w.postMessage({type:'heden-import',data:d},'*')}catch(e){}},400);window.addEventListener('message',e=>{if(e.data==='heden-recu')clearInterval(t)});`;
+  const body = `const m={};document.querySelectorAll('meta[property^="og:"],meta[name="description"]').forEach(x=>m[x.getAttribute('property')||x.getAttribute('name')]=x.content);const ld=[...document.querySelectorAll('script[type="application/ld+json"]')].map(s=>s.textContent).slice(0,8);const im=[...document.images].filter(i=>i.naturalWidth>=500).map(i=>i.currentSrc||i.src).filter((v,i,a)=>a.indexOf(v)===i).slice(0,12);const hs=[];document.querySelectorAll('ul,ol,div').forEach(u=>{const k=[...u.children];if(k.length<7||k.length>8||!k.every(c=>/^[A-G]$/.test(c.textContent.trim())))return;const a=k.find(c=>/activ|select|current|highlight|\\bon\\b/i.test(c.className+' '+(c.getAttribute('aria-current')||'')));if(a)hs.push((u.parentElement.textContent||'').replace(/\\s+/g,' ').replace(/(?:\\b[A-G]\\s?){6,}/,'').trim().slice(0,40)+' : '+a.textContent.trim())});let it=[];try{it=X(document.body).slice(0,60)}catch(e){}const tl=[...document.querySelectorAll('a[href^="tel:"]')].map(a=>a.getAttribute('href').slice(4)+'|'+(a.textContent||'').trim().slice(0,60)).slice(0,6);const ml=[...document.querySelectorAll('a[href^="mailto:"]')].map(a=>a.getAttribute('href').slice(7).split('?')[0]).slice(0,4);let st='';try{for(const k of ['__NEXT_DATA__','__INITIAL_STATE__','__PRELOADED_STATE__','__NUXT__','__APOLLO_STATE__','__REDIAL_PROPS__']){const w=window[k];if(w&&typeof w==='object'&&!(w instanceof Element))st+=JSON.stringify(w).slice(0,800000)}const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')st+=nd.textContent.slice(0,800000)}catch(e){}const sn=[];for(const re of [/"(?:agency|agence|advertiser|seller|contact|owner|publisher|professional|realEstateAgency|annonceur|store)[A-Za-z]*"\\s*:\\s*\\{[^{}]{0,1500}\\}/gi,/"(?:agencyName|agency_name|advertiserName|sellerName|storeName|companyName|contactName|brandName|tradeName)"\\s*:\\s*"[^"]{2,90}"/gi,/"(?:phone|phoneNumber|telephone|mobile|phoneNumbers?)"\\s*:\\s*\\[?"\\+?[\\d .()-]{8,20}"/gi]){let q;while((q=re.exec(st))&&sn.length<24)sn.push(q[0].slice(0,1600))}const d={v:4,url:location.href,title:document.title,meta:m,ld:ld,imgs:im,text:(hs.join('\\n')+'\\n'+(document.body.innerText||'')).slice(0,40000),items:it,hints:{tels:tl,mails:ml,state:sn}};const sm=Object.assign({},d,{text:d.text.slice(0,9000),ld:ld.map(x=>x.slice(0,5000)).slice(0,2),items:it.slice(0,30).map(c=>({url:c.url,img:c.img,imgs:(c.imgs||[]).slice(0,4),text:c.text.slice(0,240)})),hints:{tels:tl,mails:ml,state:sn.slice(0,6).map(x=>x.slice(0,500))}});const w=window.open(H+'?importer='+Date.now()+'#import='+encodeURIComponent(JSON.stringify(sm)),'heden');let n=0;const t=setInterval(()=>{if(!w||n++>40)return clearInterval(t);try{w.postMessage({type:'heden-import',data:d},'*')}catch(e){}},400);window.addEventListener('message',e=>{if(e.data==='heden-recu')clearInterval(t)});`;
   return "javascript:" + encodeURIComponent(`(()=>{const H=${JSON.stringify(H)};const X=${extractCards.toString()};${body}})();`);
 }
 const bmkInstalled = () => { try { return !!localStorage.getItem("heden.bmk"); } catch (e) { return false; } };
@@ -842,6 +848,7 @@ function analysisHTML(f) {
       <p class="hint2">Estimation d’après la distance${f.precise ? "" : " et une position approximative"}. Touchez un trajet pour l’itinéraire exact.</p></section>` : ""}`;
 }
 function fairHTML(f, cmp, ng) {
+  if (f.viager) return `<h2>Le juste prix</h2><p class="hint2">Viager${f.viager === "occupe" ? " occupé" : f.viager === "libre" ? " libre" : ""} : le prix affiché est le bouquet${f.rente ? `, plus une rente de ${fmtInt(f.rente)} € par mois` : ""}. La comparaison au prix du m² ne s’applique pas.</p>`;
   const ppm = f.price && f.surface ? f.price / f.surface : null;
   if (!cmp) return `<h2>Le juste prix</h2><p class="hint2">${f.lat ? "Pas assez de ventes comparables autour pour juger le prix." : "Placez l’annonce sur la carte (code postal ou métro) pour la comparer aux ventes du quartier."}</p>`;
   const lo = Math.min(cmp.lo, ppm || cmp.lo), hi = Math.max(cmp.hi, ppm || cmp.hi), span = hi - lo || 1, pos = v => ((v - lo) / span * 100).toFixed(1);
@@ -918,6 +925,7 @@ function renderListingPins() {
   if (!listingLayer) listingLayer = L.layerGroup().addTo(map);
   listingLayer.clearLayers();
   if (mapFilter.annonces === false) return;
+  queuePlace(modeListings().filter(f => !f.lat && f.status !== "ecartee"));
   modeListings().filter(f => f.lat && f.status !== "ecartee").forEach(f => {
     const s = scoreListing(f);
     const mk = L.marker([f.lat, f.lng], {icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin${f.status === "gardee" || f.status === "visite" ? " lpin--kept" : ""}${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9H4z"/></svg><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`}), zIndexOffset: 500});

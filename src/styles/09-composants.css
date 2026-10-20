@@ -267,9 +267,14 @@ body.walking .mapmode,body[data-mode="placing"] .mapmode,body[data-mode="rating"
 @media (prefers-color-scheme: dark){.hero--fail .hero__k{color:var(--alerte)}}
 .hero--nophoto .hero__ph{display:grid;place-items:center}
 .hero--nophoto .hero__ph .galets{width:34%;height:auto;margin:0;opacity:.9}
-@media (min-width:900px){
+@media (min-width:600px){
   .ann:has(.ann__feed){max-width:1100px}
-  .ann__feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;align-items:start}
+  /* cartes d'une même rangée à la même hauteur, boutons alignés en bas */
+  .ann__feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;align-items:stretch}
+  .ann__feed .hero{grid-template-rows:auto 1fr;align-content:stretch}
+  .ann__feed .hero__b{align-self:stretch}
+  .ann__feed .hero__acts{margin-top:auto;padding-top:4px}
+  .ann__feed .hero h2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
   .ann__feed .hero{grid-template-columns:1fr;padding:14px 14px 18px;gap:16px;border-radius:28px}
   .ann__feed .hero__ph{aspect-ratio:16/11}
   .ann__feed .hero--nophoto .hero__ph{aspect-ratio:16/8}

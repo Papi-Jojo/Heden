@@ -7,7 +7,7 @@ function peekHeight() { const h = panel.querySelector(".panel__head"); return h 
 /* Liste des zones : trois crans. Ouvert, intermédiaire (titre), réduit (cartes et + Zone seulement). */
 function miniHeight() {
   const top = panel.getBoundingClientRect().top;
-  const els = [panel.querySelector(".panel__head #newZone"), panel.querySelector(".panel__head .mapsw")].filter(Boolean);
+  const els = [panel.querySelector(".panel__head .phead__acts"), panel.querySelector(".panel__head .mapsw")].filter(Boolean);
   if (!els.length) return peekHeight();
   const sw = !!panel.querySelector(".panel__head .mapsw");
   if (!sw) { const h2 = panel.querySelector(".panel__head h2"); if (h2) els.push(h2); }
@@ -105,7 +105,7 @@ function renderList() {
         <div class="sub">${best ? `En tête : ${esc(best.z.name || "Sans nom")}, ${best.s.score}/100` : esc(profileLine) + `, ${crit().filter(c => c.weight > 0).length} critères`}</div>
         ${cloudReady ? `<button type="button" class="acct-line ${cloud.user ? (cloud.status === "error" ? "err" : "on") : ""}" data-auth><i></i><span>${cloud.user ? esc(accountShort()) : "Sur cet appareil"}</span>${cloud.user ? "" : `<b>Se connecter</b>`}</button>` : ""}
       </div>
-      <button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button>
+      <div class="phead__acts"><button class="btn btn--sm btn--clair btn--ico" id="pickZone" type="button" aria-label="Choisir un lieu connu" title="Choisir un lieu connu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.4-6.5-11a6.5 6.5 0 0 1 13 0c0 5.6-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg></button><button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button></div>
     </div>
     <div class="panel__body">
       ${!storageOk ? `<div class="banner">Ce navigateur bloque le stockage local : vos zones seront perdues à la fermeture. Exportez-les depuis l’onglet Profil.</div>` : ""}
@@ -150,6 +150,7 @@ function renderList() {
       `}
     </div>`;
   $("#newZone").onclick = e => { e.stopPropagation(); startNew(); };
+  $("#pickZone").onclick = e => { e.stopPropagation(); openLieux(); };
   $$("[data-map]", panel).forEach(b => b.onclick = e => { e.stopPropagation(); switchMap(b.dataset.map); });
   const gl = $("#goLogin"); if (gl) gl.onclick = e => { e.stopPropagation(); openAuth(); };
   bindAccount(panel);

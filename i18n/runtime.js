@@ -127,7 +127,7 @@
     }
   });
   mo.observe(root, {subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS});
-  fetch("i18n/en.json?v=5").then(function (r) { return r.json(); }).then(function (d) {
+  fetch("i18n/en.json?v=6").then(function (r) { return r.json(); }).then(function (d) {
     EX = d.exact;
     var ps = Object.keys(d.pat).map(function (k) { var p = compile(k, d.pat[k]); p.k = k; return p; });
     ps.sort(byLit);

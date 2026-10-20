@@ -9,8 +9,8 @@ const isRent = () => curMode() === "location";
 const kindOf = f => f && f.kind === "location" ? "location" : "achat";
 const modeListings = () => listings().filter(f => kindOf(f) === curMode());
 const fmt1 = v => (Math.round(v * 10) / 10).toLocaleString("fr-FR", {maximumFractionDigits: 1});
-const priceTxt = f => f.price ? fmtInt(f.price) + "&#8239;€" + (kindOf(f) === "location" ? `<small class="permo">/mois</small>` : "") : (kindOf(f) === "location" ? "Loyer ?" : "Prix ?");
-const ppmTxt = f => f.price && f.surface ? (kindOf(f) === "location" ? fmt1(f.price / f.surface) : fmtInt(f.price / f.surface)) + "&#8239;€/m²" : "";
+const priceTxt = f => f.price ? fmtInt(f.price) + "&#8239;€" + (kindOf(f) === "location" ? `<small class="permo">/mois</small>` : f.viager ? `<small class="permo">bouquet${f.rente ? ` + ${fmtInt(f.rente)}&#8239;€/mois` : ""}</small>` : "") : (kindOf(f) === "location" ? "Loyer ?" : "Prix ?");
+const ppmTxt = f => f.price && f.surface && !f.viager ? (kindOf(f) === "location" ? fmt1(f.price / f.surface) : fmtInt(f.price / f.surface)) + "&#8239;€/m²" : "";
 function setMode(m) {
   if (m === modeSel && projet() === "deux") return;
   modeSel = m; try { localStorage.setItem("heden.mode", m); } catch (e) {}

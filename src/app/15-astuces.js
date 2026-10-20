@@ -5,6 +5,7 @@
 var TIPS_KEY = "heden.tips", tipsSt = null, tipCur = null, tipTimer = null, tipRaf = 0;
 const TIPS = [
   {id: "carte-zone", sel: "#newZone", when: () => currentTab === "map" && ui.mode === "list", txt: "Tracez le coin que vous visitez, point par point, puis notez-le."},
+  {id: "carte-lieu", sel: "#pickZone", when: () => currentTab === "map" && ui.mode === "list", txt: "Pas envie de tracer ? Choisissez un arrondissement puis un lieu connu : la zone se dessine toute seule."},
   {id: "carte-balade", sel: "#walkBtn", when: () => currentTab === "map" && ui.mode === "list", txt: "En balade, lancez le suivi : Heden propose la zone d’après votre parcours."},
   {id: "carte-projet", sel: "#mapMode", when: () => currentTab === "map" && ui.mode === "list", txt: "Passez de l’achat à la location, sur la carte comme dans les annonces."},
   {id: "carte-filtres", sel: "#mapfBtn", when: () => currentTab === "map" && ui.mode === "list" && state.listings && state.listings.length > 0, txt: "Masquez les zones ou les annonces pour y voir plus clair."},

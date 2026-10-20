@@ -53,8 +53,17 @@ function parseListing(src) {
     price = c.length ? c[0] : null;
   }
   set("price", price);
+  // Viager : le prix affiché est le bouquet, une rente mensuelle s'y ajoute ; le bien est occupé ou libre
+  const viager = /\bviager\b/.test(low);
+  if (viager) {
+    const amt = re => { const m = raw.match(re); return m ? numFR(m[1]) : null; };
+    const bq = amt(/bouquet\s*(?:de|:|net)?\s*(\d{1,3}(?:[ .]\d{3})+|\d{4,8})\s?€/i), rt = amt(/rente\s*(?:mensuelle|viag[eè]re)?\s*(?:de|:)?\s*(\d{1,3}(?:[ .]\d{3})+|\d{2,6})(?:[.,]\d{1,2})?\s?€/i);
+    set("viager", /viager libre|libre (?:de toute occupation|à la vente)/.test(low) ? "libre" : /viager occup|occup[ée]/.test(low) ? "occupe" : "oui");
+    if (bq >= 1000) set("price", bq);
+    if (rt > 0) set("rente", rt);
+  }
   // Location : loyer par mois, charges, dépôt, honoraires, meublé, disponibilité, encadrement
-  const rent = readRent(raw, low, String(src.url || "").toLowerCase(), price, numFR(pick(n => n.price ?? (n.offers && n.offers.price))));
+  const rent = viager ? null : readRent(raw, low, String(src.url || "").toLowerCase(), price, numFR(pick(n => n.price ?? (n.offers && n.offers.price))));
   if (rent) { delete f.price; delete found.price; for (const [k, v] of Object.entries(rent)) set(k, v); }
   // Surface
   let surf = numFR(pick(n => n.floorSize && (n.floorSize.value ?? n.floorSize)));
@@ -117,7 +126,7 @@ function parseListing(src) {
   // Lieu
   const addr = pick(n => n.address && typeof n.address === "object" ? n.address : null) || {};
   let pc = addr.postalCode || (raw.match(/\b(75(?:0[0-1]\d|02[0]|116)|9[234]\d{3})\b/) || [])[1] || null;
-  const ma2 = low.match(/paris\s?(\d{1,2})\s?(?:er|e|ème|eme)\b/); if (!pc && ma2) pc = "750" + String(ma2[1]).padStart(2, "0");
+  const ma2 = low.match(/paris\s?(\d{1,2})\s?(?:er|e|ème|eme)\b/) || low.match(/\b(\d{1,2})\s?(?:er|e|ème|eme)\s+arr(?:ondissement|\.|\b)/); if (!pc && ma2 && +ma2[1] >= 1 && +ma2[1] <= 20) pc = "750" + String(ma2[1]).padStart(2, "0");
   set("postcode", pc);
   let city = addr.addressLocality || (pc && pc.startsWith("75") ? "Paris" : null);
   if (!city && dataStore.meta && dataStore.meta.communes) {          // commune de la petite couronne citée dans le texte
@@ -140,6 +149,20 @@ function parseListing(src) {
   const ldi = pick(n => n.image); (Array.isArray(ldi) ? ldi : [ldi]).forEach(x => addP(typeof x === "object" && x ? x.url : x));
   f.photos = photos;
   f.url = src.url || ""; f.source = hostOf(src.url);
+  // Signaux d'alerte lus dans le texte et les adresses des photos (les pixels ne sont pas analysés)
+  const SCAM = [[/western union|moneygram|mandat cash|transcash|coupons? pcs|neosurf/, "paiement par mandat ou coupon"],
+    [/(?:je suis|nous sommes|actuellement|je vis|je travaille)[^.\n]{0,20}(?:à|a) l['’]étranger|muté à l['’]étranger|en mission (?:humanitaire|à l['’]étranger)/, "propriétaire à l’étranger"],
+    [/envo(?:i|yer|yé)[^.\n]{0,12}cl[ée]s|cl[ée]s[^.\n]{0,40}par (?:la )?poste|par (?:dhl|fedex|ups|chronopost)/, "clés envoyées par la poste"],
+    [/(?:payer|paiement|régler|versement|virement|caution|dépôt)[^.\n]{0,40}avant (?:la |toute |votre )?visite/, "paiement demandé avant la visite"],
+    [/whats ?app|(?:uniquement|seulement|exclusivement) par (?:e-?mail|mail|sms)/, "contact seulement par messagerie ou e-mail"],
+    [/(?:via|par) (?:la |une )?plateforme (?:sécurisée|de paiement)|airbnb[^.\n]{0,40}(?:paiement|garantie)/, "paiement par une « plateforme » tierce"]];
+  const PHOTO = [[/home[- ]?staging virtuel|mise en sc[eè]ne virtuelle|meubl[ée]e? virtuellement|d[ée]coration virtuelle|ameublement virtuel/, "home staging virtuel"],
+    [/(?:images?|photos?|visuels?)[^.\n]{0,20}(?:g[ée]n[ée]r[ée]e?s?|cr[ée]{1,2}e?s?|retouch[ée]e?s?) (?:par|avec|grâce à) (?:l['’]|une )?(?:ia\b|intelligence artificielle)/, "images générées ou retouchées par IA"],
+    [/photos? non contractuelles?|visuels? non contractuels?|(?:image|photo|visuel)s? d['’](?:illustration|ambiance)|perspectives? 3d|rendu 3d|images? de synth[eè]se/, "photos d’illustration ou de synthèse"]];
+  const scam = SCAM.filter(([re]) => re.test(low)).map(x => x[1]), pho = PHOTO.filter(([re]) => re.test(low)).map(x => x[1]);
+  if (photos.some(u => /midjourney|dall-?e|stable-?diffusion|ai[-_]generated|virtual[-_]?staging|[-_/]render(?:ing)?[-_.]/i.test(u)) && !pho.length) pho.push("nom de fichier d’image générée ou de rendu");
+  if (scam.length) set("scam", scam);
+  if (pho.length) set("aiPhoto", pho);
   if (f.kind === "location") ["charges", "taxe"].forEach(k => { delete f[k]; delete found[k]; });
   // Annonce retirée : la page le dit
   if (GONE_RE.test(raw.slice(0, 6000))) f.gone = true;
@@ -343,7 +366,7 @@ function scoreListing(f, raw = false) {
   const partial = !(fx && fx.quartier != null) && area && area.how === "estimé" ? area : null;
   // Prix : comparé au marché du quartier, ajusté aux atouts et défauts du bien
   const rentK = kindOf(f) === "location", rr = rentK ? rentFor(f) : null;
-  const medRaw = rentK ? (rr ? rr.cc : null) : f.est && f.est.prix ? f.est.prix.med : null, ppm = f.price && f.surface ? f.price / f.surface : null;
+  const medRaw = rentK ? (rr ? rr.cc : null) : f.est && f.est.prix ? f.est.prix.med : null, ppm = f.price && f.surface && !f.viager ? f.price / f.surface : null; // viager : bouquet sans rapport avec le prix au m²
   const pa = priceAdjust(f), med = medRaw ? medRaw * pa.factor : null;
   let prix = null, ecart = null;
   if (med && ppm) { ecart = ppm / med - 1; prix = Math.round(Math.max(0, Math.min(1, (0.2 - ecart) / 0.35)) * 100); }
@@ -354,6 +377,7 @@ function scoreListing(f, raw = false) {
   let total = base == null ? null : Math.round(Math.max(0, Math.min(100, base + bonus - malus)));
   const fails = listingFilters(f, h);
   if (fails.length && total != null) total = Math.min(total, 35);
+  if ((f.scam || []).length && total != null) total = Math.min(total, 25); // arnaque probable : jamais en tête du fil
   // Fourchette : ce que la note pourrait valoir une fois les inconnues levées
   let range = null;
   if (total != null && logLo != null && cover < 1) {
@@ -365,7 +389,7 @@ function scoreListing(f, raw = false) {
   const heden = hasFix ? scoreListing(f, true).total : total;
   if (fx && fx.total != null) total = fx.total;
   // raisons, les plus parlantes d'abord
-  const plus = [], minus = [];
+  const plus = [], minus = (f.scam || []).length ? ["Annonce suspecte"] : [];
   if (f.dropped && f.priceHistory && f.priceHistory.length) plus.push(`Prix baissé de ${fmtInt(f.priceHistory[f.priceHistory.length - 1].price - f.price)} €`);
   if (fx && fx.quartier != null) (fx.quartier >= 60 ? plus : minus).push(`Quartier corrigé à ${fx.quartier}`);
   else if (area && area.zone) (area.score >= 65 ? plus : area.score < 45 ? minus : plus).push(`${area.how === "dans" ? "Dans" : "Près de"} votre zone « ${area.zone.name} » (${area.score ?? "–"})`);
@@ -460,15 +484,33 @@ function recoScore({f, s}) {
   const days = Math.max(0, (Date.now() - (f.addedAt || f.firstSeen || 0)) / 864e5);
   return (s.total ?? 45) + 14 * Math.exp(-days / 6) - (s.fails.length ? 25 : 0) + (f.dropped ? 3 : 0);
 }
+/* Fiabilité : signaux d'annonce douteuse (à vérifier, pas un verdict) */
+function trustSignals(f, s) {
+  const risk = [...(f.scam || [])];
+  if (s.ecart != null && s.ecart <= (kindOf(f) === "location" ? -0.3 : -0.35)) risk.unshift(`prix ${Math.round(-s.ecart * 100)} % sous le marché`);
+  // une photo reprise par une seule autre annonce (une image présente partout est un visuel par défaut du site)
+  const all = listings(), shared = (f.photos || []).some(u => { const w = all.filter(x => x.id !== f.id && (x.photos || []).includes(u)); return w.length === 1 && !sameListing(w[0], f); });
+  if (shared) risk.push("mêmes photos qu’une autre annonce");
+  return {risk, photo: f.aiPhoto || [], level: risk.length > 1 || (f.scam || []).length ? "fort" : risk.length ? "moyen" : null};
+}
 function heroKicker(f, s, k) {
   if (f.gone) return "Plus en ligne";
   if (f.status === "visite") return "Visite prévue";
   if (s.fails.length) return "Hors critères";
+  const tr = trustSignals(f, s); if (tr.level) return tr.level === "fort" ? "Annonce suspecte" : "Annonce à vérifier";
+  if (f.viager) return f.viager === "occupe" ? "Viager occupé" : f.viager === "libre" ? "Viager libre" : "Viager";
   if (f.dropped) return "Baisse de prix";
   if (k === 0 && lui.sort === "reco" && lui.filter === "atrier" && s.total != null) return "Recommandée";
   const days = Math.floor((Date.now() - (f.addedAt || 0)) / 864e5);
   if (days < 2) return "Nouvelle";
   return days < 60 ? `Ajoutée il y a ${days} jours` : (kindOf(f) === "location" ? "Location" : "Vente");
+}
+function trustHTML(t) {
+  if (!t.level && !t.photo.length) return "";
+  return `<div class="trust${t.level ? " trust--" + t.level : ""}">
+    ${t.level ? `<p><b>${t.level === "fort" ? "Annonce suspecte" : "Annonce à vérifier"}</b> : ${esc(t.risk.join(", "))}.</p><p class="hint2">Ne versez rien avant d’avoir visité et signé, vérifiez l’agence (carte professionnelle) ou l’identité du propriétaire.</p>` : ""}
+    ${t.photo.length ? `<p><b>Photos à prendre avec recul</b> : ${esc(t.photo.join(", "))}. Les pièces réelles peuvent être différentes : demandez des photos actuelles ou une visite vidéo.</p>` : ""}
+  </div>`;
 }
 function heroHTML(f, s, k = 0) {
   const ph = f.photos && f.photos[0], why = s.fails.length ? s.fails.slice(0, 1).map(x => "Hors critères : " + x).concat(s.plus.slice(0, 2)) : s.plus.slice(0, 3);
@@ -484,7 +526,7 @@ function heroHTML(f, s, k = 0) {
       <span class="hero__k">${esc(heroKicker(f, s, k))}</span>
       <h2${(f.title || listingTitle(f)).length > 70 ? ' class="is-long"' : ""}>${esc(f.title || listingTitle(f))}</h2>
       <p class="hero__p num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer ?" : "Prix ?"}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
-      ${why.length ? `<ul class="hero__why">${why.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="hero__why hero__why--none">${f.lat ? "À compléter" : "Placement sur la carte…"}</p>`}
+      ${why.length ? `<ul class="hero__why">${why.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="hero__why hero__why--none">${f.lat ? "À compléter" : placeQ.tried.has(f.id) ? "Lieu introuvable : ouvrez-la pour le préciser" : "Placement sur la carte…"}</p>`}
       <div class="hero__acts">${acts}</div>
     </div>
   </article>`;
@@ -513,6 +555,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
       ${cleanWeb(f.url) ? `<a class="chip chip--sm" href="${esc(cleanWeb(f.url))}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
     </div>
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
+    ${trustHTML(trustSignals(f, s))}
     <div class="feel" role="group" aria-label="Votre avis sur la note"><span>Cette note vous semble</span>${[["juste", "Juste"], ["haut", "Trop haute"], ["bas", "Trop basse"]].map(([k, l]) => `<button class="chip chip--sm" type="button" data-feel="${k}" aria-pressed="${!!(f.feel && f.feel.v === k)}">${l}</button>`).join("")}
       ${f.feel && f.feel.v !== "juste" ? `<p class="feel__next">Noté. Une info mal lue ? <button class="link" type="button" id="feelFix">Corrigez-la</button>.</p>` : ""}</div>
     ${freshHTML(f)}
@@ -534,7 +577,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
     <section class="lsec">
       <h2>Le logement</h2>
       <div class="lcrit">${crits.map(([cid]) => `<div class="${s.fixed[cid] ? "fix" : s.known[cid] ? "" : "unk"}" ${s.fixed[cid] ? `title="Corrigé"` : ""}><span>${esc(HOME_LIB[cid].name)}</span><i style="--c:${colorFor(s.values[cid] * 20)}"></i><b class="num">${s.known[cid] ? fmtNote(Math.round(s.values[cid] * 2) / 2) : "?"}</b></div>`).join("")}</div>
-      <dl class="meta">${[["Surface", f.surface && fmtInt(f.surface) + " m²"], ["Pièces", f.rooms && `${f.rooms}${f.bedrooms != null ? `, dont ${f.bedrooms} chambre${f.bedrooms > 1 ? "s" : ""}` : ""}`], ["Étage", f.floor != null && (f.floor === 0 ? "rez-de-chaussée" : (f.floor === 1 ? "1er" : f.floor + "e") + (f.floors ? ` sur ${f.floors}` : "")) + (f.elevator ? ", ascenseur" : f.elevator === false ? ", sans ascenseur" : "")],
+      <dl class="meta">${[["Viager", f.viager && [f.viager === "occupe" ? "occupé" : f.viager === "libre" ? "libre" : "", f.price && `bouquet de ${fmtInt(f.price)} €`, f.rente && `rente de ${fmtInt(f.rente)} € par mois`].filter(Boolean).join(", ")], ["Surface", f.surface && fmtInt(f.surface) + " m²"], ["Pièces", f.rooms && `${f.rooms}${f.bedrooms != null ? `, dont ${f.bedrooms} chambre${f.bedrooms > 1 ? "s" : ""}` : ""}`], ["Étage", f.floor != null && (f.floor === 0 ? "rez-de-chaussée" : (f.floor === 1 ? "1er" : f.floor + "e") + (f.floors ? ` sur ${f.floors}` : "")) + (f.elevator ? ", ascenseur" : f.elevator === false ? ", sans ascenseur" : "")],
         ["DPE", f.dpe], ["Charges", f.charges && fmtInt(f.charges) + " € par an"], ["Taxe foncière", f.taxe && fmtInt(f.taxe) + " €"], ["Lieu", [f.metro && "métro " + f.metro, f.quartier, f.postcode, f.city].filter(Boolean).join(", ") + (f.lat && !f.precise ? " (position approximative)" : "")]]
         .filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
       ${Object.keys(s.fixed).length ? `<p class="hint2"><span class="fixdot"></span> Corrigé après lecture ou visite.</p>` : ""}
@@ -804,9 +847,9 @@ function bindHomeSection() {
     const hi = d.hints && typeof d.hints === "object" ? d.hints : {}, arr = (a, n, len) => Array.isArray(a) ? a.slice(0, n).map(x => String(x).slice(0, len)) : [];
     safe.hints = {tels: arr(hi.tels, 6, 100), mails: arr(hi.mails, 4, 120), state: arr(hi.state, 24, 1600)};
     try { localStorage.setItem("heden.bmk", "1"); } catch (e) {}
-    const items = Array.isArray(d.items) ? d.items.slice(0, 80).map(c => ({url: String(c.url || "").slice(0, 2000), img: String(c.img || "").slice(0, 2000), text: String(c.text || "").slice(0, 1200)})) : [];
+    const items = Array.isArray(d.items) ? d.items.slice(0, 80).map(c => ({url: String(c.url || "").slice(0, 2000), img: String(c.img || "").slice(0, 2000), imgs: Array.isArray(c.imgs) ? c.imgs.slice(0, 12).map(x => String(x).slice(0, 2000)) : [], text: String(c.text || "").slice(0, 1200)})) : [];
     setTab("annonces");
-    if (items.length >= 3 && !isDetailUrl(safe.url)) return openBatchImport(items, safe.url);
+    if (items.length >= 3 && !isDetailUrl(safe.url)) return openBatchImport(items, safe.url, (+d.v || 0) < 4);
     const p = parseListing(safe), ex = listings().find(x => sameListing(x, p));
     if (ex) return refreshFromPage(ex, p);
     if (p.gone) return toast("Cette annonce n’est plus en ligne : rien à ajouter");
