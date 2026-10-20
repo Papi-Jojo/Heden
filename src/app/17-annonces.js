@@ -464,7 +464,14 @@ function renderListingsView() {
   $$("[data-f]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.f; renderListings(); });
   const so = $("#lsort"); if (so) so.onchange = e => { lui.sort = e.target.value; renderListings(); };
   $$(".hero", box).forEach(card => {
-    card.onclick = e => { if (e.target.closest("[data-hst]")) return; lui.openId = card.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; };
+    bindSwipe(card);
+    card.onclick = e => {
+      if (e.target.closest("[data-hst]") || card.dataset.dragged) return;
+      const vw = $("#view-annonces"); lui.listScroll = vw.scrollTop;
+      morph([[card.querySelector(".hero__ph"), "lph"], [card.querySelector(".hero__s"), "lsc"]],
+        () => { lui.openId = card.dataset.id; renderListings(); vw.scrollTop = 0; },
+        () => [[$(".ldet .lgal"), "lph"], [$(".ldet__score b"), "lsc"]]);
+    };
     $$("[data-hst]", card).forEach(b => b.onclick = () => {
       const f = listings().find(x => x.id === card.dataset.id); if (!f) return;
       let st = b.dataset.hst; if (st === "visite") st = f.status === "visite" ? "gardee" : "visite";
@@ -492,6 +499,47 @@ function trustSignals(f, s) {
   const all = listings(), shared = (f.photos || []).some(u => { const w = all.filter(x => x.id !== f.id && (x.photos || []).includes(u)); return w.length === 1 && !sameListing(w[0], f); });
   if (shared) risk.push("mêmes photos qu’une autre annonce");
   return {risk, photo: f.aiPhoto || [], level: risk.length > 1 || (f.scam || []).length ? "fort" : risk.length ? "moyen" : null};
+}
+/* Glisser une carte au doigt : à droite pour garder, à gauche pour écarter ; une pichenette suffit, un petit geste revient en place */
+function bindSwipe(card) {
+  if (!matchMedia("(pointer: coarse)").matches || !card.querySelector(".hero__keep")) return;
+  let d = null;
+  card.addEventListener("pointerdown", e => { if (!e.isPrimary || e.target.closest("button, a")) return; d = {x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, on: false, dx: 0}; });
+  card.addEventListener("pointermove", e => {
+    if (!d || e.pointerId !== d.id) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (!d.on) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { d = null; return; }   // défilement vertical : la page garde la main
+      if (Math.abs(dx) < 10) return;
+      d.on = true; card.classList.add("hero--drag"); try { card.setPointerCapture(e.pointerId); } catch (err) {}
+      d.tag = document.createElement("span"); d.tag.className = "hero__swipe"; card.appendChild(d.tag);
+    }
+    d.dx = dx; card.style.transform = `translateX(${dx}px) rotate(${dx / 45}deg)`;
+    card.dataset.swipe = dx > 50 ? "keep" : dx < -50 ? "drop" : "";
+    const lab = dx > 0 ? card.querySelector(".hero__keep").textContent.trim() : card.querySelector(".hero__drop").textContent.trim();
+    if (d.tag.textContent !== lab) d.tag.textContent = lab;
+    d.tag.className = "hero__swipe hero__swipe--" + (dx > 0 ? "keep" : "drop"); d.tag.style.opacity = Math.min(1, Math.abs(dx) / 90);
+  });
+  const end = e => {
+    if (!d || e.pointerId !== d.id) return;
+    const g = d; d = null; if (!g.on) return;
+    card.dataset.dragged = "1"; setTimeout(() => delete card.dataset.dragged, 400);
+    card.classList.remove("hero--drag"); delete card.dataset.swipe; if (g.tag) g.tag.remove();
+    const v = Math.abs(g.dx) / Math.max(1, performance.now() - g.t), sign = Math.sign(g.dx);
+    const btn = (Math.abs(g.dx) > card.offsetWidth * 0.32 || (v > 0.5 && Math.abs(g.dx) > 40)) && card.querySelector(sign > 0 ? ".hero__keep" : ".hero__drop");
+    if (!btn) { card.style.transform = ""; return; }
+    card.style.transform = `translateX(${sign * 110}%) rotate(${sign * 7}deg)`; card.style.opacity = "0";
+    btn.click();
+  };
+  card.addEventListener("pointerup", end); card.addEventListener("pointercancel", end);
+}
+/* Passage fil ↔ fiche : la photo et la note glissent d'un écran à l'autre (View Transitions), sinon changement direct */
+function morph(from, update, to) {
+  if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return update();
+  const name = (pairs, on) => pairs.forEach(([el, n]) => { if (el) el.style.viewTransitionName = on ? n : ""; });
+  name(from, true);
+  const t = document.startViewTransition(() => { name(from, false); update(); name(to(), true); });
+  t.finished.finally(() => name(to(), false));
 }
 function heroKicker(f, s, k) {
   if (f.gone) return "Plus en ligne";
@@ -587,7 +635,12 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
       <button class="btn" type="button" id="ledit">Corriger les informations</button>
       ${f.lat ? `<button class="btn" type="button" id="lmap">Voir sur la carte</button>` : ""}
     </div>`;
-  $("#lback").onclick = () => { lui.openId = null; renderListings(); };
+  $("#lback").onclick = () => {
+    const id = lui.openId, vw = $("#view-annonces");
+    morph([[$(".ldet .lgal"), "lph"], [$(".ldet__score b"), "lsc"]],
+      () => { lui.openId = null; renderListings(); vw.scrollTop = lui.listScroll || 0; },
+      () => { const c = document.querySelector(`.hero[data-id="${id}"]`); return c ? [[c.querySelector(".hero__ph"), "lph"], [c.querySelector(".hero__s"), "lsc"]] : []; });
+  };
   countUp(box);
   if (kindOf(f) !== "location") paintFair(f);
   const fe = $("#finEdit"); if (fe) fe.onclick = openFinance;
@@ -607,6 +660,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
   });
   const ff = $("#feelFix", box); if (ff) ff.onclick = () => openScoreFix(f);
   bindContact(f, box);
+  foldSections(box);
   const lm = $("#lmap"); if (lm) lm.onclick = () => { setTab("map"); map.flyTo([f.lat, f.lng], 16, {duration: .6}); };
   $("#ldel").onclick = async () => {
     if (!(await askConfirm({title: "Supprimer cette annonce ?", text: "Elle disparaît de vos annonces et de la carte.", ok: "Supprimer", danger: true}))) return;
@@ -645,6 +699,20 @@ function contactHTML(f) {
       ${any ? "" : `<button class="btn btn--sm btn--clair" type="button" id="lcontactEdit">Ajouter les coordonnées</button>`}
     </div>
   </section>`;
+}
+/* Fiche raccourcie : chaque section se replie sous son titre. « Pourquoi ce score » et les points de vigilance restent ouverts ;
+   ce qu'on ouvre ou ferme est retenu pour les annonces suivantes (même session). */
+function foldSections(box) {
+  lui.fold = lui.fold || {};
+  $$(".lsec", box).forEach((sec, i) => {
+    const h = sec.querySelector(":scope > h2, :scope > .lsec__head > h2"); if (!h || h.dataset.fold) return;
+    const key = sec.id || sec.dataset.k || (sec.dataset.k = h.textContent.trim());
+    const set = open => { sec.classList.toggle("lsec--shut", !open); h.setAttribute("aria-expanded", String(open)); };
+    set(key in lui.fold ? lui.fold[key] : i === 0 || sec.hasAttribute("data-open"));
+    Object.assign(h.dataset, {fold: "1"}); h.tabIndex = 0; h.setAttribute("role", "button");
+    const toggle = () => { const open = sec.classList.contains("lsec--shut"); lui.fold[key] = open; set(open); };
+    h.onclick = toggle; h.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+  });
 }
 function bindContact(f, box) {
   const m = $("#lmsg", box); if (m) m.onclick = async () => {

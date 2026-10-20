@@ -55,7 +55,7 @@ class Essai:
     """Un navigateur, des pages qui partagent la fausse base (comme plusieurs appareils), une session chacune."""
     def __init__(self, pw, largeur=390, hauteur=844, langue="fr", **kw):
         self.b = pw.chromium.launch()
-        self.ctx = self.b.new_context(viewport={"width": largeur, "height": hauteur}, **kw)
+        self.ctx = self.b.new_context(viewport={"width": largeur, "height": hauteur}, service_workers="block", **kw)  # le service worker contournerait les routes de test
         self.ctx.add_init_script(INIT + (";localStorage.setItem('heden.lang','en')" if langue == "en" else ""))
         self.ctx.route("**/*", routes)
         self.erreurs = []

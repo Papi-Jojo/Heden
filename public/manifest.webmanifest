@@ -1,0 +1,16 @@
+{
+  "name": "Heden",
+  "short_name": "Heden",
+  "description": "Notez les coins de Paris que vous visitez et repérez ceux qui vous correspondent.",
+  "lang": "fr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F8F2EC",
+  "theme_color": "#F8F2EC",
+  "icons": [
+    {"src": "icones/192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icones/512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icones/masque-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

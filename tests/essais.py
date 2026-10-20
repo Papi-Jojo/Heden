@@ -151,6 +151,49 @@ def cas_extremes(pw):
     assert not e.erreurs, e.erreurs; e.fermer()
 
 
+@essai
+def glisser(pw):
+    """Sur téléphone, glisser une annonce à droite la garde, à gauche l'écarte ; un petit geste ne fait rien."""
+    e = Essai(pw, 390, 844, has_touch=True, is_mobile=True); pg = e.page()
+    pg.evaluate("() => { const s = __heden.state(); s.listings = []; for (let i = 0; i < 3; i++) s.listings.push({id: 'l' + i, title: 'T' + i, price: 420000 + i * 45000, surface: 40 + i * 6, rooms: 2 + i, postcode: '75017', status: 'nouvelle', photos: [], addedAt: Date.now() - i * 1e8, firstSeen: Date.now() - i * 1e8}); __heden.save(); }")
+    e.onglet(pg, "annonces"); pg.wait_for_timeout(600)
+    def glisse(dx):
+        bx = pg.locator(".hero").first.bounding_box(); x, y = bx["x"] + bx["width"] / 2, bx["y"] + 120; i = pg.evaluate("document.querySelector('.hero').dataset.id")
+        pg.mouse.move(x, y); pg.mouse.down()
+        for k in range(1, 13): pg.mouse.move(x + dx * k / 12, y + 2); pg.wait_for_timeout(16 if abs(dx) > 100 else 40)
+        pg.mouse.up(); pg.wait_for_timeout(900)
+        return pg.evaluate(f"__heden.state().listings.find(f => f.id === '{i}').status")
+    assert glisse(50) == "nouvelle" and not pg.locator(".ldet").count(), "un petit geste a changé l'annonce"
+    assert glisse(230) == "gardee" and glisse(-230) == "ecartee" and not pg.locator(".ldet").count()
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
+def epingles(pw):
+    e = Essai(pw, 1280, 860); pg = e.page()
+    pg.evaluate("() => { const s = __heden.state(); s.listings = []; for (let i = 0; i < 40; i++) s.listings.push({id: 'l' + i, title: 'T' + i, price: 400000 + i * 9000, surface: 50, rooms: 3, postcode: '75017', status: 'nouvelle', lat: 48.876 + (i % 8) * .0012, lng: 2.30 + Math.floor(i / 8) * .0015, photos: [], addedAt: Date.now(), firstSeen: Date.now()}); __heden.save(); }")
+    e.onglet(pg, "annonces"); e.onglet(pg, "map")
+    pg.evaluate("__heden.map.setView([48.879, 2.306], 13, {animate: false})"); pg.wait_for_timeout(800)
+    g = pg.evaluate("document.querySelectorAll('.lpin--grp').length")
+    assert 1 <= g <= 4, f"{g} pastilles au zoom 13"
+    pg.evaluate("__heden.map.setView([48.879, 2.306], 16, {animate: false})"); pg.wait_for_timeout(800)
+    assert pg.evaluate("document.querySelectorAll('.lpin--grp').length") == 0
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
+def hors_connexion(pw):
+    """Après une première visite, l'app s'ouvre sans réseau (service worker)."""
+    b = pw.chromium.launch(); ctx = b.new_context(); pg = ctx.new_page()
+    pg.goto(B); pg.wait_for_timeout(1500)
+    assert pg.evaluate("Promise.race([navigator.serviceWorker.ready.then(() => true), new Promise(r => setTimeout(() => r(false), 8000))])"), "service worker non installé"
+    pg.reload(); pg.wait_for_timeout(1000); ctx.set_offline(True); pg.reload(); pg.wait_for_timeout(800)
+    assert pg.title() == "Heden" and pg.locator("#app").count() == 1, "page vide hors connexion"
+    m = pg.evaluate("fetch('manifest.webmanifest').then(r => r.json())")
+    assert m["display"] == "standalone" and len(m["icons"]) == 3, m
+    b.close()
+
+
 if __name__ == "__main__":
     voulus = sys.argv[1:]
     srv = demarrer(); echecs = 0

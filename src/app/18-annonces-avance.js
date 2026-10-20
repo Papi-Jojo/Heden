@@ -829,7 +829,7 @@ function rentAnalysisHTML(f) {
   if (f.complement && (f.dpe === "F" || f.dpe === "G")) al.push(["over", "Complément de loyer interdit pour un logement classé F ou G."]);
   if (x.mb) al.push(["info", "Meublé : la loi impose un équipement minimum (literie, plaques, four ou micro-ondes, frigo avec congélateur, vaisselle, rangements, luminaires, rideaux dans les chambres). À vérifier à la visite."]);
   if (lo.colocs > 1) al.push(["info", "Colocation : avec un bail unique et une clause de solidarité, chacun répond de tout le loyer, jusqu’à six mois après son départ si personne ne le remplace. Avec des baux séparés, chaque chambre doit faire au moins 9 m²."]);
-  const vig = al.length ? `<section class="lsec"><h2>Points de vigilance</h2><ul class="vig">${al.map(([c, t]) => `<li class="vig--${c}">${t}</li>`).join("")}</ul></section>` : "";
+  const vig = al.length ? `<section class="lsec" data-open><h2>Points de vigilance</h2><ul class="vig">${al.map(([c, t]) => `<li class="vig--${c}">${t}</li>`).join("")}</ul></section>` : "";
   return enc + entry + eff + vig + tripsHTML(f);
 }
 function analysisHTML(f) {
@@ -874,6 +874,7 @@ async function paintFair(f) {
   let cmp = null; try { cmp = await comparables(f); } catch (e) {}
   const el2 = $("#lfair"); if (!el2 || lui.openId !== f.id) return;
   el2.innerHTML = fairHTML(f, cmp, negotiation(f, cmp));
+  foldSections(el2.parentElement);
 }
 function openFinance() {
   const fin = finance(), h = homeProfile();
@@ -922,11 +923,27 @@ function openRentSettings() {
 /* ---------- Annonces sur la carte ---------- */
 let listingLayer = null;
 function renderListingPins() {
-  if (!listingLayer) listingLayer = L.layerGroup().addTo(map);
+  if (!listingLayer) { listingLayer = L.layerGroup().addTo(map); map.on("zoomend", () => currentTab === "map" && renderListingPins()); }
   listingLayer.clearLayers();
   if (mapFilter.annonces === false) return;
   queuePlace(modeListings().filter(f => !f.lat && f.status !== "ecartee"));
-  modeListings().filter(f => f.lat && f.status !== "ecartee").forEach(f => {
+  // épingles proches regroupées en une pastille (nombre + meilleure note) tant qu'on n'est pas zoomé sur la rue
+  const pts = modeListings().filter(f => f.lat && f.status !== "ecartee"), z = map.getZoom(), groups = new Map();
+  const near = [];   // [centre en pixels, annonces] : une annonce rejoint le groupe dont le centre est à moins de 46 px
+  for (const f of pts) {
+    const p = map.project([f.lat, f.lng], z), g = z < 16 && near.find(([c]) => c.distanceTo(p) < 46);
+    if (g) { g[1].push(f); g[0] = g[0].multiplyBy(g[1].length - 1).add(p).divideBy(g[1].length); } else near.push([p, [f]]);
+  }
+  near.forEach(([, fs], i) => groups.set(i, fs));
+  for (const g of groups.values()) {
+    if (g.length < 2) continue;
+    const best = Math.max(...g.map(f => scoreListing(f).total ?? 0)), kept = g.some(f => f.status === "gardee" || f.status === "visite");
+    const mk = L.marker([g.reduce((a, f) => a + f.lat, 0) / g.length, g.reduce((a, f) => a + f.lng, 0) / g.length], {zIndexOffset: 600, keyboard: true, title: `${g.length} annonces`,
+      icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin lpin--grp${kept ? " lpin--kept" : ""}" style="--c:${colorFor(best)}"><b class="num">${g.length}</b></span>`})});
+    mk.on("click", () => map.flyToBounds(L.latLngBounds(g.map(f => [f.lat, f.lng])).pad(0.4), {maxZoom: 17, duration: .5}));
+    mk.addTo(listingLayer);
+  }
+  [...groups.values()].filter(g => g.length === 1).map(g => g[0]).forEach(f => {
     const s = scoreListing(f);
     const mk = L.marker([f.lat, f.lng], {icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin${f.status === "gardee" || f.status === "visite" ? " lpin--kept" : ""}${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9H4z"/></svg><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`}), zIndexOffset: 500});
     mk.on("click", () => { lui.openId = f.id; setTab("annonces"); });

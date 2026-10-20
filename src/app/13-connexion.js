@@ -1,3 +1,4 @@
+let installEvt = null; // proposition d'installation du navigateur (voir installHTML)
 /* =========================================================
    Connexion : petit panneau qui s'ouvre de partout
    ========================================================= */
@@ -188,6 +189,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
       <div><h3 class="sub3">Langue · Language</h3></div>
       <div class="seg seg--sm" id="langSel" role="group" aria-label="Langue · Language" data-i18n-skip>${[["fr", "Français"], ["en", "English"]].map(([k, l]) => `<button type="button" data-lang="${k}" aria-pressed="${(window.HEDEN_LANG || "fr") === k}">${l}</button>`).join("")}</div>
     </section>
+    ${installHTML()}
     <section class="sec setrow">
       <div><h3 class="sub3">Astuces</h3><p class="hint2">Une bulle au premier usage de chaque écran${tipsState().seen.length && !tipsState().off ? ` · <button class="linkbtn" type="button" id="tipsReset">Tout revoir</button>` : ""}</p></div>
       <div class="seg seg--sm" id="tipsSel" role="group" aria-label="Astuces">${[[1, "Oui"], [0, "Non"]].map(([k, l]) => `<button type="button" data-on="${k}" aria-pressed="${!tipsState().off === !!k}">${l}</button>`).join("")}</div>
@@ -217,6 +219,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
     tipsSave(); renderProfile();
   });
   if ($("#tipsReset")) $("#tipsReset").onclick = () => { tipsState().seen = []; tipsSave(); renderProfile(); toast("Les astuces reviendront au fil des écrans"); };
+  const ib = $("#installApp"); if (ib) ib.onclick = async () => { const ev = installEvt; installEvt = null; ev.prompt(); try { await ev.userChoice; } catch (e) {} renderProfile(); };
   $$("#langSel [data-lang]").forEach(b => b.onclick = () => {
     if (b.dataset.lang === (window.HEDEN_LANG || "fr")) return;
     try { localStorage.setItem("heden.lang", b.dataset.lang); } catch (e) {}
@@ -349,4 +352,17 @@ function bindGroupCrit() {
     changed(); renderProfile();
     if (v === "__custom") { const rows = $$(".crow[data-g]"); const nm = $(".nm", rows[rows.length - 1]); nm.focus(); nm.select(); }
   };
+}
+
+/* Installer Heden sur l'écran d'accueil : bouton quand le navigateur le propose (Android, ordinateur), mode d'emploi sur iPhone */
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; if (currentTab === "profile") renderProfile(); });
+const installed = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function installHTML() {
+  if (installed()) return "";
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (!installEvt && !ios) return "";
+  return `<section class="sec setrow">
+      <div><h3 class="sub3">Application</h3><p class="hint2">${ios ? "Dans Safari, touchez Partager puis « Sur l’écran d’accueil » : Heden s’ouvre en plein écran, même sans réseau." : "Une icône sur l’écran d’accueil, en plein écran, même sans réseau."}</p></div>
+      ${installEvt ? `<button class="btn btn--sm" type="button" id="installApp">Installer</button>` : ""}
+    </section>`;
 }

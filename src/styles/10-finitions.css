@@ -94,3 +94,30 @@ input,textarea{caret-color:var(--email)}
 
 /* Fil d'annonces long : le navigateur ne met en page que les cartes proches de l'écran. */
 .ann__feed .hero{content-visibility:auto;contain-intrinsic-size:auto 560px}
+
+/* Glisser une annonce : la carte suit le doigt, son contour annonce le choix (clair : garder, rouge : écarter). */
+@media (pointer: coarse){ .ann__feed .hero{touch-action:pan-y} }
+.hero.hero--drag{transition:none;z-index:2}
+.hero[data-swipe="keep"]{box-shadow:0 0 0 3px var(--bourgeon),0 14px 30px -18px rgba(38,35,31,.5)}
+.hero[data-swipe="drop"]{box-shadow:0 0 0 3px var(--alerte),0 14px 30px -18px rgba(38,35,31,.5)}
+.hero__swipe{position:absolute;top:18px;z-index:3;padding:7px 14px;border-radius:var(--pilule);font:700 14px/1 var(--sans);color:var(--on-email);pointer-events:none;box-shadow:0 6px 16px -8px rgba(0,0,0,.5)}
+.hero__swipe--keep{left:92px;background:var(--bourgeon);color:var(--on-bourgeon);transform:rotate(5deg)}
+.hero__swipe--drop{right:18px;background:var(--alerte);color:#fff;transform:rotate(-5deg)}
+
+/* Fiche annonce : sections repliables sous leur titre, chevron à droite. */
+.lsec h2[data-fold]{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;-webkit-user-select:none;user-select:none}
+.lsec__head h2[data-fold]{justify-content:flex-start}
+.lsec h2[data-fold]::after{content:"";flex:none;width:8px;height:8px;margin-right:4px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;opacity:.55;transform:translateY(-2px) rotate(45deg);transition:transform .2s var(--ease-sortie)}
+.lsec--shut h2[data-fold]::after{transform:rotate(-45deg)}
+.lsec--shut > :not(h2):not(.lsec__head){display:none}
+.lsec--shut .lsec__head > :not(h2){display:none}
+.lsec--shut{gap:0}
+
+/* Passage fil ↔ fiche : la photo et la note glissent, le reste se fond vite. */
+::view-transition-group(lph),::view-transition-group(lsc){animation-duration:.34s;animation-timing-function:cubic-bezier(.32,.72,0,1)}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.18s}
+::view-transition-image-pair(lph){isolation:auto}
+::view-transition-old(lph),::view-transition-new(lph){height:100%;object-fit:cover;overflow:clip}
+
+/* Épingles regroupées : une pastille ronde avec le nombre, liseré à la couleur de la meilleure note. */
+.lpin--grp{min-width:30px;height:30px;padding:0 8px;justify-content:center;border-radius:var(--pilule);box-shadow:0 0 0 3px var(--c),0 2px 8px rgba(38,35,31,.35);font:700 13px/1 var(--sans);cursor:pointer}
