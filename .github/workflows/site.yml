@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
   workflow_run:
-    workflows: ["Données objectives (DVF + OpenStreetMap)", "Loyers (encadrement Paris + carte des loyers)"]
+    workflows: ["Données objectives (DVF + OpenStreetMap)", "Loyers (encadrement Paris + carte des loyers)", "Lieux connus (OpenStreetMap)"]
     types: [completed]
 
 permissions:

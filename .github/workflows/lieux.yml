@@ -1,0 +1,47 @@
+name: Lieux connus (OpenStreetMap)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [scripts/donnees/lieux.py]
+  schedule:
+    - cron: "41 5 3 1,7 *"   # deux fois par an
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lieux
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q "shapely>=2"
+      - name: Calculer les lieux
+        run: |
+          set -o pipefail
+          python -u scripts/donnees/lieux.py data 2>&1 | tee lieux.log
+      - name: Résumé
+        if: always()
+        run: |
+          if [ -f lieux.log ]; then
+            msg=$(tail -n 30 lieux.log | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::notice title=Lieux::${msg}"
+          fi
+      - name: Publier
+        run: |
+          git config user.name "heden-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/lieux.json
+          if git diff --cached --quiet; then echo "Rien de nouveau"; exit 0; fi
+          git commit -m "Données : lieux connus de Paris"
+          git pull --rebase origin main
+          git push origin HEAD:main
