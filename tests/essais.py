@@ -5,7 +5,7 @@
 
 Lancés par le workflow « Site » avant chaque mise en ligne : un échec bloque le déploiement.
 """
-import json, sys, time, traceback, urllib.parse
+import json, os, sys, time, traceback, urllib.parse
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from outils import B, Essai, demarrer, sync_playwright
 
@@ -161,6 +161,7 @@ if __name__ == "__main__":
             try: f(pw); print(f"✓ {f.__name__}  ({time.time() - t0:.1f} s)")
             except Exception as err:
                 echecs += 1; print(f"✗ {f.__name__} : {err}")
+                if os.environ.get("GITHUB_ACTIONS"): print(f"::error title=Essai {f.__name__}::{str(err)[:900]}".replace("\n", " "))
                 if not isinstance(err, AssertionError): traceback.print_exc()
     srv.shutdown()
     print("Tout est bon." if not echecs else f"{echecs} essai(s) en échec.")
