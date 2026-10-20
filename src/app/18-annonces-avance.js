@@ -425,10 +425,10 @@ function homeWeights() {
 
 /* ---------- Questionnaire : Heden règle le profil tout seul ---------- */
 const QUIZ_WHO = [["deux", "À deux", "Un premier achat en couple"], ["seul", "Seul·e", "Un achat pour soi"], ["famille", "En famille", "Avec des enfants, ou bientôt"], ["invest", "Pour louer", "Un investissement locatif"]];
-const QUIZ_WHO_LOC = [["deux", "À deux", "Emménager en couple"], ["seul", "Seul·e", "Un logement pour soi"], ["famille", "En famille", "Avec des enfants, ou bientôt"]];
+const QUIZ_WHO_LOC = [["deux", "À deux", "Emménager en couple"], ["seul", "Seul·e", "Un logement pour soi"], ["famille", "En famille", "Avec des enfants, ou bientôt"], ["coloc", "En colocation", "Partager un logement à plusieurs"]];
 const QUIZ_PROJ = [["achat", "Acheter", "Devenir propriétaire"], ["location", "Louer", "Trouver une location pour y habiter"], ["deux", "Les deux", "Comparer achat et location"]];
 const PROJ_LABEL = {achat: "Achat", location: "Location", deux: "Achat ou location"};
-const WHO_PRESET = {deux: "jeunes", seul: "jeunes", famille: "famille", invest: "invest"};
+const WHO_PRESET = {deux: "jeunes", seul: "jeunes", famille: "famille", invest: "invest", coloc: "jeunes"};
 const PRIOS = [
   {id: "anime", name: "Quartier vivant", desc: "Cafés, restos, sorties", z: {vie_sociale: 15, culture: 5}},
   {id: "calme", name: "Calme", desc: "Rue tranquille, sur cour", z: {nuisances: 15}, h: {calme: 15}},
@@ -477,12 +477,13 @@ function applySetup(s) {
   const ms = mix.logement + mix.quartier + mix.prix;
   h.mix = {logement: Math.round(mix.logement / ms * 20) * 5, quartier: Math.round(mix.quartier / ms * 20) * 5, prix: Math.round(mix.prix / ms * 20) * 5};
   h.budgetMax = s.budget || null; h.roomsMin = s.rooms || null; h.surfaceMin = s.surface || null;
-  h.bedroomsMin = s.who === "famille" && s.rooms >= 3 ? s.rooms - 1 : null;
+  const coloc = s.who === "coloc" && s.projet === "location", n = coloc ? Math.max(2, s.colocs || 2) : 1;
+  h.bedroomsMin = coloc ? n : s.who === "famille" && s.rooms >= 3 ? s.rooms - 1 : null;
   const no = new Set(s.nos || []);
   h.noGround = no.has("rdc"); h.elevatorFrom = no.has("ascenseur") ? 3 : 0; h.dpeMax = no.has("passoire") ? "E" : "G"; h.outdoorReq = no.has("sansext"); h.noWorks = no.has("travaux");
   h.fin = Object.assign({}, h.fin || {}, {apport: s.apport ?? (h.fin && h.fin.apport) ?? null});
   h.projet = s.projet || "achat";
-  h.loc = {loyerMax: s.loyer || null, revenus: s.revenus || null, meuble: s.meuble || "indiff"};
+  h.loc = {loyerMax: s.loyer ? s.loyer * n : null, revenus: s.revenus ? s.revenus * n : null, meuble: s.meuble || "indiff", colocs: n};
   if (h.projet === "location" && s.who === "invest") s.who = "seul";
   if (s.budget) { const surf = s.surface || ROOM_SURF[Math.min(5, s.rooms || 3)]; p.budget = Math.round(s.budget / surf / 100) * 100; }
   h.setup = Object.assign({}, s, {at: Date.now()}); h.custom = false;
@@ -491,7 +492,7 @@ function applySetup(s) {
 let qz = null;
 function openQuiz() {
   const prev = homeProfile().setup || {};
-  qz = {step: 0, s: Object.assign({projet: null, who: null, budget: null, apport: null, loyer: null, revenus: null, meuble: "indiff", rooms: null, surface: null, places: [], prios: [], nos: []}, clone(prev))};
+  qz = {step: 0, s: Object.assign({projet: null, who: null, colocs: null, budget: null, apport: null, loyer: null, revenus: null, meuble: "indiff", rooms: null, surface: null, places: [], prios: [], nos: []}, clone(prev))};
   if (!qz.s.projet && prev.at) qz.s.projet = "achat";
   if (!qz.s.places.length) qz.s.places = [{label: "", q: "", mode: "tc"}];
   let el = $("#quiz");
@@ -513,18 +514,20 @@ function paintQuiz() {
   const foot = (ok, label = "Continuer", skip) => `<div class="quiz__foot">${st ? `<button class="btn btn--clair" type="button" id="qzBack">Retour</button>` : "<span></span>"}<span class="quiz__go">${skip ? `<button class="link" type="button" id="qzSkip">Passer</button>` : ""}<button class="btn btn--primary" type="button" id="qzNext" ${ok ? "" : "disabled"}>${label}</button></span></div>`;
   let body = "";
   const replaces = !homeProfile().setup && (state.profile.modified || homeProfile().custom || state.zones.some(z => !z.example));
-  const buy = s.projet !== "location", rent = s.projet === "location" || s.projet === "deux";
+  const buy = s.projet !== "location", rent = s.projet === "location" || s.projet === "deux", coloc = s.who === "coloc" && s.projet === "location";
   if (st === 0) body = head("Votre projet", replaces ? "Vos réglages actuels seront remplacés ; vos notes de zones restent." : "") + `<div class="qgrid qgrid--3">${chips(QUIZ_PROJ, s.projet, false, "pj")}</div>` + foot(!!s.projet);
   else if (st === 1) body = head("Vous cherchez…", s.projet === "deux" ? "Pour l’achat comme pour la location." : "") + `<div class="qgrid">${chips(s.projet === "location" ? QUIZ_WHO_LOC : QUIZ_WHO, s.who, false, "who")}</div>` + foot(!!s.who);
   else if (st === 2) body = head("Votre budget", buy && rent ? "Pour l’achat et pour la location." : rent ? "Le loyer que vous pouvez payer chaque mois." : "Le prix affiché maximum, hors frais de notaire.") + (buy ? `
       ${rent ? `<h3 class="qsub">Achat</h3>` : ""}<div class="field"><label class="label" for="qzBudget">Prix maximum</label><input type="number" id="qzBudget" inputmode="numeric" step="5000" min="0" value="${s.budget ?? ""}" placeholder="Ex. 600 000 €"></div>
       <div class="chips qchips">${[350000, 500000, 650000, 800000, 1000000].map(v => `<button type="button" class="chip" data-bud="${v}" aria-pressed="${s.budget === v}">${v >= 1e6 ? "1 M€" : v / 1000 + " k€"}</button>`).join("")}</div>
       <div class="field"><label class="label" for="qzApport">Apport <span class="opt">facultatif, pour le coût par mois</span></label><input type="number" id="qzApport" inputmode="numeric" step="5000" min="0" value="${s.apport ?? ""}" placeholder="Ex. 80 000 €"></div>` : "") + (rent ? `
-      ${buy ? `<h3 class="qsub">Location</h3>` : ""}<div class="field"><label class="label" for="qzLoyer">Loyer maximum, charges comprises</label><input type="number" id="qzLoyer" inputmode="numeric" step="50" min="0" value="${s.loyer ?? ""}" placeholder="Ex. 1 600 € par mois"></div>
-      <div class="chips qchips">${[900, 1200, 1500, 1800, 2200].map(v => `<button type="button" class="chip" data-loy="${v}" aria-pressed="${s.loyer === v}">${fmtInt(v)} €</button>`).join("")}</div>
-      <div class="field"><label class="label" for="qzRev">Revenus nets du foyer <span class="opt">facultatif, pour savoir si votre dossier passe</span></label><input type="number" id="qzRev" inputmode="numeric" step="100" min="0" value="${s.revenus ?? ""}" placeholder="€ par mois"></div>
+      ${buy ? `<h3 class="qsub">Location</h3>` : ""}${coloc ? `<div class="field"><span class="label">Colocataires, vous compris</span><div class="chips qchips">${[2, 3, 4, 5].map(v => `<button type="button" class="chip" data-coc="${v}" aria-pressed="${(s.colocs || 2) === v}">${v}${v === 5 ? " ou plus" : ""}</button>`).join("")}</div></div>` : ""}
+      <div class="field"><label class="label" for="qzLoyer">${coloc ? "Loyer maximum par personne, charges comprises" : "Loyer maximum, charges comprises"}</label><input type="number" id="qzLoyer" inputmode="numeric" step="50" min="0" value="${s.loyer ?? ""}" placeholder="${coloc ? "Ex. 750 € par mois" : "Ex. 1 600 € par mois"}"></div>
+      <div class="chips qchips">${(coloc ? [500, 650, 800, 1000, 1200] : [900, 1200, 1500, 1800, 2200]).map(v => `<button type="button" class="chip" data-loy="${v}" aria-pressed="${s.loyer === v}">${fmtInt(v)} €</button>`).join("")}</div>
+      ${coloc ? `<p class="hint2" id="qzTot"${s.loyer ? "" : " hidden"}>Soit ${fmtInt((s.loyer || 0) * (s.colocs || 2))} € par mois pour le logement entier.</p>` : ""}
+      <div class="field"><label class="label" for="qzRev">${coloc ? "Revenus nets par personne" : "Revenus nets du foyer"} <span class="opt">facultatif, pour savoir si votre dossier passe</span></label><input type="number" id="qzRev" inputmode="numeric" step="100" min="0" value="${s.revenus ?? ""}" placeholder="€ par mois"></div>
       <div class="field"><span class="label">Meublé ou vide</span><div class="chips qchips">${[["indiff", "Peu importe"], ["vide", "Vide"], ["meuble", "Meublé"]].map(([v, l]) => `<button type="button" class="chip" data-meu="${v}" aria-pressed="${(s.meuble || "indiff") === v}">${l}</button>`).join("")}</div></div>` : "") + foot(true, s.budget || s.loyer ? "Continuer" : "Je ne sais pas encore");
-  else if (st === 3) body = head("La taille", "Le minimum en dessous duquel vous ne visiterez pas.") + `
+  else if (st === 3) body = head("La taille", coloc ? `Une chambre par colocataire, plus une pièce commune&nbsp;: ${(s.colocs || 2) + 1} pièces au moins.` : "Le minimum en dessous duquel vous ne visiterez pas.") + `
       <div class="qgrid qgrid--5">${chips([[1, "Studio"], [2, "2 p."], [3, "3 p."], [4, "4 p."], [5, "5 p. +"]], s.rooms, false, "rooms")}</div>
       <div class="field"><label class="label" for="qzSurf">Surface minimum <span class="opt">facultatif</span></label><input type="number" id="qzSurf" inputmode="numeric" min="0" value="${s.surface ?? ""}" placeholder="m²"></div>` + foot(!!s.rooms, "Continuer", true);
   else if (st === 4) body = head("Vos trajets", "Travail, études : Heden calcule le temps depuis chaque annonce.") + `
@@ -542,15 +545,16 @@ function paintQuiz() {
   const next = () => { qz.step++; paintQuiz(); }, back = $("#qzBack"); if (back) back.onclick = () => { qz.step--; paintQuiz(); };
   const nx = $("#qzNext"); if (nx) nx.onclick = () => { if (st === 6) applySetup(s); next(); };
   const sk = $("#qzSkip"); if (sk) sk.onclick = () => { if (st === 3) { s.rooms = null; s.surface = null; } if (st === 4) s.places = [{label: "", q: "", mode: "tc"}]; next(); };
-  $$("[data-pj]", card).forEach(b => b.onclick = () => { s.projet = b.dataset.pj; if (s.projet === "location" && s.who === "invest") s.who = null; next(); });
-  $$("[data-who]", card).forEach(b => b.onclick = () => { s.who = b.dataset.who; next(); });
+  $$("[data-pj]", card).forEach(b => b.onclick = () => { s.projet = b.dataset.pj; if ((s.projet === "location" && s.who === "invest") || (s.projet !== "location" && s.who === "coloc")) s.who = null; next(); });
+  $$("[data-who]", card).forEach(b => b.onclick = () => { s.who = b.dataset.who; if (s.who === "coloc") { s.colocs = s.colocs || 2; if (!s.rooms) s.rooms = Math.min(5, s.colocs + 1); } next(); });
+  $$("[data-coc]", card).forEach(b => b.onclick = () => { s.colocs = +b.dataset.coc; s.rooms = Math.min(5, s.colocs + 1); paintQuiz(); });
   $$("[data-loy]", card).forEach(b => b.onclick = () => { s.loyer = +b.dataset.loy; paintQuiz(); });
   $$("[data-meu]", card).forEach(b => b.onclick = () => { s.meuble = b.dataset.meu; paintQuiz(); });
   $$("[data-rooms]", card).forEach(b => b.onclick = () => { s.rooms = +b.dataset.rooms; paintQuiz(); });
   $$("[data-prio]", card).forEach(b => b.onclick = () => { const id = b.dataset.prio, i = s.prios.indexOf(id); if (i >= 0) s.prios.splice(i, 1); else if (s.prios.length < 5) s.prios.push(id); else return toast("5 choix au maximum"); paintQuiz(); });
   $$("[data-no]", card).forEach(b => b.onclick = () => { const id = b.dataset.no, i = s.nos.indexOf(id); if (i >= 0) s.nos.splice(i, 1); else s.nos.push(id); paintQuiz(); });
   $$("[data-bud]", card).forEach(b => b.onclick = () => { s.budget = +b.dataset.bud; paintQuiz(); });
-  const num = (id, k) => { const i = $("#" + id); if (i) i.oninput = () => { const v = parseFloat(i.value); s[k] = isFinite(v) && v > 0 ? v : null; const n2 = $("#qzNext"); if (n2 && st === 2) n2.textContent = s.budget || s.loyer ? "Continuer" : "Je ne sais pas encore"; }; };
+  const num = (id, k) => { const i = $("#" + id); if (i) i.oninput = () => { const v = parseFloat(i.value); s[k] = isFinite(v) && v > 0 ? v : null; const n2 = $("#qzNext"); if (n2 && st === 2) n2.textContent = s.budget || s.loyer ? "Continuer" : "Je ne sais pas encore"; const tt = $("#qzTot"); if (tt && k === "loyer") { tt.hidden = !s.loyer; tt.textContent = `Soit ${fmtInt((s.loyer || 0) * (s.colocs || 2))} € par mois pour le logement entier.`; } }; };
   num("qzBudget", "budget"); num("qzApport", "apport"); num("qzSurf", "surface"); num("qzLoyer", "loyer"); num("qzRev", "revenus");
   const ap = $("#qzAddPl"); if (ap) ap.onclick = () => { s.places.push({label: "", q: "", mode: "tc"}); paintQuiz(); };
   $$(".qplace", card).forEach(row => {
@@ -590,8 +594,9 @@ function quizResultHTML() {
 }
 function profileLine(s) {
   if (!s) return "";
-  const who = (QUIZ_WHO.find(x => x[0] === s.who) || [, ""])[1], lo = homeProfile().loc || {}, pj = s.projet || "achat";
-  return [PROJ_LABEL[pj], who, pj !== "achat" && (s.loyer || lo.loyerMax) ? `loyer max. ${fmtInt(s.loyer || lo.loyerMax)} €/mois` : null, s.rooms ? (s.rooms === 1 ? "studio" : `${s.rooms} pièces${s.rooms >= 5 ? " et plus" : ""} min.`) : null, s.surface ? `${s.surface} m² min.` : null, pj !== "location" && s.budget ? `jusqu’à ${fmtInt(s.budget)} €` : null].filter(Boolean).join(" · ");
+  const lo = homeProfile().loc || {}, pj = s.projet || "achat", nC = s.who === "coloc" ? lo.colocs || s.colocs || 2 : 0;
+  const who = nC ? `En colocation à ${nC}` : ([...QUIZ_WHO, ...QUIZ_WHO_LOC].find(x => x[0] === s.who) || [, ""])[1];
+  return [PROJ_LABEL[pj], who, pj !== "achat" && (lo.loyerMax || s.loyer) ? `loyer max. ${fmtInt(lo.loyerMax || s.loyer)} €/mois${nC && lo.loyerMax ? ` (${fmtInt(lo.loyerMax / nC)} € par personne)` : ""}` : null, s.rooms ? (s.rooms === 1 ? "studio" : `${s.rooms} pièces${s.rooms >= 5 ? " et plus" : ""} min.`) : null, s.surface ? `${s.surface} m² min.` : null, pj !== "location" && s.budget ? `jusqu’à ${fmtInt(s.budget)} €` : null].filter(Boolean).join(" · ");
 }
 function profileSummaryHTML() {
   const h = homeProfile(), s = h.setup, L = learning();
@@ -793,6 +798,7 @@ function rentAnalysisHTML(f) {
   const entry = x.cc ? `<section class="lsec"><h2>Coût d’entrée</h2>
       <div class="cost"><b class="num">${f.deposit == null || (!x.part && f.agencyFee == null) ? "≤ " : ""}${eur(tot)}</b><span>à payer à la signature</span></div>
       <dl class="cost__leg">${rows.map(([n, v, t]) => `<div><dt>${n}<small> · ${t}</small></dt><dd class="num">${v != null ? eur(v) : "–"}</dd></div>`).join("")}</dl>
+      ${lo.colocs > 1 ? `<p class="hint2">Partagé entre ${lo.colocs} colocataires : ${eur(x.cc / lo.colocs)} de loyer et ${eur(tot / lo.colocs)} à l’entrée par personne.</p>` : ""}
 </section>` : "";
   // Taux d'effort
   let eff = "";
@@ -816,6 +822,7 @@ function rentAnalysisHTML(f) {
   if (x.verdict === "over") al.push(["over", `Loyer au-dessus du plafond de l’encadrement, d’environ ${eur(x.over)} par mois.`]);
   if (f.complement && (f.dpe === "F" || f.dpe === "G")) al.push(["over", "Complément de loyer interdit pour un logement classé F ou G."]);
   if (x.mb) al.push(["info", "Meublé : la loi impose un équipement minimum (literie, plaques, four ou micro-ondes, frigo avec congélateur, vaisselle, rangements, luminaires, rideaux dans les chambres). À vérifier à la visite."]);
+  if (lo.colocs > 1) al.push(["info", "Colocation : avec un bail unique et une clause de solidarité, chacun répond de tout le loyer, jusqu’à six mois après son départ si personne ne le remplace. Avec des baux séparés, chaque chambre doit faire au moins 9 m²."]);
   const vig = al.length ? `<section class="lsec"><h2>Points de vigilance</h2><ul class="vig">${al.map(([c, t]) => `<li class="vig--${c}">${t}</li>`).join("")}</ul></section>` : "";
   return enc + entry + eff + vig + tripsHTML(f);
 }
@@ -893,12 +900,13 @@ function openRentSettings() {
     <form class="lform" id="locF">
       <label class="lf"><span>Loyer maximum, charges comprises</span><input name="loyerMax" inputmode="numeric" value="${lo.loyerMax ?? ""}" placeholder="€ par mois"></label>
       <label class="lf"><span>Revenus nets du foyer</span><input name="revenus" inputmode="numeric" value="${lo.revenus ?? ""}" placeholder="€ par mois"></label>
+      <label class="lf"><span>Colocataires, vous compris</span><select name="colocs">${[1, 2, 3, 4, 5, 6].map(v => `<option value="${v}" ${(lo.colocs || 1) === v ? "selected" : ""}>${v === 1 ? "Pas de colocation" : v}</option>`).join("")}</select></label>
       <label class="lf"><span>Meublé ou vide</span><select name="meuble">${[["indiff", "Peu importe"], ["vide", "Vide"], ["meuble", "Meublé"]].map(([v, l]) => `<option value="${v}" ${lo.meuble === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
     </form>
     <div class="auth__foot"><button class="btn btn--primary btn--block" type="button" id="locSave">Enregistrer</button></div>`;
   $("#locSave").onclick = () => {
     const fd = new FormData($("#locF")), m = numFR(fd.get("loyerMax")), r = numFR(fd.get("revenus"));
-    h.loc = {loyerMax: m > 0 ? Math.round(m) : null, revenus: r > 0 ? Math.round(r) : null, meuble: fd.get("meuble") || "indiff"};
+    h.loc = {loyerMax: m > 0 ? Math.round(m) : null, revenus: r > 0 ? Math.round(r) : null, meuble: fd.get("meuble") || "indiff", colocs: +fd.get("colocs") || 1};
     save(); closeSheet(); rerenderAll(); if (currentTab === "profile") renderProfile();
   };
   el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));

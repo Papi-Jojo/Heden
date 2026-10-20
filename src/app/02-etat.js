@@ -28,7 +28,7 @@ if (!state.profile || !Array.isArray(state.zones)) state = defaultState();
 
 /* Critères de zone selon le projet affiché : en location, la revente ne compte pas et le prix devient le loyer */
 const modeCrit = cs => !isRent() ? cs : (cs || []).filter(c => c.id !== "revente").map(c => c.id === "prix" ? Object.assign({}, c, {name: "Loyer au m² / budget", desc: "5 = nettement sous votre loyer maximum, 0 = au-dessus"}) : c);
-const crit = () => modeCrit(state.profile.criteria);
+const crit = () => mergeCrit(modeCrit(state.profile.criteria), groupCrit());
 
 /* Géométrie des zones : projection locale en mètres (suffisante à l'échelle d'un quartier) */
 function toXY(p, lat0) { return [p[1] * 111320 * Math.cos(lat0 * Math.PI / 180), p[0] * 110540]; }

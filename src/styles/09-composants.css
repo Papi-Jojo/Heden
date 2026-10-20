@@ -239,3 +239,16 @@ body.walking .mapmode,body[data-mode="placing"] .mapmode,body[data-mode="rating"
 @keyframes tip-souffle{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bourgeon) 55%,transparent)}70%,100%{box-shadow:0 0 0 12px color-mix(in srgb,var(--bourgeon) 0%,transparent)}}
 @media (prefers-reduced-motion: reduce){.tip,.tip[data-side="haut"],.tiphalo{transform:none}.tiphalo.is-in{animation:none}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* Cartes de groupe : critères communs, plafond rédhibitoire */
+.cgrp,.bd .n small.cgrp{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:var(--pilule);font:650 10.5px/1.5 var(--sans);letter-spacing:.02em;color:var(--laiton);background:color-mix(in srgb,var(--laiton) 12%,transparent);vertical-align:2px}
+.duo__veto{margin:0 0 2px;padding:9px 12px;border-radius:14px;font-size:13px;line-height:1.4;color:var(--alerte);background:color-mix(in srgb,var(--alerte) 9%,transparent)}
+.duo__row--est b{opacity:.62}
+.duo__row em.duo__x{color:var(--alerte);font-weight:600}
+.duo__tbl td.veto{color:var(--alerte);font-weight:700}
+.duo__tbl tr.grp td:first-child small{font-size:10.5px;color:var(--laiton);font-weight:650;margin-left:4px}
+.gcrit .cards{margin-top:2px}
+.gcrit__off{margin:0}
+.bd--grp .n::before{content:"";display:inline-block;width:8px;height:7px;margin-right:7px;border-radius:var(--galet-a);background:var(--laiton);vertical-align:1px}
+.bd-leg--grp{margin-top:-2px}
+.bd-leg--grp i{width:8px;height:7px;border-radius:var(--galet-a);background:var(--laiton);opacity:1}

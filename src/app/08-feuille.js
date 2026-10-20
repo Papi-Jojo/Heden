@@ -297,7 +297,7 @@ function renderRating() {
         <span class="label">Critères, de 0 (rédhibitoire) à 5 (excellent)</span>
         <p class="est-src" id="estSrc" hidden></p>
         ${cs.map(c => `<div class="crit" data-c="${esc(c.id)}">
-            <div class="crit__top"><span class="crit__name">${esc(c.name)}</span><span class="crit__w num">poids ${Math.round(c.weight / wsum * 100)} %</span></div>
+            <div class="crit__top"><span class="crit__name">${esc(c.name)}${c.group ? `<small class="cgrp">commun</small>` : ""}</span><span class="crit__w num">poids ${Math.round(c.weight / wsum * 100)} %</span></div>
             ${c.desc ? `<div class="crit__desc">${esc(c.desc)}</div>` : ""}
             <div class="scale${state.profile.halfPoints ? " scale--half" : ""}">${[0, 1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" style="--c:${colorFor(n * 20)}">${n}</button>`).join("")}${state.profile.halfPoints ? `<button type="button" class="half" data-half aria-label="Ajouter un demi-point">+½</button>` : ""}</div>
             <div class="crit__est" hidden></div>
@@ -459,8 +459,8 @@ function renderDetail() {
   const cs = crit().filter(c => c.weight > 0);
   const wsum = cs.reduce((a, c) => a + c.weight, 0) || 1;
   const big = duo ? zs : s;
-  const partners = duo ? partnerScores(z) : [];
-  const waiting = duo ? curMap().members.filter(m => m.userId !== cloud.user.id && !partners.some(p => p.userId === m.userId)) : [];
+  const members = duo ? memberScores(z) : [];
+  const partners = members.filter(x => !x.me && !x.est);
   const copyTargets = !duo && cloud.user && !z.link && !z.example ? cloud.maps.filter(m => m.kind === "partagee") : [];
   const linkedMap = !duo && z.link ? cloud.maps.find(m => m.kind === "partagee") : null;
   panel.innerHTML = `
@@ -470,37 +470,37 @@ function renderDetail() {
         <span class="plaque" title="${esc(z.name || "Sans nom")}"><span>${z.place ? `<small>${esc(z.place)}</small>` : ""}${esc(z.name || "Sans nom")}</span></span>
         ${z.area ? `<div class="sub num" style="margin-top:8px">${fmtArea(z.area)}</div>` : ""}
       </div>
-      <button class="x x--del" id="del" type="button" aria-label="${duo ? "Supprimer la zone pour vous deux" : "Supprimer la zone"}" title="Supprimer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
+      <button class="x x--del" id="del" type="button" aria-label="${duo ? "Supprimer la zone pour tout le groupe" : "Supprimer la zone"}" title="Supprimer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
       <button class="x" id="close" type="button" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="panel__body">
       <div class="scorebox">
         <div class="big ${big.score == null ? "none" : ""}" style="--c:${colorFor(big.score)}" ${big.score != null ? `data-count="${big.score}"` : ""}>${big.score == null ? "–" : big.score}</div>
         <div><strong>${big.score == null ? "Pas encore de note" : verdict(big.score)}</strong>
-        <p class="num">${duo ? (zs.joint ? "Note commune, moyenne de vos deux notes" : hasRated(z) ? "Votre note, en attendant celle de votre binôme" : partners.length ? `Note de ${esc(partners[0].name)}, en attendant la vôtre` : "Estimation, personne n’a encore noté") : `${s.rated} sur ${s.total} critères notés${s.estimated ? `, dont ${s.estimated} estimé${s.estimated > 1 ? "s" : ""}` : ""}`}</p>${z.fav ? `<p style="color:var(--laiton);font-weight:600;margin-top:2px"><span class="heart">${HEART}</span> Coup de cœur</p>` : ""}</div>
+        <p class="num">${duo ? groupLine(zs) : `${s.rated} sur ${s.total} critères notés${s.estimated ? `, dont ${s.estimated} estimé${s.estimated > 1 ? "s" : ""}` : ""}`}</p>${z.fav ? `<p style="color:var(--laiton);font-weight:600;margin-top:2px"><span class="heart">${HEART}</span> Coup de cœur</p>` : ""}</div>
       </div>
       ${photosHTML(z)}
       ${overBudget(z) ? `<div class="banner banner--alerte">${isRent() ? `Loyers autour de ${fmt1(zonePrice(z))} €/m², au-dessus de votre loyer maximum de ${fmt1(zoneBudget())} €/m².` : `${z.price > 0 ? "Prix observé" : "Prix estimé"} de ${fmtInt(zonePrice(z))} €/m², au-dessus de votre budget de ${fmtInt(state.profile.budget)} €/m².`}</div>` : ""}
       ${duo ? `<div class="duo">
-        <div class="duo__row"><span>Vous</span>${hasRated(z) ? `<b class="num" style="--c:${colorFor(s.score)}"><i></i>${s.score ?? "–"}</b>` : `<em>Pas encore noté</em>`}${z.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
-        ${partners.map(p => `<div class="duo__row"><span>${esc(p.name)}</span><b class="num" style="--c:${colorFor(p.s.score)}"><i></i>${p.s.score ?? "–"}</b>${p.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
-          ${p.comment ? `<p class="duo__c">${esc(p.name)} : ${esc(p.comment)}</p>` : ""}`).join("")}
-        ${waiting.map(m => `<div class="duo__row"><span>${esc(personName(m.userId))}</span><em>Pas encore noté</em></div>`).join("")}
-        ${partners.length ? `<button type="button" class="link duo__more" id="duoMore" aria-expanded="false">Voir les notes de chacun, critère par critère</button><div class="duo__tbl" id="duoTbl" hidden>${duoTable(z, partners)}</div>` : ""}
-        <p class="duo__h">${twinOf(z) ? "Vos notes, commentaires et photos sont aussi sur votre carte perso. " : ""}Chacun note avec son propre profil.</p>
+        ${zs.vetoes && zs.vetoes.length ? `<p class="duo__veto">${zs.vetoes.map(v => `${v.me ? "Rédhibitoire pour vous" : `Rédhibitoire pour ${esc(v.name)}`} : ${esc(v.crit.join(", "))}`).join(". ")}. La note du groupe est plafonnée à ${VETO_CAP}.</p>` : ""}
+        ${members.map(m => `<div class="duo__row${m.est ? " duo__row--est" : ""}"><span>${esc(m.name)}</span>${m.s.score == null ? `<em>Pas encore noté</em>` : `<b class="num" style="--c:${colorFor(m.s.score)}"><i></i>${m.s.score}</b>${m.est ? `<em>estimée</em>` : ""}`}${m.veto.length ? `<em class="duo__x">rédhibitoire</em>` : ""}${m.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
+          ${!m.me && m.comment ? `<p class="duo__c">${esc(m.name)} : ${esc(m.comment)}</p>` : ""}`).join("")}
+        ${members.length > 1 ? `<button type="button" class="link duo__more" id="duoMore" aria-expanded="false">Voir les notes de chacun, critère par critère</button><div class="duo__tbl" id="duoTbl" hidden>${duoTable(z, members)}</div>` : ""}
+        <p class="duo__h">${twinOf(z) ? "Vos notes, commentaires et photos sont aussi sur votre carte perso. " : ""}Chacun note avec ses critères, plus ceux du groupe.</p>
       </div>` : ""}
       ${priceHTML(z)}
       ${!s.complete && s.total ? `<div class="banner">Note partielle : ${s.total - s.rated} critère${s.total - s.rated > 1 ? "s" : ""} de votre profil n’${s.total - s.rated > 1 ? "ont" : "a"} pas encore été noté${s.total - s.rated > 1 ? "s" : ""}.</div>` : ""}
       <div class="breakdown">
         ${cs.map(c => {
           const {v, est} = critVal(z, c.id);
-          return `<div class="bd${est ? " bd--est" : ""}"${est ? ` title="${esc(estWhy(z, c.id))}"` : ""}>
+          return `<div class="bd${est ? " bd--est" : ""}${c.group ? " bd--grp" : ""}"${est ? ` title="${esc(estWhy(z, c.id))}"` : ""}>
             <span class="n">${esc(c.name)}<small class="num">${Math.round(c.weight / wsum * 100)} %</small></span>
             <span class="bar"><i style="width:${typeof v === "number" ? v * 20 : 0}%;--c:${traitFor(typeof v === "number" ? v * 20 : null)}"></i></span>
             <span class="v num">${typeof v === "number" ? fmtNote(v) : "–"}</span></div>`;
         }).join("")}
       </div>
       ${s.estimated ? `<p class="bd-leg"><i></i>Valeurs estimées d’après les données du quartier, à confirmer en notant la zone</p>` : ""}
+      ${cs.some(c => c.group) ? `<p class="bd-leg bd-leg--grp"><i></i>Critère commun à la carte</p>` : ""}
       <dl class="meta">
         ${z.date ? `<dt>Visite</dt><dd>${esc(fmtDate(z.date))}${z.moment ? ", " + esc(z.moment.toLowerCase()) : ""}</dd>` : ""}
         ${!isRent() && z.price && !(z.est && z.est.prix) ? `<dt>Prix observé</dt><dd class="num">${fmtInt(z.price)} €/m²</dd>` : ""}
@@ -525,28 +525,36 @@ function renderDetail() {
   paintPhotos(); bindAccount(panel);
   const del = $("#del");
   del.onclick = async () => {
-    if (!(await askConfirm({title: `Supprimer « ${z.name || "cette zone"} » ?`, text: duo ? "La zone disparaît pour vous deux, avec les notes et les photos de chacun." : "La zone, ses notes et ses photos seront effacées.", ok: "Supprimer", danger: true}))) return;
+    if (!(await askConfirm({title: `Supprimer « ${z.name || "cette zone"} » ?`, text: duo ? "La zone disparaît pour tout le groupe, avec les notes et les photos de chacun." : "La zone, ses notes et ses photos seront effacées.", ok: "Supprimer", danger: true}))) return;
     const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id && (p.zoneId || z.id) === z.id) : [];
     if (mine.length) cloud.client.storage.from("photos").remove(mine.flatMap(p => [p.path, p.thumb])).catch(() => {});
     state.zones = state.zones.filter(x => x.id !== z.id); save();
     selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); toast("Zone supprimée");
   };
 }
-/* Notes de chacun, critère par critère (chacun avec ses propres critères) */
-function duoTable(z, partners) {
-  const people = [{name: "Vous", ratings: z.ratings, criteria: crit(), budget: zoneBudget()},
-    ...partners.map(p => { const o = (z.others || []).find(x => x.userId === p.userId) || {}, pp = cloud.people[p.userId] || {};
-      return {name: p.name, ratings: o.ratings || {}, criteria: pp.criteria && pp.criteria.length ? modeCrit(pp.criteria) : crit(), budget: pp.budget}; })];
+/* Notes de chacun, critère par critère (critères du groupe en tête, puis ceux de chacun) */
+function duoTable(z, members) {
+  const people = members.map(m => {
+    const o = m.me ? z : ((z.others || []).find(x => x.userId === m.userId) || {}), pp = m.me ? null : cloud.people[m.userId] || {};
+    return {name: m.name, ratings: o.ratings || {}, criteria: m.me ? crit() : memberCrit(m.userId) || [], budget: m.me ? zoneBudget() : pp.budget};
+  });
   const rows = [];
+  groupCrit().forEach(c => rows.push({id: c.id, name: c.name, group: true}));
   people.forEach(pe => pe.criteria.forEach(c => { if (c.weight > 0 && !rows.some(r => r.id === c.id)) rows.push({id: c.id, name: c.name}); }));
   const cell = (pe, id) => {
     if (!pe.criteria.some(c => c.id === id && c.weight > 0)) return `<td class="na">·</td>`;
     const {v, est} = critValFor(z, id, pe.ratings, pe.budget);
-    return typeof v === "number" ? `<td class="num${est ? " est" : ""}"><i style="--c:${colorFor(v * 20)}"></i>${fmtNote(v)}</td>` : `<td class="na">–</td>`;
+    return typeof v === "number" ? `<td class="num${est ? " est" : ""}${v === 0 && !est ? " veto" : ""}"><i style="--c:${colorFor(v * 20)}"></i>${fmtNote(v)}</td>` : `<td class="na">–</td>`;
   };
   return `<table><thead><tr><th>Critère</th>${people.map(pe => `<th>${esc(pe.name)}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td>${people.map(pe => cell(pe, r.id)).join("")}</tr>`).join("")}</tbody></table>
+    <tbody>${rows.map(r => `<tr${r.group ? ` class="grp"` : ""}><td>${esc(r.name)}${r.group ? ` <small>commun</small>` : ""}</td>${people.map(pe => cell(pe, r.id)).join("")}</tr>`).join("")}</tbody></table>
     <p class="duo__leg">En gris : valeur estimée, pas encore notée. Point : critère absent de ce profil.</p>`;
+}
+function groupLine(zs) {
+  if (!zs.group) return "Estimation, personne n’a encore noté";
+  const n = zs.members, e = zs.estMembers;
+  const base = n > 1 ? `Note du groupe, moyenne de ${n} membres` : "Une seule note pour l’instant";
+  return base + (e ? `, dont ${e} estimée${e > 1 ? "s" : ""}` : "") + (zs.vetoes && zs.vetoes.length ? `, plafonnée (rédhibitoire)` : "");
 }
 /* Loyers d'une zone : loyer de référence du quartier (Paris) ou loyers d'annonce de la commune */
 function rentHTML(z) {

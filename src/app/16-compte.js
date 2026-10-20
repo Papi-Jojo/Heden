@@ -390,7 +390,7 @@ async function syncTwins(rUp) {
     cloud.twins[z.id] = id;
   }
 }
-/* Nouveautés : zones ajoutées par le binôme et pas encore ouvertes (mémorisé sur cet appareil) */
+/* Nouveautés : zones ajoutées par les autres membres et pas encore ouvertes (mémorisé sur cet appareil) */
 const seenKey = () => "heden.seen." + cloud.user.id;
 function seenSet() { try { return new Set(JSON.parse(localStorage.getItem(seenKey()) || "[]")); } catch (e) { return new Set(); } }
 function markSeen(id) {
@@ -424,23 +424,36 @@ async function loadPeople(ids) {
 }
 async function loadMaps() {
   const me = cloud.user.id;
-  const {data, error} = await cloud.client.from("maps").select("id, name, kind, owner, created_at, map_members(user_id, role)");
+  let {data, error} = await cloud.client.from("maps").select("id, name, kind, owner, created_at, criteria, map_members(user_id, role)");
+  cloud.groupCritOk = !error;
+  if (error) ({data, error} = await cloud.client.from("maps").select("id, name, kind, owner, created_at, map_members(user_id, role)"));
   if (error) throw error;
   cloud.maps = (data || []).map(m => ({id: m.id, name: m.name, kind: m.kind, owner: m.owner, createdAt: m.created_at,
+      criteria: Array.isArray(m.criteria) ? m.criteria : [],
       members: (m.map_members || []).map(x => ({userId: x.user_id, role: x.role}))}))
     .sort((a, b) => (a.kind === "perso" ? 0 : 1) - (b.kind === "perso" ? 0 : 1) || String(a.createdAt).localeCompare(String(b.createdAt)));
   const ids = [...new Set(cloud.maps.flatMap(m => m.members.map(x => x.userId)))].filter(id => id !== me);
   if (ids.length) await loadPeople(ids);
   await Promise.all([loadTwins(), loadUnseen()]);
 }
+/* Critères communs d'une carte de groupe : enregistrés pour tous les membres */
+let groupCritT = null;
+function saveGroupCrit(m) {
+  clearTimeout(groupCritT);
+  groupCritT = setTimeout(async () => {
+    const {error} = await cloud.client.rpc("set_map_criteria", {m: m.id, c: m.criteria});
+    if (error) toast("Critères communs non enregistrés pour le moment : réessayez dans un instant");
+  }, 600);
+}
 const mapLabel = m => m.kind === "perso" ? "Ma carte" : m.name;
 function membersLabel(m) {
   const others = m.members.filter(x => x.userId !== cloud.user.id).map(x => personName(x.userId));
-  return others.length ? "Vous et " + others.join(", ") : "Vous seul pour l’instant : invitez votre binôme";
+  return others.length ? "Vous et " + others.join(", ") : "Vous seul pour l’instant : invitez les autres membres";
 }
 function duoLine(z) {
-  const parts = [hasRated(z) ? `vous ${scoreOf(z).score ?? "–"}` : null, ...partnerScores(z).map(p => `${p.name} ${p.s.score ?? "–"}`)].filter(Boolean);
-  return parts.length ? " · " + parts.join(", ") : " · pas encore notée";
+  const ms = memberScores(z).filter(m => !m.est), zs = zoneScore(z);
+  const parts = ms.map(m => `${m.me ? "vous" : m.name} ${m.s.score ?? "–"}`);
+  return (parts.length ? " · " + parts.join(", ") : " · pas encore notée") + (zs.vetoes && zs.vetoes.length ? " · rédhibitoire" : "");
 }
 function mapSwitchHTML() {
   if (!cloud.user || cloud.maps.length < 2) return "";
@@ -567,7 +580,7 @@ function inviteHTML(inv) {
   return `<div class="invite">
     <span class="label">Invitation, valable 14 jours</span>
     <div class="invite__code num">${esc(inv.code)}</div>
-    <p class="hint2">Votre binôme se connecte avec son e-mail et arrive sur la carte.</p>
+    <p class="hint2">Chaque membre se connecte avec son e-mail et arrive sur la carte.</p>
     <div class="datarow"><button class="btn btn--sm btn--primary" type="button" data-act="share">${navigator.share ? "Envoyer le lien" : "Copier le lien"}</button>${navigator.share ? `<button class="btn btn--sm" type="button" data-act="copy">Copier le lien</button>` : ""}</div>
   </div>`;
 }
@@ -576,13 +589,13 @@ function sharedHTML() {
   let pending = null;
   try { pending = localStorage.getItem("heden.invite"); } catch (e) {}
   if (!cloud.user) return `<section class="sec">
-      <h2>Carte à deux</h2>
-      <p class="hint2">${pending ? `<b>Vous avez reçu une invitation.</b> <button class="link" type="button" data-auth>Connectez-vous</button> avec votre e-mail : vous rejoindrez la carte automatiquement.` : `<button class="link" type="button" data-auth>Connectez-vous</button> pour créer une carte commune avec votre binôme. Chacun y note les zones avec son propre profil, et la couleur montre votre note commune.`}</p>
+      <h2>Carte de groupe</h2>
+      <p class="hint2">${pending ? `<b>Vous avez reçu une invitation.</b> <button class="link" type="button" data-auth>Connectez-vous</button> avec votre e-mail : vous rejoindrez la carte automatiquement.` : `<button class="link" type="button" data-auth>Connectez-vous</button> pour créer une carte commune avec vos proches ou vos colocataires. Chacun y note les zones avec son propre profil, et la couleur montre votre note commune.`}</p>
     </section>`;
   const shared = cloud.maps.filter(m => m.kind === "partagee");
   return `<section class="sec" id="duoSec">
-    <h2>Carte à deux</h2>
-    <p class="hint2">Tracez et notez à deux, chacun avec son profil.</p>
+    <h2>Carte de groupe</h2>
+    <p class="hint2">À deux, en colocation ou en famille : chacun note avec son profil, plus des critères communs.</p>
     ${shared.map(m => `<div class="mapcard" data-m="${m.id}">
       <div><b>${esc(m.name)}</b><p class="hint2">${esc(membersLabel(m))}</p></div>
       ${cloud.invite && cloud.invite.mapId === m.id ? inviteHTML(cloud.invite) : ""}
@@ -612,7 +625,7 @@ function bindShared() {
   $("#newMapForm").onsubmit = async e => {
     e.preventDefault();
     const b = e.target.querySelector("button"); b.disabled = true;
-    try { await createSharedMap($("#newMapName").value.trim()); toast("Carte créée : envoyez l’invitation à votre binôme"); }
+    try { await createSharedMap($("#newMapName").value.trim()); toast("Carte créée : envoyez l’invitation aux autres membres"); }
     catch (err) { console.warn(err); toast("Création impossible pour le moment"); }
     renderProfile();
   };
@@ -637,8 +650,8 @@ function bindShared() {
       } else if (act === "leave" || act === "delete") {
         const m = cloud.maps.find(x => x.id === id), nm = m ? m.name : "cette carte";
         const okk = await askConfirm(act === "leave"
-          ? {title: `Quitter « ${nm} » ?`, text: "Vous ne verrez plus cette carte. Elle reste à votre binôme, avec vos notes.", ok: "Quitter la carte", danger: true}
-          : {title: `Supprimer « ${nm} » ?`, text: "La carte, ses zones, les notes et les photos de chacun seront effacées pour vous deux.", ok: "Supprimer pour tous", danger: true});
+          ? {title: `Quitter « ${nm} » ?`, text: "Vous ne verrez plus cette carte. Elle reste aux autres membres, avec vos notes.", ok: "Quitter la carte", danger: true}
+          : {title: `Supprimer « ${nm} » ?`, text: "La carte, ses zones, les notes et les photos de chacun seront effacées pour tout le groupe.", ok: "Supprimer pour tous", danger: true});
         if (!okk) return;
         if (act === "leave") leaveSharedMap(id); else deleteSharedMap(id);
       }
@@ -759,7 +772,7 @@ function cloudInit() {
     if (inv) {
       localStorage.setItem("heden.invite", inv.trim().toUpperCase());
       history.replaceState(null, "", location.pathname + location.hash);
-      setTimeout(() => { if (!cloud.user) openAuth("Votre binôme vous invite sur sa carte : connectez-vous pour la rejoindre."); }, 1200);
+      setTimeout(() => { if (!cloud.user) openAuth("On vous invite sur une carte de groupe : connectez-vous pour la rejoindre."); }, 1200);
     }
   } catch (e) {}
   const hp = new URLSearchParams(location.hash.slice(1));

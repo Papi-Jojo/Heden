@@ -12,7 +12,7 @@ const TIPS = [
   {id: "annonces-ajout", sel: "#addListing", when: () => currentTab === "annonces" && !lui.openId, txt: "Collez une annonce, ou installez le bouton + Heden pour l’importer en un clic."},
   {id: "annonces-tri", sel: ".lrow .lqa", when: () => currentTab === "annonces" && !lui.openId, txt: "Gardez ou écartez d’un geste. Rien n’est perdu : chaque annonce reste dans sa pile."},
   {id: "annonce-avis", sel: ".feel", when: () => currentTab === "annonces" && !!lui.openId, txt: "La note ne vous semble pas juste ? Dites-le : Heden ajuste vos priorités."},
-  {id: "profil-onglets", sel: ".ptabs", when: () => currentTab === "profile", txt: "Vos critères se règlent ici. La carte à deux et la langue sont dans Compte."}
+  {id: "profil-onglets", sel: ".ptabs", when: () => currentTab === "profile", txt: "Vos critères se règlent ici. Les cartes de groupe et la langue sont dans Compte."}
 ];
 function tipsState() {
   if (tipsSt) return tipsSt;

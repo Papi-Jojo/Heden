@@ -16,6 +16,7 @@
    ```
 
    Faire de même pour le modèle **Confirm signup** (premier envoi à une nouvelle adresse).
+2 bis. **Cartes de groupe** : de la même façon, coller et exécuter `groupe.sql` (critères communs des cartes partagées).
 5. **Récupérer les clés** : Project Settings → API (ou Data API / API Keys) :
    - Project URL (`https://xxxx.supabase.co`)
    - clé publique `anon` ou `publishable`

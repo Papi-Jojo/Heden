@@ -83,7 +83,7 @@ function renderAuth() {
     return;
   }
   card.innerHTML = `<div class="auth__head"><h2 id="authTitle">Se connecter</h2>${close}</div>
-    <p class="auth__txt">${auth.note ? esc(auth.note) : "Vos zones et annonces sur tous vos appareils, et une carte à deux."} Pas de mot de passe : un code par e-mail.</p>
+    <p class="auth__txt">${auth.note ? esc(auth.note) : "Vos zones et annonces sur tous vos appareils, et des cartes de groupe."} Pas de mot de passe : un code par e-mail.</p>
     <form id="mailForm" class="auth__form">
       <input type="email" id="loginMail" autocomplete="email" inputmode="email" placeholder="prenom@exemple.fr" aria-label="Adresse e-mail" value="${esc(cloud.pendingEmail || last)}">
       <button class="btn btn--primary btn--block" type="submit">Recevoir un code</button>
@@ -127,13 +127,13 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
     </section>` : ""}
     ${projet() !== "achat" ? `<section class="sec setrow">
       <div><h3 class="sub3">Location</h3>
-      <p class="hint2">${(() => { const lo = homeProfile().loc || {}; return [lo.loyerMax ? `Loyer maximum ${fmtInt(lo.loyerMax)} € par mois` : "Pas de loyer maximum", lo.revenus ? `revenus de ${fmtInt(lo.revenus)} € par mois` : "revenus non indiqués", {vide: "vide", meuble: "meublé", indiff: "meublé ou vide"}[lo.meuble || "indiff"]].join(", ") + "."; })()}</p></div>
+      <p class="hint2">${(() => { const lo = homeProfile().loc || {}; return [lo.colocs > 1 ? `Colocation à ${lo.colocs}` : null, lo.loyerMax ? `Loyer maximum ${fmtInt(lo.loyerMax)} € par mois` : "Pas de loyer maximum", lo.revenus ? `revenus de ${fmtInt(lo.revenus)} € par mois` : "revenus non indiqués", {vide: "vide", meuble: "meublé", indiff: "meublé ou vide"}[lo.meuble || "indiff"]].filter(Boolean).join(", ") + "."; })()}</p></div>
       <button class="btn btn--sm btn--clair" type="button" id="locProf">Modifier</button>
     </section>` : ""}
 `)}
-    ${pane("quartier", `
+    ${pane("quartier", groupCritHTML() + `
     <section class="sec">
-      <h2>Ce qui compte dans un quartier</h2>
+      <h2>${isShared() ? "Vos critères personnels" : "Ce qui compte dans un quartier"}</h2>
       <div class="cards">
         ${cs.map((c, i) => `
           <div class="crow" data-i="${i}">
@@ -245,6 +245,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
     };
     $(".x", row).onclick = () => { cs.splice(+row.dataset.i, 1); p.modified = true; save(); renderProfile(); };
   });
+  bindGroupCrit();
   $("#addSel").onchange = e => {
     const v = e.target.value; if (!v) return;
     if (v === "__custom") cs.push({id: "c_" + uid(), name: "Nouveau critère", desc: "", weight: 10});
@@ -291,3 +292,62 @@ $("#importFile").addEventListener("change", async e => {
     toast(`${added} zone${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}${updated ? `, ${updated} mise${updated > 1 ? "s" : ""} à jour` : ""}`);
   } catch (err) { toast("Fichier illisible : choisissez un export Heden (.json)"); }
 });
+
+/* Critères communs : le socle que chaque membre d'une carte de groupe note, en plus des siens */
+function groupCritHTML() {
+  if (!cloud.user) return "";
+  if (!isShared()) return cloud.maps.some(m => m.kind === "partagee") ? `<p class="hint2 gcrit__off">Les critères communs se règlent quand une carte de groupe est affichée.</p>` : "";
+  const m = curMap(), gc = m.criteria || [];
+  if (!cloud.groupCritOk) return `<section class="sec"><h2>Critères communs</h2><p class="hint2">Bientôt disponibles sur cette carte.</p></section>`;
+  const gsum = gc.reduce((a, c) => a + Math.max(0, c.weight || 0), 0);
+  const avail = Object.keys(LIB).filter(id => !gc.some(c => c.id === id));
+  return `<section class="sec gcrit">
+      <h2>Critères communs</h2>
+      <p class="hint2">Pour toute la carte « ${esc(m.name)} » : chaque membre les note, en plus de ses critères personnels. Une note de 0 chez un seul membre plafonne la zone.</p>
+      ${gc.length ? `<div class="cards">${gc.map((c, i) => `
+        <div class="crow" data-g="${i}">
+          <div style="min-width:0">
+            <input class="nm" value="${esc(c.name)}" aria-label="Nom du critère" maxlength="40" data-i18n-val>
+            <input class="ds" value="${esc(c.desc || "")}" placeholder="Ce qu’on observe sur place" aria-label="Description" maxlength="120">
+          </div>
+          <div class="wctl">
+            <input type="range" min="0" max="40" step="5" value="${c.weight}" aria-label="Poids de ${esc(c.name)}">
+            <output class="num"><span class="wv">${c.weight}</span><small class="ws">${gsum ? Math.round(Math.max(0, c.weight) / gsum * 100) : 0} %</small></output>
+          </div>
+          <button class="x" type="button" aria-label="Retirer ${esc(c.name)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </div>`).join("")}</div>` : ""}
+      <div class="addrow">
+        <select id="gAddSel" aria-label="Ajouter un critère commun">
+          <option value="">Ajouter un critère commun…</option>
+          ${avail.map(id => `<option value="${id}">${esc(LIB[id].name)}</option>`).join("")}
+          <option value="__custom">Critère personnalisé</option>
+        </select>
+      </div>
+    </section>`;
+}
+function bindGroupCrit() {
+  const m = isShared() ? curMap() : null; if (!m || !cloud.groupCritOk) return;
+  const gc = m.criteria = m.criteria || [];
+  const changed = () => { saveGroupCrit(m); };
+  $$(".crow[data-g]").forEach(row => {
+    const c = gc[+row.dataset.g];
+    $(".nm", row).oninput = e => { c.name = e.target.value; changed(); };
+    $(".ds", row).oninput = e => { c.desc = e.target.value; changed(); };
+    const rg = $("input[type=range]", row);
+    rg.oninput = () => {
+      c.weight = +rg.value; changed();
+      $(".wv", row).textContent = c.weight;
+      const tot = gc.reduce((a, x) => a + Math.max(0, x.weight || 0), 0);
+      $$(".crow[data-g]").forEach(r2 => { const c2 = gc[+r2.dataset.g]; $(".ws", r2).textContent = (tot ? Math.round(Math.max(0, c2.weight) / tot * 100) : 0) + " %"; });
+    };
+    $(".x", row).onclick = () => { gc.splice(+row.dataset.g, 1); changed(); renderProfile(); };
+  });
+  const sel = $("#gAddSel");
+  if (sel) sel.onchange = e => {
+    const v = e.target.value; if (!v) return;
+    if (v === "__custom") gc.push({id: "g_" + uid(), name: "Nouveau critère", desc: "", weight: 10});
+    else gc.push({id: v, name: LIB[v].name, desc: LIB[v].desc, weight: 10});
+    changed(); renderProfile();
+    if (v === "__custom") { const rows = $$(".crow[data-g]"); const nm = $(".nm", rows[rows.length - 1]); nm.focus(); nm.select(); }
+  };
+}

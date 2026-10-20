@@ -54,8 +54,10 @@
         var p = list[i]; if (cm && p.k.indexOf(",") < 0) continue;
         var m = p.re.exec(c2);
         if (!m) continue;
-        var ns = [], ws = [];
+        var ns = [], ws = [], bad = false;
         for (var j = 0; j < p.kinds.length; j++) (p.kinds[j] === "#" ? ns : ws).push(m[j + 1]);
+        for (var q2 = 0; q2 < ws.length && !bad; q2++) { var w0 = ws[q2] || "", dp = 0; for (var q3 = 0; q3 < w0.length && dp >= 0; q3++) dp += w0[q3] === "(" ? 1 : w0[q3] === ")" ? -1 : 0; bad = dp !== 0; }
+        if (bad) continue;
         out = fill(p.v, ns, ws, depth);
       }
       if (out == null && /\.$/.test(c2) && c2.length > 3) { var t0 = tr(c2.slice(0, -1), depth + 1, free); if (t0 !== c2.slice(0, -1)) out = t0 + "."; }
@@ -125,7 +127,7 @@
     }
   });
   mo.observe(root, {subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS});
-  fetch("i18n/en.json?v=2").then(function (r) { return r.json(); }).then(function (d) {
+  fetch("i18n/en.json?v=3").then(function (r) { return r.json(); }).then(function (d) {
     EX = d.exact;
     var ps = Object.keys(d.pat).map(function (k) { var p = compile(k, d.pat[k]); p.k = k; return p; });
     ps.sort(byLit);

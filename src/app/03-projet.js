@@ -108,26 +108,71 @@ function scoreWith(z, ratings, criteria, budget) {
 }
 const scoreOf = z => scoreWith(z, z.ratings, crit(), zoneBudget());
 
-/* Carte à deux : chacun note avec son profil, la carte montre la note commune */
+/* Cartes de groupe : chacun note avec son profil, plus les critères communs du groupe.
+   La note du groupe = moyenne des membres (estimée pour ceux qui n'ont pas encore noté),
+   plafonnée dès qu'un membre met 0 (rédhibitoire) à l'un de ses critères. */
 const curMap = () => cloud.user ? cloud.maps.find(m => m.id === cloud.mapId) : null;
 const isShared = () => { const m = curMap(); return !!(m && m.kind === "partagee"); };
 /* toutes les cartes du compte : les annonces suivent la personne d'un appareil à l'autre, quelle que soit la carte affichée */
 const myMapIds = () => [...new Set([cloud.mapId, cloud.personalMapId, ...(cloud.maps || []).map(m => m.id)].filter(Boolean))];
 const hasRated = r => !!r && (Object.keys(r.ratings || {}).length > 0 || !!r.fav || !!r.comment);
-const personName = id => (cloud.people[id] && cloud.people[id].name) || cloud.names[id] || "Votre binôme";
-function partnerScores(z) {
-  return (z.others || []).filter(hasRated).map(o => {
-    const p = cloud.people[o.userId] || {};
-    const cs = Array.isArray(p.criteria) && p.criteria.length ? modeCrit(p.criteria) : crit();
-    return {userId: o.userId, name: personName(o.userId), fav: o.fav, comment: o.comment, s: scoreWith(z, o.ratings, cs, p.budget)};
-  });
+const personName = id => (cloud.people[id] && cloud.people[id].name) || cloud.names[id] || "Un membre";
+const VETO_CAP = 30;
+function groupCrit() {
+  const m = isShared() ? curMap() : null;
+  return m && Array.isArray(m.criteria) ? m.criteria.filter(c => c && c.id && c.weight > 0) : [];
 }
+/* critères personnels + critères du groupe ; un critère présent des deux côtés garde le poids le plus fort */
+function mergeCrit(personal, group) {
+  const out = (personal || []).slice();
+  for (const g of group || []) {
+    const i = out.findIndex(c => c.id === g.id);
+    if (i < 0) out.push(Object.assign({}, g, {group: true}));
+    else out[i] = Object.assign({}, out[i], {weight: Math.max(out[i].weight || 0, g.weight || 0), group: true});
+  }
+  return out;
+}
+let peopleWanted = new Set(), peopleT = null;
+function wantPeople(id) {
+  if (peopleWanted.has(id) || !cloud.user) return;
+  peopleWanted.add(id); clearTimeout(peopleT);
+  peopleT = setTimeout(async () => { try { await loadPeople([...peopleWanted]); rerenderAll(); } catch (e) {} }, 300);
+}
+function memberCrit(userId) {
+  const p = cloud.people[userId];
+  if (!p) { wantPeople(userId); return null; }
+  const own = Array.isArray(p.criteria) && p.criteria.length ? p.criteria : presetCriteria(PRESETS[0]);
+  return mergeCrit(modeCrit(own), groupCrit());
+}
+function vetoOf(ratings, cs) {
+  return cs.filter(c => c.weight > 0 && ratings && ratings[c.id] === 0).map(c => c.name);
+}
+/* tous les membres de la carte, notants ou non */
+function memberScores(z) {
+  const m = curMap(); if (!m) return [];
+  const out = [];
+  const mineC = crit(), mine = scoreWith(z, z.ratings, mineC, zoneBudget());
+  out.push({userId: cloud.user.id, me: true, name: "Vous", fav: z.fav, comment: z.comment, s: mine, est: !hasRated(z), veto: vetoOf(z.ratings, mineC)});
+  const ids = [...new Set([...m.members.map(x => x.userId), ...(z.others || []).map(o => o.userId)])].filter(id => id !== cloud.user.id);
+  for (const id of ids) {
+    const cs = memberCrit(id); if (!cs) continue;
+    const o = (z.others || []).find(x => x.userId === id) || null;
+    const p = cloud.people[id] || {};
+    out.push({userId: id, name: personName(id), fav: o && o.fav, comment: o && o.comment,
+      s: scoreWith(z, o ? o.ratings : {}, cs, p.budget), est: !hasRated(o), veto: o ? vetoOf(o.ratings, cs) : []});
+  }
+  return out;
+}
+const partnerScores = z => memberScores(z).filter(x => !x.me && !x.est);
 function zoneScore(z) {
   const mine = scoreOf(z);
   if (!isShared()) return mine;
-  const vals = [hasRated(z) ? mine.score : null, ...partnerScores(z).map(p => p.s.score)].filter(v => v != null);
-  if (!vals.length) return mine;
-  return Object.assign({}, mine, {score: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length), joint: vals.length > 1});
+  const ms = memberScores(z).filter(x => x.s.score != null);
+  if (!ms.length) return mine;
+  const avg = Math.round(ms.reduce((a, x) => a + x.s.score, 0) / ms.length);
+  const vetoes = ms.filter(x => x.veto.length).map(x => ({name: x.name, me: x.me, crit: x.veto}));
+  return Object.assign({}, mine, {score: vetoes.length ? Math.min(avg, VETO_CAP) : avg, avg, joint: ms.length > 1, members: ms.length,
+    estMembers: ms.filter(x => x.est).length, vetoes, group: true});
 }
 const anyFav = z => !!z.fav || (isShared() && (z.others || []).some(o => o.fav));
 const zonePrice = z => { if (isRent()) { const r = zoneRent(z); return r ? Math.round(r.cc * 10) / 10 : null; } return z.price > 0 ? z.price : (z.est && z.est.prix ? z.est.prix.med : null); };
