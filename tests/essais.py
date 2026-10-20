@@ -160,11 +160,26 @@ def glisser(pw):
     def glisse(dx):
         bx = pg.locator(".hero").first.bounding_box(); x, y = bx["x"] + bx["width"] / 2, bx["y"] + 120; i = pg.evaluate("document.querySelector('.hero').dataset.id")
         pg.mouse.move(x, y); pg.mouse.down()
-        for k in range(1, 13): pg.mouse.move(x + dx * k / 12, y + 2); pg.wait_for_timeout(16 if abs(dx) > 100 else 40)
+        for k in range(1, 13): pg.mouse.move(x + dx * k / 12, y + 2); pg.wait_for_timeout(16 if abs(dx) != 50 else 40)
         pg.mouse.up(); pg.wait_for_timeout(900)
         return pg.evaluate(f"__heden.state().listings.find(f => f.id === '{i}').status")
     assert glisse(50) == "nouvelle" and not pg.locator(".ldet").count(), "un petit geste a changé l'annonce"
+    assert glisse(75) == "nouvelle", "une petite pichenette a suffi à faire partir l'annonce"
     assert glisse(230) == "gardee" and glisse(-230) == "ecartee" and not pg.locator(".ldet").count()
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
+def annuler(pw):
+    """« Annuler » dans la notification remet l'annonce, même après une synchronisation entre-temps."""
+    e = Essai(pw); pg = e.page(); e.connexion(pg, "johan@x.fr", "Johan")
+    pg.evaluate("() => { const s = __heden.state(); s.listings = [{id: crypto.randomUUID(), title: 'T', price: 500000, surface: 50, rooms: 3, postcode: '75017', status: 'nouvelle', mapId: __heden.cloud().mapId, createdBy: __heden.cloud().user.id, photos: [], addedAt: Date.now(), firstSeen: Date.now()}]; __heden.save(); }")
+    pg.wait_for_timeout(1500); e.onglet(pg, "annonces"); pg.wait_for_timeout(500)
+    pg.locator(".hero .hero__keep").first.click(); pg.wait_for_timeout(2200)   # la synchro passe pendant que la notification est affichée
+    pg.locator("#toast .toast__act").click(); pg.wait_for_timeout(600)
+    assert pg.evaluate("__heden.state().listings[0].status") == "nouvelle", "Annuler n'a rien fait"
+    pg.wait_for_timeout(1500)
+    assert pg.evaluate(DBQ + ".listings[0].status") == "nouvelle", "l'annulation n'est pas partie au serveur"
     assert not e.erreurs, e.erreurs; e.fermer()
 
 

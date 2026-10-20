@@ -500,35 +500,41 @@ function trustSignals(f, s) {
   if (shared) risk.push("mêmes photos qu’une autre annonce");
   return {risk, photo: f.aiPhoto || [], level: risk.length > 1 || (f.scam || []).length ? "fort" : risk.length ? "moyen" : null};
 }
-/* Glisser une carte au doigt : à droite pour garder, à gauche pour écarter ; une pichenette suffit, un petit geste revient en place */
+/* Glisser une carte au doigt : à droite pour garder, à gauche pour écarter. La carte suit le doigt 1:1 ;
+   elle part si on la lâche au-delà de 40 % de sa largeur, ou d'un geste franc (rapide et au-delà de 25 %), sinon elle revient. */
 function bindSwipe(card) {
   if (!matchMedia("(pointer: coarse)").matches || !card.querySelector(".hero__keep")) return;
   let d = null;
-  card.addEventListener("pointerdown", e => { if (!e.isPrimary || e.target.closest("button, a")) return; d = {x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, on: false, dx: 0}; });
+  const reset = () => { card.classList.remove("hero--drag"); delete card.dataset.swipe; if (d && d.tag) d.tag.remove(); };
+  card.addEventListener("pointerdown", e => { if (!e.isPrimary || e.target.closest("button, a")) return; d = {x: e.clientX, y: e.clientY, id: e.pointerId, on: false, dx: 0, pts: []}; });
   card.addEventListener("pointermove", e => {
     if (!d || e.pointerId !== d.id) return;
-    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    const rx = e.clientX - d.x, ry = e.clientY - d.y;
     if (!d.on) {
-      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { d = null; return; }   // défilement vertical : la page garde la main
-      if (Math.abs(dx) < 10) return;
-      d.on = true; card.classList.add("hero--drag"); try { card.setPointerCapture(e.pointerId); } catch (err) {}
-      d.tag = document.createElement("span"); d.tag.className = "hero__swipe"; card.appendChild(d.tag);
+      if (Math.abs(ry) > 8 && Math.abs(ry) > Math.abs(rx)) { d = null; return; }   // défilement vertical : la page garde la main
+      if (Math.abs(rx) < 12) return;
+      d.on = true; d.x0 = e.clientX; card.classList.add("hero--drag"); try { card.setPointerCapture(e.pointerId); } catch (err) {}
+      d.tag = document.createElement("span"); card.appendChild(d.tag);
     }
-    d.dx = dx; card.style.transform = `translateX(${dx}px) rotate(${dx / 45}deg)`;
-    card.dataset.swipe = dx > 50 ? "keep" : dx < -50 ? "drop" : "";
-    const lab = dx > 0 ? card.querySelector(".hero__keep").textContent.trim() : card.querySelector(".hero__drop").textContent.trim();
+    const dx = d.dx = e.clientX - d.x0, w = card.offsetWidth;   // départ à zéro au moment où le geste est reconnu : pas de saut
+    d.pts.push([performance.now(), e.clientX]); if (d.pts.length > 6) d.pts.shift();
+    card.style.transform = `translateX(${dx}px) rotate(${dx / 70}deg)`;
+    const on = Math.abs(dx) > w * .25;
+    card.dataset.swipe = on ? (dx > 0 ? "keep" : "drop") : "";
+    const lab = (dx > 0 ? card.querySelector(".hero__keep") : card.querySelector(".hero__drop")).textContent.trim();
     if (d.tag.textContent !== lab) d.tag.textContent = lab;
-    d.tag.className = "hero__swipe hero__swipe--" + (dx > 0 ? "keep" : "drop"); d.tag.style.opacity = Math.min(1, Math.abs(dx) / 90);
+    d.tag.className = "hero__swipe hero__swipe--" + (dx > 0 ? "keep" : "drop"); d.tag.style.opacity = Math.min(1, Math.max(0, (Math.abs(dx) - 20) / (w * .25)));
   });
   const end = e => {
     if (!d || e.pointerId !== d.id) return;
-    const g = d; d = null; if (!g.on) return;
+    const g = d; reset(); d = null; if (!g.on) return;
     card.dataset.dragged = "1"; setTimeout(() => delete card.dataset.dragged, 400);
-    card.classList.remove("hero--drag"); delete card.dataset.swipe; if (g.tag) g.tag.remove();
-    const v = Math.abs(g.dx) / Math.max(1, performance.now() - g.t), sign = Math.sign(g.dx);
-    const btn = (Math.abs(g.dx) > card.offsetWidth * 0.32 || (v > 0.5 && Math.abs(g.dx) > 40)) && card.querySelector(sign > 0 ? ".hero__keep" : ".hero__drop");
-    if (!btn) { card.style.transform = ""; return; }
-    card.style.transform = `translateX(${sign * 110}%) rotate(${sign * 7}deg)`; card.style.opacity = "0";
+    const w = card.offsetWidth, a = g.pts[0], b = g.pts[g.pts.length - 1];
+    const v = a && b && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0, sign = Math.sign(g.dx);   // vitesse des derniers instants, en px/ms
+    const go = e.type === "pointerup" && (Math.abs(g.dx) > w * .4 || (Math.abs(g.dx) > w * .25 && Math.sign(v) === sign && Math.abs(v) > .6));
+    const btn = go && card.querySelector(sign > 0 ? ".hero__keep" : ".hero__drop");
+    if (!btn) { card.style.transform = ""; return; }   // retour en place, avec la transition de la carte
+    card.style.transform = `translateX(${sign * 115}%) rotate(${sign * 6}deg)`; card.style.opacity = "0";
     btn.click();
   };
   card.addEventListener("pointerup", end); card.addEventListener("pointercancel", end);

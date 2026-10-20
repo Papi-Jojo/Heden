@@ -151,7 +151,9 @@ async function syncNow() {
       const now = new Date().toISOString();
       lUp = ml.rows.map(r => Object.assign(r, {updated_at: now}));
       lUp.forEach(r => { const i = listings().findIndex(f => f.id === r.id); if (i < 0) return;
-        const f = Object.assign(listingFromRow(r), {updatedAt: listings()[i].updatedAt}); state.listings[i] = f; cur.listings[r.id] = JSON.stringify(listingRow(f)); });
+        // on met à jour l'objet en place : écrans et boutons « Annuler » ouverts gardent la bonne annonce
+        const f = listings()[i], n = listingFromRow(r), keep = f.updatedAt;
+        Object.keys(f).forEach(k => { if (!(k in n)) delete f[k]; }); Object.assign(f, n, {updatedAt: keep}); cur.listings[r.id] = JSON.stringify(listingRow(f)); });
       if (ml.gone.length && currentTab === "annonces") renderListings();
     }
     if (lUp.length) {
