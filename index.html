@@ -1099,6 +1099,35 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
 .mapf__opt[aria-pressed="false"] span{text-decoration:line-through;text-decoration-thickness:1.5px}
 .mapf__opt:active{transform:scale(.96)}
 @media (prefers-reduced-motion: reduce){.mapf__opt{transform:none}}
+/* Location */
+.qsub{margin:6px 0 -4px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--zinc)}
+.permo{font-size:.62em;font-weight:600;margin-left:2px;opacity:.75}
+.modesel{align-self:flex-start;margin-bottom:10px}
+.modesel button{min-width:86px}
+.rentv{display:flex;flex-direction:column;gap:3px;padding:12px 14px 12px 16px;border-radius:18px;background:var(--calcaire);border:1px solid var(--trait);border-left:5px solid var(--trait-fort)}
+.rentv b{font-size:15px}
+.rentv span{font-size:13.5px;line-height:19px;color:var(--ardoise-2)}
+.rentv--ok{border-left-color:var(--laiton)}
+.rentv--over{border-left-color:var(--alerte)}
+.rentv--over b{color:var(--alerte)}
+.cost__leg dt small{font-weight:400;color:var(--zinc)}
+.effort{display:flex;align-items:center;gap:14px}
+.effort b{flex:none;min-width:72px;height:56px;display:grid;place-items:center;border-radius:var(--galet-a);background:var(--enduit);font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:26px}
+.effort--ok b{background:var(--laiton);color:var(--on-email)}
+.effort--over b{background:color-mix(in srgb,var(--alerte) 85%,var(--calcaire));color:#fff}
+.effort span{font-size:14px;line-height:20px;color:var(--ardoise-2)}
+.effort__bar{position:relative;height:10px;border-radius:var(--pilule);background:var(--enduit);overflow:visible}
+.effort__bar i{position:absolute;inset:0 auto 0 0;border-radius:inherit;background:var(--ardoise)}
+.effort__bar em{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--trait-fort)}
+.vig{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.vig li{position:relative;padding:10px 12px 10px 34px;border-radius:16px;background:var(--calcaire);font-size:13.5px;line-height:19px;color:var(--ardoise-2)}
+.vig li::before{content:"";position:absolute;left:13px;top:15px;width:11px;height:9px;border-radius:var(--galet-a);background:var(--trait-fort)}
+.vig--over::before{background:var(--alerte)!important}
+.vig--mid::before{background:var(--laiton)!important}
+.mapf__opt[hidden]{display:none}
+.mapf__optseg{padding:3px;gap:0}
+.mapf__optseg .seg{border:0;background:none;padding:0}
+.mapf__optseg .seg button{height:32px}
 /* Notifications : placées par toast() dans un espace libre, jamais sur une barre ou une consigne */
 .toast{left:50%;right:auto;bottom:auto;transform:translateX(-50%);max-width:min(440px,calc(100% - 32px));box-sizing:border-box;text-wrap:pretty}
 @media (max-width:899px){body[data-tab="map"] .toast{max-width:calc(100% - 132px)}}
@@ -1149,6 +1178,7 @@ body.intro .brand b{animation:mot-in .6s .3s var(--ease-sortie) both}
             <div class="mapf__list" id="mapfList" role="group" aria-label="Afficher sur la carte">
               <button class="mapf__opt" type="button" data-mf="zones" aria-pressed="true" style="--i:0"><svg class="mapf__eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/><path class="mapf__slash" d="M4 4l16 16"/></svg><span>Zones</span></button>
               <button class="mapf__opt" type="button" data-mf="annonces" aria-pressed="true" style="--i:1"><svg class="mapf__eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/><path class="mapf__slash" d="M4 4l16 16"/></svg><span>Annonces</span></button>
+              <div class="mapf__opt mapf__optseg" id="mapfProj" style="--i:2" hidden><div class="seg seg--sm" role="group" aria-label="Projet affiché"><button type="button" data-proj="achat" aria-pressed="true">Achat</button><button type="button" data-proj="location" aria-pressed="false">Location</button></div></div>
             </div>
           </div>
           <button class="icon-btn" id="walkBtn" type="button" title="Tracer une balade" aria-label="Tracer une balade">
@@ -1333,6 +1363,94 @@ state.zones.forEach(finishZoneGeometry);
 let draft = null, draftLayers = null;
 let ui = {mode: "list", sheet: "peek", sort: (() => { try { return localStorage.getItem("heden.sort") || "note"; } catch (e) { return "note"; } })()};
 let selectedId = null;
+/* =========================================================
+   Projet : acheter, louer, ou les deux. Un seul mode visible à la fois.
+   ========================================================= */
+const homeRaw = () => (state.profile && state.profile.home) || {};
+const projet = () => { const h = homeRaw(); return h.projet || (h.setup && h.setup.projet) || "achat"; };
+let modeSel = (() => { try { return localStorage.getItem("heden.mode") === "location" ? "location" : "achat"; } catch (e) { return "achat"; } })();
+const curMode = () => projet() === "deux" ? modeSel : projet();
+const isRent = () => curMode() === "location";
+const kindOf = f => f && f.kind === "location" ? "location" : "achat";
+const modeListings = () => listings().filter(f => kindOf(f) === curMode());
+const fmt1 = v => (Math.round(v * 10) / 10).toLocaleString("fr-FR", {maximumFractionDigits: 1});
+const priceTxt = f => f.price ? fmtInt(f.price) + "&#8239;€" + (kindOf(f) === "location" ? `<small class="permo">/mois</small>` : "") : (kindOf(f) === "location" ? "Loyer ?" : "Prix ?");
+const ppmTxt = f => f.price && f.surface ? (kindOf(f) === "location" ? fmt1(f.price / f.surface) : fmtInt(f.price / f.surface)) + "&#8239;€/m²" : "";
+function setMode(m) {
+  if (m === modeSel && projet() === "deux") return;
+  modeSel = m; try { localStorage.setItem("heden.mode", m); } catch (e) {}
+  paintModeSel(); lui.openId = null; rerenderAll();
+}
+function modeSelHTML(cls = "") {
+  if (projet() !== "deux") return "";
+  return `<div class="seg seg--sm modesel ${cls}" role="group" aria-label="Projet affiché"><button type="button" data-proj="achat" aria-pressed="${curMode() === "achat"}">Achat</button><button type="button" data-proj="location" aria-pressed="${curMode() === "location"}">Location</button></div>`;
+}
+function bindModeSel(root = document) { $$("[data-proj]", root).forEach(b => b.onclick = () => setMode(b.dataset.proj)); }
+function paintModeSel() {
+  $$("[data-proj]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.proj === curMode())));
+  const row = $("#mapfProj"); if (row) row.hidden = projet() !== "deux";
+}
+/* budget de zone en €/m² : prix de vente pour l'achat, loyer par mois pour la location */
+function rentPpmBudget() {
+  const h = homeRaw(), l = h.loc || {}; if (!(l.loyerMax > 0)) return null;
+  const surf = h.surfaceMin || {1: 25, 2: 40, 3: 58, 4: 75, 5: 95}[Math.min(5, h.roomsMin || 2)];
+  return Math.round(l.loyerMax / surf * 10) / 10;
+}
+const zoneBudget = () => isRent() ? rentPpmBudget() : state.profile.budget;
+
+/* ---------- Loyers de référence (data/loyers.json, préparé par scripts/donnees/loyers.py) ---------- */
+const LOY = {data: null, p: null, names: null};
+const ENCADRE = new Set(["93001", "93031", "93039", "93027", "93059", "93066", "93070", "93072", "93079", "93006", "93008", "93010", "93045", "93048", "93053", "93055", "93061", "93063"]);
+const SIMU_LOYER = "https://www.referenceloyer.drihl.ile-de-france.developpement-durable.gouv.fr/";
+const CHARGES_M2 = 2.5;   // charges locatives moyennes, pour passer d'un loyer hors charges à charges comprises
+const EPOQUES = {a: "Avant 1946", b: "1946 à 1970", c: "1971 à 1990", d: "Après 1990"};
+function loadLoyers() {
+  if (!LOY.p) LOY.p = fetch("data/loyers.json", {cache: "no-cache"}).then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(d => { if (d && d.paris) d.paris.q.forEach(q => { q.bb = q.p.flat().reduce((b, [y, x]) => [Math.min(b[0], y), Math.min(b[1], x), Math.max(b[2], y), Math.max(b[3], x)], [90, 180, -90, -180]); }); LOY.data = d; if (d && isRent()) rerenderAll(); return d; });
+  return LOY.p;
+}
+function inRing(lat, lng, r) {
+  let ins = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [yi, xi] = r[i], [yj, xj] = r[j]; if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) ins = !ins; }
+  return ins;
+}
+function parisQuartier(lat, lng) {
+  const d = LOY.data && LOY.data.paris; if (!d) return null;
+  return d.q.find(q => q.bb && lat >= q.bb[0] && lat <= q.bb[2] && lng >= q.bb[1] && lng <= q.bb[3] && q.p.some(r => inRing(lat, lng, r))) || null;
+}
+const normName = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/arrondissement/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+function inseeOf(o) {
+  const pc = String(o.postcode || "");
+  if (/^750\d\d$/.test(pc)) return "751" + pc.slice(3);
+  const d = LOY.data && LOY.data.communes; if (!d) return null;
+  if (!LOY.names) { LOY.names = {}; for (const [code, c] of Object.entries(d.c)) LOY.names[normName(c.n)] = code; }
+  for (const n of [o.city, o.comName]) { const k = normName(n); if (k && LOY.names[k]) return LOY.names[k]; }
+  return null;
+}
+function refOf(q, rooms, meuble, ep) {
+  const m = meuble ? "m" : "v";
+  if (ep) { const v = q.r[`${rooms}${ep}${m}`]; return v ? {ref: v[0], max: v[1], min: v[2], maxLo: v[1], maxHi: v[1]} : null; }
+  const W = {a: .55, b: .15, c: .15, d: .15}; let w = 0, ref = 0, mx = 0, mn = 0, lo = Infinity, hi = 0;
+  for (const e of "abcd") { const v = q.r[`${rooms}${e}${m}`]; if (!v) continue; w += W[e]; ref += v[0] * W[e]; mx += v[1] * W[e]; mn += (v[2] || 0) * W[e]; lo = Math.min(lo, v[1]); hi = Math.max(hi, v[1]); }
+  return w ? {ref: ref / w, max: mx / w, min: mn / w, maxLo: lo, maxHi: hi} : null;
+}
+/* Loyer de référence d'un lieu : quartier parisien (encadrement), sinon loyers d'annonce de la commune */
+function rentAt(o, rooms, meuble, ep) {
+  const d = LOY.data; if (!d) { loadLoyers(); return null; }
+  const h = homeRaw();
+  rooms = Math.max(1, Math.min(4, rooms || h.roomsMin || 2));
+  const mb = meuble != null ? !!meuble : (h.loc || {}).meuble === "meuble";
+  if (o.lat && d.paris) {
+    const q = parisQuartier(o.lat, o.lng);
+    if (q) { const r = refOf(q, rooms, mb, ep); if (r) return Object.assign({zone: "paris", name: q.n, cc: r.ref + CHARGES_M2, ep: ep || null, mb, rooms, annee: d.paris.annee}, r); }
+  }
+  const code = inseeOf(o), c = code && d.communes && d.communes.c[code];
+  if (c) { const v = (rooms <= 2 ? c.app12 : c.app3) || c.app; if (v && v[0]) return {zone: "commune", code, name: c.n.replace(/ Arrondissement$/, ""), cc: v[0], lo: v[1], hi: v[2], encadre: ENCADRE.has(code) || code.startsWith("751"), annee: d.communes.annee}; }
+  return null;
+}
+function zoneCenter(pts) { const n = pts.length; return {lat: pts.reduce((a, p) => a + p[0], 0) / n, lng: pts.reduce((a, p) => a + p[1], 0) / n}; }
+const zoneRent = z => z && Array.isArray(z.points) && z.points.length >= 3 ? rentAt(Object.assign(zoneCenter(z.points), {comName: z.est && z.est.prix && z.est.prix.com && z.est.prix.com.name})) : null;
+const rentFor = f => f.lat || f.postcode || f.city ? rentAt({lat: f.lat, lng: f.lng, postcode: f.postcode, city: f.city}, f.rooms, f.furnished, f.epoque) : null;
 
 /* Note d'un critère : celle de la personne si elle l'a donnée, sinon l'estimation */
 const userVal = (z, id) => z.ratings && typeof z.ratings[id] === "number" ? z.ratings[id] : undefined;
@@ -1342,7 +1460,7 @@ function critValFor(z, id, ratings, budget) {
   const e = estScore(z, id, budget);
   return e === undefined ? {v: undefined, est: false} : {v: e, est: true};
 }
-const critVal = (z, id) => critValFor(z, id, z.ratings, state.profile.budget);
+const critVal = (z, id) => critValFor(z, id, z.ratings, zoneBudget());
 function scoreWith(z, ratings, criteria, budget) {
   let wsum = 0, acc = 0, rated = 0, total = 0, estimated = 0;
   for (const c of criteria) {
@@ -1353,7 +1471,7 @@ function scoreWith(z, ratings, criteria, budget) {
   }
   return {score: wsum ? Math.round(acc / wsum * 100) : null, rated, total, estimated, complete: total > 0 && rated === total};
 }
-const scoreOf = z => scoreWith(z, z.ratings, crit(), state.profile.budget);
+const scoreOf = z => scoreWith(z, z.ratings, crit(), zoneBudget());
 
 /* Carte à deux : chacun note avec son profil, la carte montre la note commune */
 const curMap = () => cloud.user ? cloud.maps.find(m => m.id === cloud.mapId) : null;
@@ -1377,8 +1495,8 @@ function zoneScore(z) {
   return Object.assign({}, mine, {score: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length), joint: vals.length > 1});
 }
 const anyFav = z => !!z.fav || (isShared() && (z.others || []).some(o => o.fav));
-const zonePrice = z => z.price > 0 ? z.price : (z.est && z.est.prix ? z.est.prix.med : null);
-const overBudget = z => state.profile.budget > 0 && zonePrice(z) > state.profile.budget;
+const zonePrice = z => { if (isRent()) { const r = zoneRent(z); return r ? Math.round(r.cc * 10) / 10 : null; } return z.price > 0 ? z.price : (z.est && z.est.prix ? z.est.prix.med : null); };
+const overBudget = z => zoneBudget() > 0 && zonePrice(z) > zoneBudget();
 
 /* =========================================================
    Estimations objectives : ventes DVF et lieux OpenStreetMap
@@ -1531,10 +1649,10 @@ function sectorTrend(meta, dept) {
   return {name: SECTORS[dept] || dept, trend: Math.round((1 / ix.v[ix.v.length - 5] - 1) * 100)};
 }
 const CONF = [["Peu de ventes", "conf--0"], ["Indicatif", "conf--1"], ["Fiable", "conf--2"]];
-function estScore(z, id, budget = state.profile.budget) {
-  const e = z.est; if (!e) return undefined;
+function estScore(z, id, budget = zoneBudget()) {
+  const e = z.est; if (!e && !(id === "prix" && isRent())) return undefined;
   if (id === "prix") {
-    const b = budget, p = e.prix && e.prix.med;
+    const b = budget, p = isRent() ? (zoneRent(z) || {}).cc : e.prix && e.prix.med;
     if (!(b > 0) || !p) return undefined;
     const r = p / b;
     return r <= .85 ? 5 : r <= .92 ? 4 : r <= .98 ? 3 : r <= 1.04 ? 2 : r <= 1.10 ? 1 : 0;
@@ -1543,6 +1661,10 @@ function estScore(z, id, budget = state.profile.budget) {
 }
 function estWhy(z, id) {
   const e = z.est; if (!e) return "";
+  if (id === "prix" && isRent()) {
+    const r = zoneRent(z), b = zoneBudget(); if (!r) return "";
+    return `Loyers autour de ${fmt1(r.cc)} €/m² par mois, charges comprises` + (b > 0 ? `, pour un loyer maximum de ${fmt1(b)} €/m²` : ". Indiquez votre loyer maximum dans Profil pour estimer ce critère");
+  }
   if (id === "prix") {
     if (!e.prix) return "";
     const b = state.profile.budget;
@@ -2031,6 +2153,12 @@ function paintLivePrice() {
   const el = $("#livePrice"); if (!el || !draft) return;
   if (draft.points.length < 3) { el.hidden = true; return; }
   el.hidden = false;
+  if (isRent()) {
+    const r = zoneRent(draft);
+    el.innerHTML = r ? `<span class="label">Loyers ici</span><b class="num">${fmt1(r.cc)}&#8239;€/m²</b><span class="conf ${r.zone === "paris" ? "conf--2" : "conf--1"}">${r.zone === "paris" ? "Officiel" : "Indicatif"}</span>` : `<span class="label">Loyers ici</span><span class="hint2">${LOY.data ? "Pas de référence ici" : "…"}</span>`;
+    if (!LOY.data) loadLoyers().then(() => paintLivePrice());
+    return;
+  }
   const fresh = draft.est && draft.est.g === geomKey(draft.points);
   const p = fresh && draft.est.prix;
   el.innerHTML = !fresh ? `<span class="label">Prix des ventes ici</span><b>…</b>`
@@ -2278,7 +2406,7 @@ function renderDetail() {
         <p class="num">${duo ? (zs.joint ? "Note commune, moyenne de vos deux notes" : hasRated(z) ? "Votre note, en attendant celle de votre binôme" : partners.length ? `Note de ${esc(partners[0].name)}, en attendant la vôtre` : "Estimation, personne n’a encore noté") : `${s.rated} sur ${s.total} critères notés${s.estimated ? `, dont ${s.estimated} estimé${s.estimated > 1 ? "s" : ""}` : ""}`}</p>${z.fav ? `<p style="color:var(--laiton);font-weight:600;margin-top:2px"><span class="heart">${HEART}</span> Coup de cœur</p>` : ""}</div>
       </div>
       ${photosHTML(z)}
-      ${overBudget(z) ? `<div class="banner banner--alerte">${z.price > 0 ? "Prix observé" : "Prix estimé"} de ${fmtInt(zonePrice(z))} €/m², au-dessus de votre budget de ${fmtInt(state.profile.budget)} €/m².</div>` : ""}
+      ${overBudget(z) ? `<div class="banner banner--alerte">${isRent() ? `Loyers autour de ${fmt1(zonePrice(z))} €/m², au-dessus de votre loyer maximum de ${fmt1(zoneBudget())} €/m².` : `${z.price > 0 ? "Prix observé" : "Prix estimé"} de ${fmtInt(zonePrice(z))} €/m², au-dessus de votre budget de ${fmtInt(state.profile.budget)} €/m².`}</div>` : ""}
       ${duo ? `<div class="duo">
         <div class="duo__row"><span>Vous</span>${hasRated(z) ? `<b class="num" style="--c:${colorFor(s.score)}"><i></i>${s.score ?? "–"}</b>` : `<em>Pas encore noté</em>`}${z.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
         ${partners.map(p => `<div class="duo__row"><span>${esc(p.name)}</span><b class="num" style="--c:${colorFor(p.s.score)}"><i></i>${p.s.score ?? "–"}</b>${p.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
@@ -2333,7 +2461,7 @@ function renderDetail() {
 }
 /* Notes de chacun, critère par critère (chacun avec ses propres critères) */
 function duoTable(z, partners) {
-  const people = [{name: "Vous", ratings: z.ratings, criteria: crit(), budget: state.profile.budget},
+  const people = [{name: "Vous", ratings: z.ratings, criteria: crit(), budget: zoneBudget()},
     ...partners.map(p => { const o = (z.others || []).find(x => x.userId === p.userId) || {}, pp = cloud.people[p.userId] || {};
       return {name: p.name, ratings: o.ratings || {}, criteria: pp.criteria && pp.criteria.length ? pp.criteria : crit(), budget: pp.budget}; })];
   const rows = [];
@@ -2347,7 +2475,25 @@ function duoTable(z, partners) {
     <tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td>${people.map(pe => cell(pe, r.id)).join("")}</tr>`).join("")}</tbody></table>
     <p class="duo__leg">En gris : valeur estimée, pas encore notée. Point : critère absent de ce profil.</p>`;
 }
+/* Loyers d'une zone : loyer de référence du quartier (Paris) ou loyers d'annonce de la commune */
+function rentHTML(z) {
+  const r = zoneRent(z), b = zoneBudget();
+  if (!r) return LOY.data ? `<div class="price"><span class="label">Loyers</span><p class="price__sub">Pas de loyer de référence pour ce lieu.</p></div>` : "";
+  const facts = [];
+  if (r.zone === "paris") {
+    facts.push(`Quartier ${esc(r.name)} : loyer de référence ${fmt1(r.ref)}&#8239;€/m² hors charges pour un ${r.rooms === 1 ? "studio" : r.rooms + " pièces"} ${r.mb ? "meublé" : "vide"}, ${r.annee}`);
+    facts.push(`Plafond légal (référence majorée) : ${fmt1(r.maxLo)}${r.maxHi - r.maxLo >= .1 ? ` à ${fmt1(r.maxHi)}` : ""}&#8239;€/m² selon l’année de construction`);
+  } else facts.push(`${esc(r.name)} : loyers d’annonce de ${fmt1(r.lo)} à ${fmt1(r.hi)}&#8239;€/m², ${r.annee}${r.encadre ? " · loyers encadrés dans cette commune" : ""}`);
+  if (b > 0) facts.push(`Votre loyer maximum revient à ${fmt1(b)}&#8239;€/m² : ${b >= r.cc * 1.08 ? "confortable ici" : b >= r.cc * .97 ? "juste dans la moyenne" : "en dessous des loyers du coin"}`);
+  return `<div class="price">
+    <div class="price__top"><span class="label">Loyers ${r.zone === "paris" ? "du quartier" : "de la commune"}</span><span class="conf ${r.zone === "paris" ? "conf--2" : "conf--1"}">${r.zone === "paris" ? "Officiel" : "Indicatif"}</span></div>
+    <div class="price__big num">${fmt1(r.cc)}&#8239;€/m²<small class="permo"> par mois</small></div>
+    <p class="price__sub">${r.zone === "paris" ? "Loyer de référence de l’encadrement, plus les charges moyennes." : "Loyers des annonces de la commune, charges comprises."}</p>
+    <ul class="price__facts">${facts.map(x => `<li>${x}</li>`).join("")}</ul>
+  </div>`;
+}
 function priceHTML(z) {
+  if (isRent()) return rentHTML(z);
   const p = z.est && z.est.prix;
   if (!p) return z.est ? `<div class="price"><span class="label">Prix des ventes</span><p class="price__sub">Trop peu de ventes d’appartements autour de cette zone pour estimer un prix.</p></div>` : "";
   const where = p.r ? `à moins de ${p.r} m de la zone` : "dans la zone";
@@ -2498,7 +2644,7 @@ $$("#mapf [data-mf]").forEach(b => b.onclick = () => {
 });
 document.addEventListener("pointerdown", e => { if (!e.target.closest("#mapf")) openMapFilter(false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#mapf").classList.contains("is-open")) { openMapFilter(false); $("#mapfBtn").focus(); } });
-paintMapFilter();
+paintMapFilter(); paintModeSel(); bindModeSel($("#mapf"));
 
 /* =========================================================
    Balade : on trace le parcours, puis on propose une zone
@@ -2878,11 +3024,12 @@ function renderProfile() {
 
     <section class="sec">
       <h2>Budget des zones</h2>
-      <div class="field">
-        <label class="label" for="pbudget">Budget max €/m²</label>
+      ${projet() !== "location" ? `<div class="field">
+        <label class="label" for="pbudget">Budget max €/m²${projet() === "deux" ? " à l’achat" : ""}</label>
         <input type="number" id="pbudget" inputmode="numeric" min="0" step="100" value="${p.budget ?? ""}" placeholder="Facultatif">
-      </div>
-      <p class="hint2">${homeProfile().setup && homeProfile().setup.budget ? "Déduit de votre budget total et de la taille recherchée. " : ""}Au-dessus, une zone apparaît en pointillés et passe en bas du classement.</p>
+      </div>` : ""}
+      ${projet() !== "achat" ? `<p class="hint2">Location : ${rentPpmBudget() ? `${fmt1(rentPpmBudget())} €/m² par mois au plus, d’après votre loyer maximum et la taille recherchée.` : "indiquez un loyer maximum ci-dessous pour juger le prix des zones."}</p>` : ""}
+      <p class="hint2">${projet() !== "location" && homeProfile().setup && homeProfile().setup.budget ? "Déduit de votre budget total et de la taille recherchée. " : ""}Au-dessus, une zone apparaît en pointillés et passe en bas du classement.</p>
     </section>
 
     <section class="sec">
@@ -2934,11 +3081,16 @@ function renderProfile() {
 
     ${homeSectionHTML()}
 
-    <section class="sec">
+    ${projet() !== "location" ? `<section class="sec">
       <h2>Financement</h2>
       <p class="hint2">Pour le coût par mois des annonces : apport ${finance().apport ? fmtInt(finance().apport) + " €" : "supposé de 10 %"}, prêt à ${String(finance().taux).replace(".", ",")} % sur ${finance().duree} ans.</p>
       <div><button class="btn" type="button" id="finProf">Modifier</button></div>
-    </section>
+    </section>` : ""}
+    ${projet() !== "achat" ? `<section class="sec">
+      <h2>Location</h2>
+      <p class="hint2">${(() => { const lo = homeProfile().loc || {}; return [lo.loyerMax ? `Loyer maximum ${fmtInt(lo.loyerMax)} € par mois` : "Pas de loyer maximum", lo.revenus ? `revenus de ${fmtInt(lo.revenus)} € par mois` : "revenus non indiqués", {vide: "vide", meuble: "meublé", indiff: "meublé ou vide"}[lo.meuble || "indiff"]].join(", ") + "."; })()}</p>
+      <div><button class="btn" type="button" id="locProf">Modifier</button></div>
+    </section>` : ""}
     </div>
     </details>
 
@@ -2956,12 +3108,13 @@ function renderProfile() {
   bindAccount($("#prof"));
   bindHomeSection();
   bindProfileSummary();
-  $("#finProf").onclick = openFinance;
+  const fp = $("#finProf"); if (fp) fp.onclick = openFinance;
+  const lp = $("#locProf"); if (lp) lp.onclick = openRentSettings;
   $("#advanced").ontoggle = e => { try { if (e.target.open) localStorage.setItem("heden.adv", "1"); else localStorage.removeItem("heden.adv"); } catch (err) {} };
   bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
   $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); toast(p.halfPoints ? "Notes au demi-point activées" : "Notes au demi-point désactivées"); };
-  $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
+  if ($("#pbudget")) $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
   $$(".preset").forEach(b => b.onclick = () => {
     const pr = PRESETS.find(x => x.id === b.dataset.p);
     p.criteria = presetCriteria(pr); p.presetId = pr.id; p.modified = false; save(); renderProfile();
@@ -3889,7 +4042,7 @@ const HOME_LIB = {
   calme:      {name: "Calme", desc: "Sur cour ou sur jardin plutôt que sur rue"},
   etat:       {name: "État et travaux", desc: "Rénové, à rafraîchir ou gros travaux"},
   energie:    {name: "Performance énergétique", desc: "Classe DPE, de A à G"},
-  charges:    {name: "Charges de copropriété", desc: "Rapportées à la surface, par an"},
+  charges:    {name: "Charges", desc: "De copropriété pour un achat, locatives pour une location, rapportées à la surface"},
   agencement: {name: "Agencement", desc: "Surface par pièce, nombre de chambres"},
   annexes:    {name: "Cave et parking", desc: "Rangements et stationnement"},
   cachet:     {name: "Cachet de l’ancien", desc: "Parquet, moulures, cheminée, hauteur sous plafond"},
@@ -3909,8 +4062,10 @@ function homeProfile() {
   if (h.elevatorFrom === undefined) h.elevatorFrom = 4;
   if (h.dpeMax === undefined) h.dpeMax = "F";
   if (!h.mix) h.mix = {logement: 45, quartier: 35, prix: 20};
+  if (!h.loc) h.loc = {loyerMax: null, revenus: null, meuble: "indiff"};
   return h;
 }
+
 const listings = () => (state.listings = state.listings || []);
 
 /* ---------- Lecture d'une annonce (texte, balises de la page, données structurées) ---------- */
@@ -3932,6 +4087,9 @@ function parseListing(src) {
     price = c.length ? c[0] : null;
   }
   set("price", price);
+  // Location : loyer par mois, charges, dépôt, honoraires, meublé, disponibilité, encadrement
+  const rent = readRent(raw, low, String(src.url || "").toLowerCase(), price, numFR(pick(n => n.price ?? (n.offers && n.offers.price))));
+  if (rent) { delete f.price; delete found.price; for (const [k, v] of Object.entries(rent)) set(k, v); }
   // Surface
   let surf = numFR(pick(n => n.floorSize && (n.floorSize.value ?? n.floorSize)));
   if (!(surf >= 9 && surf <= 500)) {
@@ -4016,6 +4174,7 @@ function parseListing(src) {
   const ldi = pick(n => n.image); (Array.isArray(ldi) ? ldi : [ldi]).forEach(x => addP(typeof x === "object" && x ? x.url : x));
   f.photos = photos;
   f.url = src.url || ""; f.source = hostOf(src.url);
+  if (f.kind === "location") ["charges", "taxe"].forEach(k => { delete f[k]; delete found[k]; });
   // Annonce retirée : la page le dit
   if (GONE_RE.test(raw.slice(0, 6000))) f.gone = true;
   // Agence ou particulier, d'après ce que la page affiche
@@ -4023,6 +4182,43 @@ function parseListing(src) {
   ["agencyName", "agencyPhone", "agencyEmail", "agencyUrl", "agencyAddress", "ref", "seller"].forEach(k => { if (f[k]) found[k] = true; else delete f[k]; });
   f.found = found;
   return f;
+}
+/* Une annonce de location se reconnaît à son lien, à son vocabulaire et à un montant par mois */
+function readRent(raw, low, url, salePrice, ldPrice) {
+  const head = low.slice(0, 5000);
+  const urlRent = /\/locations?(?:[\/_-]|$)|\/louer|\/a-louer|location-appartement|\/rent\b|categorie=locations|\/locations\/|type=location|transaction=location|\/location\//.test(url);
+  const urlSale = /\/achat|\/vente|\/ventes|\/acheter|\/a-vendre|transaction=achat|\/ventes_immobilieres/.test(url);
+  if (urlSale && !urlRent) return null;
+  const N = t => { const v = parseFloat(String(t).replace(/[\s\u00a0\u202f.]/g, "").replace(",", ".")); return isFinite(v) ? v : null; };
+  const AM = "(\\d{1,2}[\\s\\u00a0\\u202f.]?\\d{3}|\\d{3,4})(?:[.,](\\d{1,2}))?\\s?€";
+  const grab = rx => { const m = low.match(rx); return m ? N(m[1] + (m[2] ? "." + m[2] : "")) : null; };
+  let cc = grab(new RegExp(AM + "\\s?(?:\\/\\s?mois\\s?)?(?:cc\\b|c\\.c\\.?|charges comprises)")) ?? grab(new RegExp("loyer(?: mensuel)?(?: charges comprises| cc)\\s*:?\\s*" + AM));
+  let hc = grab(new RegExp(AM + "\\s?(?:\\/\\s?mois\\s?)?(?:hc\\b|h\\.c\\.?|hors charges)")) ?? grab(new RegExp("loyer(?: de base| mensuel)?(?: hors charges| hc)\\s*:?\\s*" + AM));
+  const perMonth = grab(new RegExp(AM + "\\s?(?:\\/\\s?mois|par mois|mensuel)")) ?? grab(new RegExp("loyer(?: mensuel)?\\s*:?\\s*" + AM));
+  const charges = grab(new RegExp("(?:dont|provisions? (?:sur|pour) charges|charges(?: locatives| mensuelles| récupérables)?)\\s*:?\\s*(?:de\\s)?(\\d{1,4})(?:[.,](\\d{1,2}))?\\s?€"));
+  const vocab = /(?:^|[^a-z])[àa] louer(?![a-z])|(?:^|[^a-z])location (?:vide|meubl|d['’]un|appartement)|(?:^|[^a-z])loyer(?![a-z])|charges comprises|dépôt de garantie|depot de garantie|(?:^|[^a-z])bail(?![a-z])|état des lieux|meubl/.test(head);
+  const anyRent = [cc, hc, perMonth].some(v => v >= 150 && v <= 20000);
+  const ldRent = ldPrice >= 150 && ldPrice <= 20000;
+  if (!(urlRent || (anyRent && !(salePrice >= 30000)) || (vocab && ldRent && !(salePrice >= 30000)))) return null;
+  const o = {kind: "location"};
+  if (charges != null && charges < 2000) o.rentCharges = charges;
+  if (cc == null && hc != null && o.rentCharges != null) cc = hc + o.rentCharges;
+  if (cc == null) cc = perMonth ?? (ldRent ? ldPrice : null) ?? hc;
+  if (hc == null && cc != null && o.rentCharges != null && o.rentCharges < cc) hc = cc - o.rentCharges;
+  if (cc >= 150 && cc <= 20000) o.price = Math.round(cc);
+  if (hc >= 100 && hc <= 20000) o.rentHC = Math.round(hc);
+  if (o.rentHC && o.price && o.rentCharges == null && o.price > o.rentHC) o.rentCharges = o.price - o.rentHC;
+  const dep = grab(new RegExp("d[ée]p[ôo]t de garantie\\s*:?\\s*(?:de\\s)?" + AM)); if (dep != null && dep < 30000) o.deposit = Math.round(dep);
+  const fee = grab(new RegExp("(?:honoraires|frais d['’]agence)[^.\\n€]{0,70}?(\\d{1,2}[\\s\\u00a0\\u202f.]?\\d{3}|\\d{2,4})(?:[.,](\\d{1,2}))?\\s?€")); if (fee != null && fee < 15000) o.agencyFee = Math.round(fee);
+  if (/non[- ]meubl|location vide(?![a-z])|vide de meubles/.test(low)) o.furnished = false; else if (/(?:^|[^a-z])meubl[ée]e?s?(?![a-z])/.test(head) || /meuble/.test(url)) o.furnished = true;
+  const av = low.match(/(?:disponible|libre)\s(?:le |à partir du |a partir du |dès le |des le |au |à compter du |début |fin |mi-)?(\d{1,2}[\/.]\d{1,2}(?:[\/.]\d{2,4})?|\d{1,2}(?:er)? (?:janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)(?: \d{4})?|(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)(?: \d{4})?|imm[ée]diatement|de suite|maintenant)/);
+  if (av) o.available = av[1];
+  const rm = low.match(/loyer de r[ée]f[ée]rence major[ée][^\d\n]{0,40}?(\d{1,2}(?:[.,]\d{1,2})?)\s?€/); if (rm) o.refMaj = N(rm[1]);
+  const rb = low.match(/loyer de r[ée]f[ée]rence(?! major)(?! minor)[^\d\n]{0,40}?(\d{1,2}(?:[.,]\d{1,2})?)\s?€/); if (rb) o.refBase = N(rb[1]);
+  const cp = low.match(/compl[ée]ment de loyer[^\d\n]{0,30}?(\d{1,4}(?:[.,]\d{1,2})?)\s?€/); if (cp) o.complement = N(cp[1]); else if (/(?:pas de|aucun|sans) compl[ée]ment de loyer/.test(low)) o.complement = 0;
+  const yr = low.match(/(?:constru\w*|bâti|bati|édifi\w*|immeuble|résidence|residence)\s(?:en |de |des années |datant de )?(1[6-9]\d\d|20[0-2]\d)\b/), ey = yr ? +yr[1] : null;
+  o.epoque = ey ? (ey < 1946 ? "a" : ey <= 1970 ? "b" : ey <= 1990 ? "c" : "d") : /haussmann|pierre de taille|immeuble ancien|\bancien\b|xixe|19e siècle|art d[ée]co|ann[ée]es 30|ann[ée]es 1930/.test(low) ? "a" : /neuf\b|r[ée]sidence r[ée]cente|immeuble r[ée]cent|construction r[ée]cente|\bbbc\b|rt ?2012|re ?2020/.test(low) ? "d" : undefined;
+  return o;
 }
 const GONE_RE = /annonce (?:n['’]est plus (?:disponible|en ligne|active)|a (?:été )?(?:retirée|supprimée|désactivée|expiré)|(?:est )?expirée|n['’]existe plus|introuvable)|(?:ce |le )?bien (?:a été |est )?(?:déjà )?vendu|(?:ce |le )?bien n['’]est plus disponible|offre (?:n['’]est plus disponible|expirée)|plus disponible à la vente/i;
 const PORTALS = /seloger|leboncoin|bienici|bien'ici|pap\b|logic-?immo|figaro|meilleursagents|avendrealouer|paruvendu|ouestfrance|superimmo|jinka|green-acres|lesiteimmo/i;
@@ -4092,7 +4288,8 @@ function homeValues(f, raw = false) {
   k("calme", f.quiet === true ? 5 : f.quiet === false ? 1.5 : 2.5, f.quiet != null);
   k("etat", {neuf: 5, bon: 4, rafraichir: 2.5, travaux: 1}[f.works] ?? 3, !!f.works);
   k("energie", f.dpe ? [5, 5, 4, 3, 2, 1, 0][DPE.indexOf(f.dpe)] : 2.5, !!f.dpe);
-  if (f.charges && f.surface) { const c = f.charges / f.surface; k("charges", c < 25 ? 5 : c < 35 ? 4 : c < 45 ? 3 : c < 60 ? 2 : 1, true); } else k("charges", 3, false);
+  if (kindOf(f) === "location" && f.rentCharges && f.surface) { const c = f.rentCharges * 12 / f.surface; k("charges", c < 25 ? 5 : c < 35 ? 4 : c < 45 ? 3 : c < 60 ? 2 : 1, true); }
+  else if (f.charges && f.surface) { const c = f.charges / f.surface; k("charges", c < 25 ? 5 : c < 35 ? 4 : c < 45 ? 3 : c < 60 ? 2 : 1, true); } else k("charges", 3, false);
   if (f.surface && f.rooms) { const r = f.surface / f.rooms; k("agencement", (r >= 20 ? 5 : r >= 16 ? 4 : r >= 13 ? 3 : 2) + (f.bedrooms != null && f.rooms >= 3 && f.bedrooms >= f.rooms - 1 ? .5 : 0), true); } else k("agencement", 2.5, false);
   k("annexes", f.cave || f.parking ? (f.cave && f.parking ? 5 : 3.5) : 1, !!(f.cave || f.parking));
   k("cachet", f.cachet ? (f.cachet >= 2 ? 5 : 3.5) : 2, !!f.cachet);
@@ -4106,8 +4303,12 @@ function homeValues(f, raw = false) {
   return {v, known, fixed};
 }
 function listingFilters(f, h) {
-  const fails = [];
-  if (h.budgetMax > 0 && f.price > h.budgetMax) fails.push(`au-dessus de votre budget de ${fmtInt(h.budgetMax)} €`);
+  const fails = [], lo = h.loc || {};
+  if (kindOf(f) === "location") {
+    if (lo.loyerMax > 0 && f.price > lo.loyerMax) fails.push(`au-dessus de votre loyer maximum de ${fmtInt(lo.loyerMax)} €`);
+    if (lo.meuble === "vide" && f.furnished === true) fails.push("meublé");
+    if (lo.meuble === "meuble" && f.furnished === false) fails.push("non meublé");
+  } else if (h.budgetMax > 0 && f.price > h.budgetMax) fails.push(`au-dessus de votre budget de ${fmtInt(h.budgetMax)} €`);
   if (h.surfaceMin > 0 && f.surface && f.surface < h.surfaceMin) fails.push(`moins de ${h.surfaceMin} m²`);
   if (h.roomsMin > 0 && f.rooms && f.rooms < h.roomsMin) fails.push(`moins de ${h.roomsMin} pièces`);
   if (h.bedroomsMin > 0 && f.bedrooms != null && f.bedrooms < h.bedroomsMin) fails.push(`moins de ${h.bedroomsMin} chambre${h.bedroomsMin > 1 ? "s" : ""}`);
@@ -4127,7 +4328,7 @@ function listingArea(f) {
   let best = null;
   for (const z of state.zones) { if (!z.points) continue; const d = Math.min(...z.points.map(q => distM(p, {lat: q[0], lng: q[1]}))); if (d < 300 && (!best || d < best.d)) best = {zone: z, d}; }
   if (best) { const s = zoneScore(best.zone).score; return {zone: best.zone, score: s == null ? null : Math.max(0, s - 5), how: "près", d: best.d}; }
-  if (f.est) { const tmp = {est: f.est, ratings: {}}; return {zone: null, score: scoreWith(tmp, {}, crit(), state.profile.budget).score, how: "estimé"}; }
+  if (f.est) { const tmp = {est: f.est, ratings: {}}; return {zone: null, score: scoreWith(tmp, {}, crit(), zoneBudget()).score, how: "estimé"}; }
   return null;
 }
 function scoreListing(f, raw = false) {
@@ -4136,7 +4337,8 @@ function scoreListing(f, raw = false) {
   for (const [id, w] of Object.entries(W)) if (w > 0) { ws += w; acc += w * v[id] / 5; }
   const logement = ws ? Math.round(acc / ws * 100) : null;
   const area = listingArea(f), quartier = fx && fx.quartier != null ? fx.quartier : area ? area.score : null;
-  const med = f.est && f.est.prix ? f.est.prix.med : null, ppm = f.price && f.surface ? f.price / f.surface : null;
+  const rentK = kindOf(f) === "location", rr = rentK ? rentFor(f) : null;
+  const med = rentK ? (rr ? rr.cc : null) : f.est && f.est.prix ? f.est.prix.med : null, ppm = f.price && f.surface ? f.price / f.surface : null;
   let prix = null, ecart = null;
   if (med && ppm) { ecart = ppm / med - 1; prix = Math.round(Math.max(0, Math.min(1, (0.2 - ecart) / 0.35)) * 100); }
   const mix = h.mix, parts = [[logement, mix.logement], [quartier, mix.quartier], [prix, mix.prix]].filter(([s]) => s != null);
@@ -4153,7 +4355,7 @@ function scoreListing(f, raw = false) {
   if (fx && fx.quartier != null) (fx.quartier >= 60 ? plus : minus).push(`Quartier corrigé à ${fx.quartier}`);
   else if (area && area.zone) (area.score >= 65 ? plus : area.score < 45 ? minus : plus).push(`${area.how === "dans" ? "Dans" : "Près de"} votre zone « ${area.zone.name} » (${area.score ?? "–"})`);
   else if (area) (area.score >= 60 ? plus : minus).push(`Quartier estimé à ${area.score} d’après les données du coin`);
-  if (ecart != null) (ecart <= -0.03 ? plus : ecart >= 0.08 ? minus : plus).push(ecart <= -0.03 ? `${Math.round(-ecart * 100)} % sous les ventes du quartier` : ecart >= 0.08 ? `${Math.round(ecart * 100)} % au-dessus des ventes du quartier` : "Au prix des ventes du quartier");
+  if (ecart != null) (ecart <= -0.03 ? plus : ecart >= 0.08 ? minus : plus).push(ecart <= -0.03 ? `${Math.round(-ecart * 100)} % sous les ${rentK ? "loyers" : "ventes"} du quartier` : ecart >= 0.08 ? `${Math.round(ecart * 100)} % au-dessus des ${rentK ? "loyers" : "ventes"} du quartier` : rentK ? "Dans les loyers du quartier" : "Au prix des ventes du quartier");
   const label = {lumiere: f.bright || f.traversant ? "Lumineux" + (f.traversant ? ", traversant" : "") : f.exposure ? `Exposé ${f.exposure}` : "Luminosité",
     etage: f.floor === 0 ? "Rez-de-chaussée" : f.floor != null ? `${f.floor === 1 ? "1er" : f.floor + "e"} étage${f.elevator ? " avec ascenseur" : f.elevator === false ? " sans ascenseur" : ""}` : "Étage",
     exterieur: f.outdoor ? (f.outdoor[0].toUpperCase() + f.outdoor.slice(1)) + (f.outdoorArea ? ` de ${f.outdoorArea} m²` : "") : "Pas d’extérieur",
@@ -4186,14 +4388,14 @@ function renderListings() {
 function renderListingsView() {
   const box = $("#annonces"); if (!box) return;
   if (lui.openId && listings().some(x => x.id === lui.openId)) return renderListingDetail(lui.openId);
-  const all = listings().map(f => ({f, s: scoreListing(f)}));
+  const all = modeListings().map(f => ({f, s: scoreListing(f)}));
   const shown = all.filter(({f}) => lui.filter === "toutes" ? true : lui.filter === "gardees" ? f.status === "gardee" || f.status === "visite" : lui.filter === "ecartees" ? f.status === "ecartee" : f.status !== "ecartee")
     .sort((a, b) => (!!a.f.gone - !!b.f.gone) || (lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : (b.s.total ?? -1) - (a.s.total ?? -1)));
   const best = lui.filter === "actives" && lui.sort === "match" ? shown.find(x => x.s.total != null && !x.s.fails.length && x.f.status !== "ecartee" && !x.f.gone) : null;
   const counts = {actives: all.filter(x => x.f.status !== "ecartee").length, gardees: all.filter(x => x.f.status === "gardee" || x.f.status === "visite").length, ecartees: all.filter(x => x.f.status === "ecartee").length};
   box.innerHTML = `
     <div class="ann__head">
-      <div><h1>Annonces</h1><p class="lead">${all.length ? `${plural(counts.actives, "annonce à voir", "annonces à voir")}, classées selon votre profil, vos zones et les ventes du quartier.` : "Heden lit les annonces, les place sur la carte et les classe selon votre profil, vos zones et les ventes du quartier."}</p></div>
+      <div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1><p class="lead">${all.length ? `${plural(counts.actives, "annonce à voir", "annonces à voir")}, classées selon votre profil, vos zones et les ${isRent() ? "loyers" : "ventes"} du quartier.` : "Heden lit les annonces, les place sur la carte et les classe selon votre profil, vos zones et les ventes du quartier."}</p></div>
       <button class="btn btn--primary" type="button" id="addListing">+ Ajouter une annonce</button>
     </div>
     ${all.length ? `<div class="ann__bar">
@@ -4206,7 +4408,7 @@ function renderListingsView() {
         <span class="lcard__ph">${f.photos && f.photos[0] ? `<img src="${esc(f.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createElement('i'))">` : `<i></i>`}</span>
         <span class="lcard__b">
           <span class="lcard__t">${esc(f.title || listingTitle(f))}</span>
-          <span class="lcard__p num">${f.price ? fmtInt(f.price) + "&#8239;€" : "Prix ?"}${s.ppm ? `<small>${fmtInt(s.ppm)}&#8239;€/m²</small>` : ""}</span>
+          <span class="lcard__p num">${priceTxt(f)}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</span>
           <span class="lcard__r">${f.gone ? `<em class="gone">Plus en ligne</em> ` : ""}${f.dropped ? `<em class="drop">Baisse de prix</em> ` : ""}${esc((s.fails.length ? "Hors critères : " + s.fails[0] : s.plus.slice(0, 2).join(", ")) || (f.lat ? "À compléter" : "Placement sur la carte…"))}</span>
         </span>
         <span class="lcard__s"><b class="num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</b>${f.status !== "nouvelle" ? `<em>${LSTAT[f.status]}</em>` : ""}</span>
@@ -4217,7 +4419,7 @@ function renderListingsView() {
   $$("[data-f]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.f; renderListings(); });
   const so = $("#lsort"); if (so) so.onchange = e => { lui.sort = e.target.value; renderListings(); };
   $$(".lcard", box).forEach(b => b.onclick = () => { lui.openId = b.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; });
-  bindSources();
+  bindSources(); bindModeSel(box);
   const hero = $(".hero", box);
   if (hero) {
     hero.onclick = e => { if (e.target.closest("[data-hst]")) return; lui.openId = hero.dataset.id; renderListings(); $("#view-annonces").scrollTop = 0; };
@@ -4234,7 +4436,7 @@ function heroHTML(f, s) {
     <div class="hero__b">
       <span class="hero__k">Meilleure correspondance</span>
       <h2>${esc(f.title || listingTitle(f))}</h2>
-      <p class="hero__p num">${f.price ? fmtInt(f.price) + "&#8239;€" : ""}${s.ppm ? `<small>${fmtInt(s.ppm)}&#8239;€/m²</small>` : ""}</p>
+      <p class="hero__p num">${f.price ? priceTxt(f) : ""}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
       ${s.plus.length ? `<ul class="hero__why">${s.plus.slice(0, 3).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
       <div class="hero__acts"><button class="chip" type="button" data-hst="gardee">Garder</button><button class="chip" type="button" data-hst="ecartee">Écarter</button></div>
     </div>
@@ -4250,7 +4452,7 @@ function renderListingDetail(id) {
     ${f.photos && f.photos.length ? `<div class="lgal">${f.photos.map(u => `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : ""}
     <div class="ldet__head">
       <div><h1>${esc(f.title || listingTitle(f))}</h1>
-        <p class="ldet__price num">${f.price ? fmtInt(f.price) + "&#8239;€" : "Prix non trouvé"}${s.ppm ? ` <small>${fmtInt(s.ppm)}&#8239;€/m²</small>` : ""}</p>
+        <p class="ldet__price num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer non trouvé" : "Prix non trouvé"}${s.ppm ? ` <small>${ppmTxt(f)}</small>` : ""}</p>
         ${f.priceHistory && f.priceHistory.length ? `<p class="ldet__hist num">${f.priceHistory.map(x => `<s>${fmtInt(x.price)}&#8239;€</s>`).join(" ")} ${f.dropped ? "<em class=\"drop\">Baisse de prix</em>" : ""}</p>` : ""}
         <p class="hint2">${esc([...(f.sources || [f.source]).filter(Boolean)].join(", "))}${f.source || f.sources ? ", " : ""}${f.origin === "alerte" ? "reçue par alerte le" : "ajoutée le"} ${esc(fmtDate(new Date(f.firstSeen || f.addedAt || Date.now()).toISOString().slice(0, 10)))}</p></div>
       <div class="ldet__score" style="--c:${colorFor(s.total)}"><b class="num" ${s.total != null ? `data-count="${s.total}"` : ""}>${s.total ?? "–"}</b><span>${s.hasFix ? `corrigée${s.heden != null && s.heden !== s.total ? ` · Heden&nbsp;${s.heden}` : ""}` : "correspondance"}</span></div>
@@ -4289,8 +4491,9 @@ function renderListingDetail(id) {
     </div>`;
   $("#lback").onclick = () => { lui.openId = null; renderListings(); };
   countUp(box);
-  paintFair(f);
+  if (kindOf(f) !== "location") paintFair(f);
   const fe = $("#finEdit"); if (fe) fe.onclick = openFinance;
+  const re = $("#revEdit"); if (re) re.onclick = openRentSettings;
   if (f.dropped) { f.dropped = false; f.updatedAt = Date.now(); save(); }
   $$("[data-st]", box).forEach(b => b.onclick = () => { f.status = f.status === b.dataset.st ? "nouvelle" : b.dataset.st; f.updatedAt = Date.now(); save(); renderListings(); renderListingPins(); toast({gardee: "Annonce gardée", visite: "Visite notée", ecartee: "Annonce écartée", nouvelle: "Annonce remise à trier"}[f.status]); });
   $("#lnote").oninput = e => { f.note = e.target.value; f.updatedAt = Date.now(); save(); };
@@ -4403,7 +4606,16 @@ const FIELDS = [["price", "Prix", "num", "€"], ["surface", "Surface", "num", "
   ["works", "État", "sel", ["", "neuf", "bon", "rafraichir", "travaux"]], ["quiet", "Au calme, sur cour", "bool"], ["traversant", "Traversant", "bool"], ["bright", "Lumineux", "bool"],
   ["cave", "Cave", "bool"], ["parking", "Parking", "bool"], ["view", "Vue dégagée", "bool"], ["postcode", "Code postal", "txt"], ["metro", "Métro le plus proche", "txt"],
   ["seller", "Vendu par", "sel", ["", "agence", "particulier"]], ["agencyName", "Agence", "txt"], ["agencyPhone", "Téléphone", "txt"], ["agencyEmail", "E-mail", "txt"], ["agencyUrl", "Site de l’agence", "txt"], ["agencyAddress", "Adresse de l’agence", "txt"], ["ref", "Référence de l’annonce", "txt"]];
-const SEL_LABEL = {agence: "Une agence", particulier: "Un particulier", neuf: "Rénové", bon: "Bon état", rafraichir: "À rafraîchir", travaux: "Travaux", balcon: "Balcon", loggia: "Loggia", terrasse: "Terrasse", jardin: "Jardin", "": "Non précisé"};
+const FIELDS_LOC = [["rentHC", "Loyer hors charges", "num", "€ par mois"], ["rentCharges", "Dont charges", "num", "€ par mois"], ["furnished", "Meublé ou vide", "sel", ["", "true", "false"]],
+  ["deposit", "Dépôt de garantie", "num", "€"], ["agencyFee", "Frais d’agence", "num", "€"], ["available", "Disponible", "txt"], ["epoque", "Construction", "sel", ["", "a", "b", "c", "d"]],
+  ["refMaj", "Loyer de référence majoré", "num", "€/m²"], ["complement", "Complément de loyer", "num", "€ par mois"]];
+function fieldsFor(f) {
+  const loc = kindOf(f) === "location";
+  let F = FIELDS.map(x => x[0] === "price" ? ["price", loc ? "Loyer charges comprises" : "Prix", "num", loc ? "€ par mois" : "€"] : x);
+  if (loc) F = F.filter(x => x[0] !== "charges" && x[0] !== "taxe").concat(FIELDS_LOC);
+  return [["kind", "Type d’annonce", "sel", ["vente", "location"]], ...F];
+}
+const SEL_LABEL = {vente: "Vente", location: "Location", "true": "Meublé", "false": "Vide", a: "Avant 1946", b: "1946 à 1970", c: "1971 à 1990", d: "Après 1990", agence: "Une agence", particulier: "Un particulier", neuf: "Rénové", bon: "Bon état", rafraichir: "À rafraîchir", travaux: "Travaux", balcon: "Balcon", loggia: "Loggia", terrasse: "Terrasse", jardin: "Jardin", "": "Non précisé"};
 function openAddListing(existing, imported) {
   let el = $("#lsheet");
   if (!el) { el = document.createElement("div"); el.id = "lsheet"; el.className = "auth"; el.innerHTML = `<div class="auth__veil" data-lclose></div><div class="auth__card lsheet" role="dialog" aria-modal="true" aria-labelledby="lsTitle"></div>`; document.body.appendChild(el); el.addEventListener("click", e => { if (e.target.closest("[data-lclose]")) closeSheet(); }); }
@@ -4412,10 +4624,10 @@ function openAddListing(existing, imported) {
   const close = `<button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
   const review = f => {
     card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">${existing ? "Corriger l’annonce" : "Vérifier l’annonce"}</h2>${close}</div>
-      <p class="auth__txt">${existing ? "Corrigez ce que l’annonce ne disait pas." : `Heden a trouvé ${Object.keys(f.found || {}).filter(k => FIELDS.some(x => x[0] === k)).length} informations. Complétez ou corrigez avant d’enregistrer.`}</p>
+      <p class="auth__txt">${existing ? "Corrigez ce que l’annonce ne disait pas." : `Heden a trouvé ${Object.keys(f.found || {}).filter(k => k !== "kind" && fieldsFor(f).some(x => x[0] === k)).length} informations. Complétez ou corrigez avant d’enregistrer.`}</p>
       <form class="lform" id="lform">
-        ${FIELDS.map(([k, label, type, opt]) => {
-          const v = f[k], tag = f.found && f.found[k] ? ` <em>trouvé</em>` : "";
+        ${fieldsFor(f).map(([k, label, type, opt]) => {
+          const v = k === "kind" ? (kindOf(f) === "location" ? "location" : "vente") : f[k], tag = f.found && f.found[k] && k !== "kind" ? ` <em>trouvé</em>` : "";
           if (type === "bool") return `<label class="lf lf--bool"><input type="checkbox" name="${k}" ${v ? "checked" : ""}><span>${label}${tag}</span></label>`;
           if (type === "sel") return `<label class="lf"><span>${label}${tag}</span><select name="${k}">${opt.map(o => `<option value="${o}" ${String(v ?? "") === o ? "selected" : ""}>${SEL_LABEL[o] || o}</option>`).join("")}</select></label>`;
           return `<label class="lf"><span>${label}${tag}</span><input name="${k}" ${type === "num" ? `inputmode="decimal"` : ""} value="${v ?? ""}" placeholder="${opt || ""}"></label>`;
@@ -4423,13 +4635,20 @@ function openAddListing(existing, imported) {
       </form>
       ${f.photos && f.photos.length ? `<div class="lgal lgal--sm">${f.photos.slice(0, 6).map(u => `<img src="${esc(u)}" alt="" referrerpolicy="no-referrer">`).join("")}</div>` : ""}
       <div class="auth__foot"><button class="btn btn--primary btn--block" type="button" id="lsave">${existing ? "Enregistrer" : "Ajouter l’annonce"}</button></div>`;
-    $("#lsave").onclick = async () => {
+    const readForm = () => {
       const fd = new FormData($("#lform"));
-      FIELDS.forEach(([k, , type]) => {
-        if (type === "bool") f[k] = fd.get(k) === "on" ? true : (f[k] === false ? false : null);
+      fieldsFor(f).forEach(([k, , type]) => {
+        if (k === "kind") f.kind = fd.get(k) === "location" ? "location" : "vente";
+        else if (k === "furnished") { const v = fd.get(k); f[k] = v === "true" ? true : v === "false" ? false : null; }
+        else if (type === "bool") f[k] = fd.get(k) === "on" ? true : (f[k] === false ? false : null);
         else if (type === "num") { const n = numFR(fd.get(k)); f[k] = n == null ? null : n; }
         else f[k] = (fd.get(k) || "").trim() || null;
       });
+    };
+    const ks = $("#lform [name=kind]"); if (ks) ks.onchange = () => { readForm(); const y = card.scrollTop; review(f); card.scrollTop = y; };
+    $("#lsave").onclick = async () => {
+      readForm();
+      if (!existing && !(await kindAllowed(kindOf(f)))) return;
       const b = $("#lsave"); b.disabled = true; b.textContent = "Placement sur la carte…";
       const moved = existing && (existing.postcode !== f.postcode || existing.metro !== f.metro);
       if (moved && !f.precise) { f.lat = f.lng = null; f.est = null; }
@@ -4550,7 +4769,21 @@ function extractCards(root, base) {
   const SKIP = /^(SCRIPT|STYLE|NOSCRIPT|SVG|TEMPLATE|IFRAME|HEAD|SELECT|OPTION)$/i;
   const txt = el => { let o = ""; (function w(n) { if (n.nodeType === 3) { o += n.nodeValue; return; } if (n.nodeType !== 1 || SKIP.test(n.tagName)) return; const b = BLK.test(n.tagName); if (b) o += "\n"; for (let c = n.firstChild; c; c = c.nextSibling) w(c); if (b) o += "\n"; })(el); return o.replace(/[ \t   ]+/g, " ").replace(/ ?\n\s*/g, "\n").trim(); };
   const PR = /(\d{1,3}(?:[    .]\d{3})+|\d{5,8})\s?(?:€|eur\b|euros?\b)/gi;
-  const prices = s => { const o = []; for (const m of s.matchAll(PR)) { const a = s.slice(m.index + m[0].length, m.index + m[0].length + 14).toLowerCase(); if (/^\s*(\/|par |le |du |hc|cc|charges)/.test(a)) continue; const v = +m[1].replace(/\D/g, ""); if (v >= 30000 && v <= 20000000) o.push(v); } return o; };
+  // loyers : un montant suivi de « /mois », « CC », « charges comprises » (ou sur une page de locations)
+  const RR = /(\d{1,2}[\s\u00a0\u202f\u2009.]?\d{3}|\d{3,4})(?:[.,]\d{1,2})?\s?(?:€|eur\b|euros?\b)/gi;
+  let page = ""; try { page = String(base || (root.ownerDocument && root.ownerDocument.defaultView && root.ownerDocument.defaultView.location.href) || ""); } catch (e) {}
+  const rentPage = /\/locations?(?:[\/_-]|$)|\/louer|a-louer|transaction=location|categorie=locations/i.test(page);
+  const prices = s => {
+    const o = [];
+    for (const m of s.matchAll(PR)) { const a = s.slice(m.index + m[0].length, m.index + m[0].length + 14).toLowerCase(); if (/^\s*(\/|par |le |du |hc|cc|charges)/.test(a)) continue; const v = +m[1].replace(/\D/g, ""); if (v >= 30000 && v <= 20000000) o.push(v); }
+    for (const m of s.matchAll(RR)) {
+      const a = s.slice(m.index + m[0].length, m.index + m[0].length + 20).toLowerCase(), b = s.slice(Math.max(0, m.index - 26), m.index).toLowerCase();
+      if (/(dont|charges?|honoraires|frais|d[ée]p[ôo]t|garantie|caution|[ée]tat des lieux)[^\d]{0,18}$/.test(b) || /^\s*(hc\b|h\.c|hors charges|de charges|\/ ?m|par m|m²)/.test(a)) continue;
+      const tagged = /^\s*(\/ ?mois|par mois|mensuel|cc\b|c\.c|charges comprises)/.test(a), v = +m[1].replace(/\D/g, "");
+      if ((tagged || rentPage) && v >= 200 && v <= 15000 && !o.includes(v)) o.push(v);
+    }
+    return o;
+  };
   const cand = [];
   for (const el of root.querySelectorAll("*")) {
     if (SKIP.test(el.tagName)) continue;
@@ -4658,6 +4891,7 @@ function queuePlace(fs) {
 const normUrl = u => { const x = String(u || "").split("#")[0]; return /emailing|click|track|link\.|\/c\//i.test(x) ? x : x.replace(/\?.*$/, ""); };
 function sameListing(a, b) {
   if (a.url && b.url && normUrl(a.url) === normUrl(b.url)) return true;
+  if (kindOf(a) !== kindOf(b)) return false;
   if (!a.price || !b.price || !a.surface || !b.surface) return false;
   if (Math.abs(a.surface - b.surface) > 1.5) return false;
   if (a.rooms && b.rooms && a.rooms !== b.rooms) return false;
@@ -4668,6 +4902,7 @@ function sameListing(a, b) {
 function mergeCard(card, opts = {}) {
   const f = parseListing({url: card.url, text: card.text, imgs: card.img ? [card.img] : []});
   if (!f.price || !(f.surface || f.rooms)) return {kind: "skip"};
+  if (opts.onlyProject && projet() !== "deux" && kindOf(f) !== projet()) return {kind: "skip"};
   const ex = listings().find(x => sameListing(x, f));
   const now = opts.at || Date.now();
   if (ex) {
@@ -4720,10 +4955,24 @@ function refreshFromPage(ex, p) {
 }
 
 /* ---------- Import d'une page de résultats ---------- */
-function openBatchImport(items, pageUrl) {
+/* Une annonce hors du projet choisi (une location pour un achat, ou l'inverse) : on propose d'ajouter l'autre projet */
+async function kindAllowed(k) {
+  if (projet() === "deux") { if (curMode() !== k) setMode(k); return true; }
+  if (k === projet()) return true;
+  const loc = k === "location";
+  const ok = await askConfirm({title: loc ? "C’est une annonce de location" : "C’est une annonce de vente", text: `Votre projet dans Heden est ${projet() === "achat" ? "l’achat" : "la location"}. Ajouter aussi ${loc ? "la location" : "l’achat"} ? Vous passerez de l’un à l’autre en un geste, en haut des annonces.`, ok: loc ? "Ajouter la location" : "Ajouter l’achat", cancel: "Ne pas l’importer"});
+  if (!ok) return false;
+  const h = homeProfile(); h.projet = "deux"; if (h.setup) h.setup.projet = "deux";
+  save(); setMode(k); toast(loc ? "Location ajoutée à votre projet" : "Achat ajouté à votre projet");
+  return true;
+}
+async function openBatchImport(items, pageUrl) {
   const src = siteName(hostOf(pageUrl));
-  const rows = items.map(c => { const f = parseListing({url: c.url, text: c.text, imgs: c.img ? [c.img] : []}); if (c.img && !(f.photos || []).length) f.photos = [c.img]; return {c, f}; })
+  let rows = items.map(c => { const f = parseListing({url: c.url, text: c.text, imgs: c.img ? [c.img] : []}); if (c.img && !(f.photos || []).length) f.photos = [c.img]; return {c, f}; })
     .filter(r => r.f.price && (r.f.surface || r.f.rooms));
+  const nLoc = rows.filter(r => kindOf(r.f) === "location").length, major = nLoc * 2 >= rows.length ? "location" : "achat";
+  if (rows.length && !(await kindAllowed(major))) return;
+  rows = rows.filter(r => kindOf(r.f) === major);
   const h = homeProfile();
   rows.forEach(r => { r.ex = listings().find(x => sameListing(x, r.f)); r.fails = listingFilters(r.f, h); r.on = !r.ex && !r.fails.length; });
   let el = $("#lsheet");
@@ -4738,7 +4987,7 @@ function openBatchImport(items, pageUrl) {
       <div class="blist">${rows.map((r, i) => `<label class="brow${r.ex ? " brow--ex" : ""}">
           <input type="checkbox" data-i="${i}" ${r.on ? "checked" : ""} ${r.ex ? "disabled" : ""}>
           <span class="brow__ph">${r.f.photos && r.f.photos[0] ? `<img src="${esc(r.f.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span>
-          <span class="brow__b"><b>${esc(listingTitle(r.f))}</b><span class="num">${fmtInt(r.f.price)}&#8239;€${r.f.surface ? ` · ${fmtInt(r.f.price / r.f.surface)}&#8239;€/m²` : ""}</span>
+          <span class="brow__b"><b>${esc(listingTitle(r.f))}</b><span class="num">${priceTxt(r.f)}${r.f.surface ? ` · ${ppmTxt(r.f)}` : ""}</span>
             ${r.ex ? `<em>${r.ex.price !== r.f.price ? "Déjà dans Heden, prix mis à jour" : "Déjà dans Heden"}</em>` : r.fails.length ? `<em class="off">Hors critères : ${esc(r.fails[0])}</em>` : ""}</span>
         </label>`).join("")}</div>
       <div class="auth__foot"><button class="btn btn--primary btn--block" type="button" id="bgo" ${nOn || rows.some(r => r.ex && r.ex.price !== r.f.price) ? "" : "disabled"}>${nOn ? `Importer ${nOn} annonce${nOn > 1 ? "s" : ""}` : "Rien à importer"}</button></div>`;
@@ -4783,7 +5032,7 @@ async function processInbox() {
         let doc = null; try { doc = new DOMParser().parseFromString(m.html || "", "text/html"); } catch (e) {}
         if (doc) for (const a of doc.querySelectorAll("a[href]")) { const ex = listings().find(x => x.url && normUrl(x.url) === normUrl(a.getAttribute("href"))); if (ex && !ex.gone) { ex.gone = at; ex.updatedAt = Date.now(); gone++; } }
       } else for (const c of cards) {
-        const r = mergeCard(c, {origin: "alerte", source: src, at, revive: true});
+        const r = mergeCard(c, {origin: "alerte", source: src, at, revive: true, onlyProject: true});
         if (r.kind === "new") { added++; fresh.push(r.f); } else if (r.kind === "drop") drops++;
         if (r.f && r.f.gone && r.kind !== "new") { delete r.f.gone; r.f.updatedAt = Date.now(); }
       }
@@ -4934,6 +5183,9 @@ function homeWeights() {
 
 /* ---------- Questionnaire : Heden règle le profil tout seul ---------- */
 const QUIZ_WHO = [["deux", "À deux", "Un premier achat en couple"], ["seul", "Seul·e", "Un achat pour soi"], ["famille", "En famille", "Avec des enfants, ou bientôt"], ["invest", "Pour louer", "Un investissement locatif"]];
+const QUIZ_WHO_LOC = [["deux", "À deux", "Emménager en couple"], ["seul", "Seul·e", "Un logement pour soi"], ["famille", "En famille", "Avec des enfants, ou bientôt"]];
+const QUIZ_PROJ = [["achat", "Acheter", "Devenir propriétaire"], ["location", "Louer", "Trouver une location pour y habiter"], ["deux", "Les deux", "Comparer achat et location"]];
+const PROJ_LABEL = {achat: "Achat", location: "Location", deux: "Achat ou location"};
 const WHO_PRESET = {deux: "jeunes", seul: "jeunes", famille: "famille", invest: "invest"};
 const PRIOS = [
   {id: "anime", name: "Quartier vivant", desc: "Cafés, restos, sorties", z: {vie_sociale: 15, culture: 5}},
@@ -4987,6 +5239,9 @@ function applySetup(s) {
   const no = new Set(s.nos || []);
   h.noGround = no.has("rdc"); h.elevatorFrom = no.has("ascenseur") ? 3 : 0; h.dpeMax = no.has("passoire") ? "E" : "G"; h.outdoorReq = no.has("sansext"); h.noWorks = no.has("travaux");
   h.fin = Object.assign({}, h.fin || {}, {apport: s.apport ?? (h.fin && h.fin.apport) ?? null});
+  h.projet = s.projet || "achat";
+  h.loc = {loyerMax: s.loyer || null, revenus: s.revenus || null, meuble: s.meuble || "indiff"};
+  if (h.projet === "location" && s.who === "invest") s.who = "seul";
   if (s.budget) { const surf = s.surface || ROOM_SURF[Math.min(5, s.rooms || 3)]; p.budget = Math.round(s.budget / surf / 100) * 100; }
   h.setup = Object.assign({}, s, {at: Date.now()}); h.custom = false;
   save(); learnMemo.key = null;
@@ -4994,7 +5249,8 @@ function applySetup(s) {
 let qz = null;
 function openQuiz() {
   const prev = homeProfile().setup || {};
-  qz = {step: 0, s: Object.assign({who: null, budget: null, apport: null, rooms: null, surface: null, places: [], prios: [], nos: []}, clone(prev))};
+  qz = {step: 0, s: Object.assign({projet: null, who: null, budget: null, apport: null, loyer: null, revenus: null, meuble: "indiff", rooms: null, surface: null, places: [], prios: [], nos: []}, clone(prev))};
+  if (!qz.s.projet && prev.at) qz.s.projet = "achat";
   if (!qz.s.places.length) qz.s.places = [{label: "", q: "", mode: "tc"}];
   let el = $("#quiz");
   if (!el) {
@@ -5006,7 +5262,7 @@ function openQuiz() {
   paintQuiz();
 }
 function closeQuiz() { const el = $("#quiz"); if (!el) return; el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); }
-const QSTEPS = 6;
+const QSTEPS = 7;
 function paintQuiz() {
   const card = $("#quiz .quiz"), s = qz.s, st = qz.step;
   const chips = (items, sel, multi, attr) => items.map(([v, l, d]) => `<button type="button" class="qopt${d ? "" : " qopt--sm"}" data-${attr}="${v}" aria-pressed="${multi ? sel.includes(v) : sel === v}"><b>${l}</b>${d ? `<span>${d}</span>` : ""}</button>`).join("");
@@ -5015,36 +5271,45 @@ function paintQuiz() {
   const foot = (ok, label = "Continuer", skip) => `<div class="quiz__foot">${st ? `<button class="btn btn--clair" type="button" id="qzBack">Retour</button>` : "<span></span>"}<span class="quiz__go">${skip ? `<button class="link" type="button" id="qzSkip">Passer</button>` : ""}<button class="btn btn--primary" type="button" id="qzNext" ${ok ? "" : "disabled"}>${label}</button></span></div>`;
   let body = "";
   const replaces = !homeProfile().setup && (state.profile.modified || homeProfile().custom || state.zones.some(z => !z.example));
-  if (st === 0) body = head("Vous cherchez…", "Six questions, une minute : Heden règle vos critères, leurs poids et vos filtres. Tout reste modifiable." + (replaces ? " Vos réglages actuels seront remplacés ; vos notes de zones restent." : "")) + `<div class="qgrid">${chips(QUIZ_WHO, s.who, false, "who")}</div>` + foot(!!s.who);
-  else if (st === 1) body = head("Votre budget", "Le prix affiché maximum, hors frais de notaire.") + `
-      <div class="field"><label class="label" for="qzBudget">Prix maximum</label><input type="number" id="qzBudget" inputmode="numeric" step="5000" min="0" value="${s.budget ?? ""}" placeholder="Ex. 600 000 €"></div>
+  const buy = s.projet !== "location", rent = s.projet === "location" || s.projet === "deux";
+  if (st === 0) body = head("Votre projet", "Sept questions, une minute : Heden règle vos critères, leurs poids et vos filtres. Tout reste modifiable." + (replaces ? " Vos réglages actuels seront remplacés ; vos notes de zones restent." : "")) + `<div class="qgrid qgrid--3">${chips(QUIZ_PROJ, s.projet, false, "pj")}</div>` + foot(!!s.projet);
+  else if (st === 1) body = head("Vous cherchez…", s.projet === "deux" ? "Pour l’achat comme pour la location." : "") + `<div class="qgrid">${chips(s.projet === "location" ? QUIZ_WHO_LOC : QUIZ_WHO, s.who, false, "who")}</div>` + foot(!!s.who);
+  else if (st === 2) body = head("Votre budget", buy && rent ? "Pour l’achat et pour la location." : rent ? "Le loyer que vous pouvez payer chaque mois." : "Le prix affiché maximum, hors frais de notaire.") + (buy ? `
+      ${rent ? `<h3 class="qsub">Achat</h3>` : ""}<div class="field"><label class="label" for="qzBudget">Prix maximum</label><input type="number" id="qzBudget" inputmode="numeric" step="5000" min="0" value="${s.budget ?? ""}" placeholder="Ex. 600 000 €"></div>
       <div class="chips qchips">${[350000, 500000, 650000, 800000, 1000000].map(v => `<button type="button" class="chip" data-bud="${v}" aria-pressed="${s.budget === v}">${v >= 1e6 ? "1 M€" : v / 1000 + " k€"}</button>`).join("")}</div>
-      <div class="field"><label class="label" for="qzApport">Apport <span class="opt">facultatif, pour le coût par mois</span></label><input type="number" id="qzApport" inputmode="numeric" step="5000" min="0" value="${s.apport ?? ""}" placeholder="Ex. 80 000 €"></div>` + foot(true, s.budget ? "Continuer" : "Je ne sais pas encore");
-  else if (st === 2) body = head("La taille", "Le minimum en dessous duquel vous ne visiterez pas.") + `
+      <div class="field"><label class="label" for="qzApport">Apport <span class="opt">facultatif, pour le coût par mois</span></label><input type="number" id="qzApport" inputmode="numeric" step="5000" min="0" value="${s.apport ?? ""}" placeholder="Ex. 80 000 €"></div>` : "") + (rent ? `
+      ${buy ? `<h3 class="qsub">Location</h3>` : ""}<div class="field"><label class="label" for="qzLoyer">Loyer maximum, charges comprises</label><input type="number" id="qzLoyer" inputmode="numeric" step="50" min="0" value="${s.loyer ?? ""}" placeholder="Ex. 1 600 € par mois"></div>
+      <div class="chips qchips">${[900, 1200, 1500, 1800, 2200].map(v => `<button type="button" class="chip" data-loy="${v}" aria-pressed="${s.loyer === v}">${fmtInt(v)} €</button>`).join("")}</div>
+      <div class="field"><label class="label" for="qzRev">Revenus nets du foyer <span class="opt">facultatif, pour savoir si votre dossier passe</span></label><input type="number" id="qzRev" inputmode="numeric" step="100" min="0" value="${s.revenus ?? ""}" placeholder="€ par mois"></div>
+      <div class="field"><span class="label">Meublé ou vide</span><div class="chips qchips">${[["indiff", "Peu importe"], ["vide", "Vide"], ["meuble", "Meublé"]].map(([v, l]) => `<button type="button" class="chip" data-meu="${v}" aria-pressed="${(s.meuble || "indiff") === v}">${l}</button>`).join("")}</div></div>` : "") + foot(true, s.budget || s.loyer ? "Continuer" : "Je ne sais pas encore");
+  else if (st === 3) body = head("La taille", "Le minimum en dessous duquel vous ne visiterez pas.") + `
       <div class="qgrid qgrid--5">${chips([[1, "Studio"], [2, "2 p."], [3, "3 p."], [4, "4 p."], [5, "5 p. +"]], s.rooms, false, "rooms")}</div>
       <div class="field"><label class="label" for="qzSurf">Surface minimum <span class="opt">facultatif</span></label><input type="number" id="qzSurf" inputmode="numeric" min="0" value="${s.surface ?? ""}" placeholder="m²"></div>` + foot(!!s.rooms, "Continuer", true);
-  else if (st === 3) body = head("Vos trajets", "Travail, études : Heden calcule le temps depuis chaque annonce.") + `
+  else if (st === 4) body = head("Vos trajets", "Travail, études : Heden calcule le temps depuis chaque annonce.") + `
       <div class="qplaces">${s.places.map((pl, i) => `<div class="qplace" data-i="${i}">
-        <div class="row2"><div class="field"><label class="label">Lieu ${i + 1}</label><input type="text" class="qpl-l" value="${esc(pl.label || "")}" placeholder="Ex. Travail de Léa" maxlength="30"></div>
+        <div class="row2"><div class="field"><label class="label">Lieu ${i + 1}</label><input type="text" class="qpl-l" value="${esc(pl.label || "")}" placeholder="Ex. Bureau, école" maxlength="30"></div>
           <div class="field"><label class="label">Trajet en</label><select class="qpl-m">${Object.entries(MODES).map(([k, [l]]) => `<option value="${k}" ${pl.mode === k ? "selected" : ""}>${l}</option>`).join("")}</select></div></div>
         <div class="field qsearch"><input type="text" class="qpl-q" value="${esc(pl.q || "")}" placeholder="Adresse, station, entreprise…" autocomplete="off">${pl.lat ? `<span class="qok">✓</span>` : ""}<div class="qsugg" hidden></div></div>
       </div>`).join("")}</div>
       ${s.places.length < 2 ? `<button class="link" type="button" id="qzAddPl">+ Un deuxième lieu</button>` : ""}` + foot(true, "Continuer", true);
-  else if (st === 4) body = head("Ce qui compte le plus", `Jusqu’à 5 choix. <span class="num">${s.prios.length} / 5</span>`) + `<div class="qgrid qgrid--3">${chips(PRIOS.map(q => [q.id, q.name, q.desc]), s.prios, true, "prio")}</div>` + foot(s.prios.length > 0);
-  else if (st === 5) body = head("Vos refus", "Ce que vous ne voulez pas voir. Ces annonces restent visibles, avec une note plafonnée.") + `<div class="qgrid qgrid--2">${chips(NOS, s.nos, true, "no")}</div>` + foot(true, "Voir mon profil");
+  else if (st === 5) body = head("Ce qui compte le plus", `Jusqu’à 5 choix. <span class="num">${s.prios.length} / 5</span>`) + `<div class="qgrid qgrid--3">${chips(PRIOS.map(q => [q.id, q.name, q.desc]), s.prios, true, "prio")}</div>` + foot(s.prios.length > 0);
+  else if (st === 6) body = head("Vos refus", "Ce que vous ne voulez pas voir. Ces annonces restent visibles, avec une note plafonnée.") + `<div class="qgrid qgrid--2">${chips(NOS, s.nos, true, "no")}</div>` + foot(true, "Voir mon profil");
   else body = quizResultHTML();
   card.innerHTML = body;
   const later = $("#qzLater"); if (later) later.onclick = () => { try { localStorage.setItem("heden.quiz.later", "1"); } catch (e) {} closeQuiz(); };
   const next = () => { qz.step++; paintQuiz(); }, back = $("#qzBack"); if (back) back.onclick = () => { qz.step--; paintQuiz(); };
-  const nx = $("#qzNext"); if (nx) nx.onclick = () => { if (st === 5) applySetup(s); next(); };
-  const sk = $("#qzSkip"); if (sk) sk.onclick = () => { if (st === 2) { s.rooms = null; s.surface = null; } if (st === 3) s.places = [{label: "", q: "", mode: "tc"}]; next(); };
+  const nx = $("#qzNext"); if (nx) nx.onclick = () => { if (st === 6) applySetup(s); next(); };
+  const sk = $("#qzSkip"); if (sk) sk.onclick = () => { if (st === 3) { s.rooms = null; s.surface = null; } if (st === 4) s.places = [{label: "", q: "", mode: "tc"}]; next(); };
+  $$("[data-pj]", card).forEach(b => b.onclick = () => { s.projet = b.dataset.pj; if (s.projet === "location" && s.who === "invest") s.who = null; next(); });
   $$("[data-who]", card).forEach(b => b.onclick = () => { s.who = b.dataset.who; next(); });
+  $$("[data-loy]", card).forEach(b => b.onclick = () => { s.loyer = +b.dataset.loy; paintQuiz(); });
+  $$("[data-meu]", card).forEach(b => b.onclick = () => { s.meuble = b.dataset.meu; paintQuiz(); });
   $$("[data-rooms]", card).forEach(b => b.onclick = () => { s.rooms = +b.dataset.rooms; paintQuiz(); });
   $$("[data-prio]", card).forEach(b => b.onclick = () => { const id = b.dataset.prio, i = s.prios.indexOf(id); if (i >= 0) s.prios.splice(i, 1); else if (s.prios.length < 5) s.prios.push(id); else return toast("5 choix au maximum"); paintQuiz(); });
   $$("[data-no]", card).forEach(b => b.onclick = () => { const id = b.dataset.no, i = s.nos.indexOf(id); if (i >= 0) s.nos.splice(i, 1); else s.nos.push(id); paintQuiz(); });
   $$("[data-bud]", card).forEach(b => b.onclick = () => { s.budget = +b.dataset.bud; paintQuiz(); });
-  const num = (id, k) => { const i = $("#" + id); if (i) i.oninput = () => { const v = parseFloat(i.value); s[k] = isFinite(v) && v > 0 ? v : null; const n2 = $("#qzNext"); if (n2 && st === 1) n2.textContent = s.budget ? "Continuer" : "Je ne sais pas encore"; }; };
-  num("qzBudget", "budget"); num("qzApport", "apport"); num("qzSurf", "surface");
+  const num = (id, k) => { const i = $("#" + id); if (i) i.oninput = () => { const v = parseFloat(i.value); s[k] = isFinite(v) && v > 0 ? v : null; const n2 = $("#qzNext"); if (n2 && st === 2) n2.textContent = s.budget || s.loyer ? "Continuer" : "Je ne sais pas encore"; }; };
+  num("qzBudget", "budget"); num("qzApport", "apport"); num("qzSurf", "surface"); num("qzLoyer", "loyer"); num("qzRev", "revenus");
   const ap = $("#qzAddPl"); if (ap) ap.onclick = () => { s.places.push({label: "", q: "", mode: "tc"}); paintQuiz(); };
   $$(".qplace", card).forEach(row => {
     const pl = s.places[+row.dataset.i], q = $(".qpl-q", row), sg = $(".qsugg", row); let tm = null;
@@ -5084,14 +5349,14 @@ function quizResultHTML() {
 }
 function profileLine(s) {
   if (!s) return "";
-  const who = (QUIZ_WHO.find(x => x[0] === s.who) || [, ""])[1];
-  return [who, s.rooms ? (s.rooms === 1 ? "studio" : `${s.rooms} pièces${s.rooms >= 5 ? " et plus" : ""} min.`) : null, s.surface ? `${s.surface} m² min.` : null, s.budget ? `jusqu’à ${fmtInt(s.budget)} €` : null].filter(Boolean).join(" · ");
+  const who = (QUIZ_WHO.find(x => x[0] === s.who) || [, ""])[1], lo = homeProfile().loc || {}, pj = s.projet || "achat";
+  return [PROJ_LABEL[pj], who, pj !== "achat" && (s.loyer || lo.loyerMax) ? `loyer max. ${fmtInt(s.loyer || lo.loyerMax)} €/mois` : null, s.rooms ? (s.rooms === 1 ? "studio" : `${s.rooms} pièces${s.rooms >= 5 ? " et plus" : ""} min.`) : null, s.surface ? `${s.surface} m² min.` : null, pj !== "location" && s.budget ? `jusqu’à ${fmtInt(s.budget)} €` : null].filter(Boolean).join(" · ");
 }
 function profileSummaryHTML() {
   const h = homeProfile(), s = h.setup, L = learning();
   if (!s) return `<section class="sec psum psum--new">
       <h2>Réglez Heden en une minute</h2>
-      <p class="hint2">Six questions sur votre recherche : Heden en déduit vos critères, leurs poids et vos filtres. Vous pourrez tout ajuster ensuite.</p>
+      <p class="hint2">Sept questions sur votre recherche : Heden en déduit vos critères, leurs poids et vos filtres. Vous pourrez tout ajuster ensuite.</p>
       <div><button class="btn btn--primary" type="button" id="quizGo">Répondre aux questions</button></div>
     </section>`;
   const prios = (s.prios || []).map(id => (PRIOS.find(q => q.id === id) || {}).name).filter(Boolean);
@@ -5206,7 +5471,89 @@ function bindSources() {
 }
 
 /* ---------- Fiche annonce : sections d'analyse ---------- */
+function tripsHTML(f) {
+  const com = commutes(f);
+  return com.length ? `<section class="lsec"><h2>Vos trajets</h2><div class="trips">${com.map(({p, min}) => `<a class="trip" href="https://www.google.com/maps/dir/?api=1&origin=${f.lat},${f.lng}&destination=${p.lat},${p.lng}&travelmode=${MODES[p.mode || "tc"][3]}" target="_blank" rel="noopener noreferrer">
+        <b class="num">${min} min</b><span>${esc(p.label || p.q)} · ${MODES[p.mode || "tc"][0].toLowerCase()}</span><em>Itinéraire ↗</em></a>`).join("")}</div>
+      <p class="hint2">Estimation d’après la distance${f.precise ? "" : " et une position approximative"}. Touchez un trajet pour l’itinéraire exact.</p></section>` : "";
+}
+/* ---------- Location : encadrement, coût d'entrée, taux d'effort, points de vigilance ----------
+   Règles en vigueur : dépôt de garantie d'un mois hors charges (vide) ou deux (meublé) ; honoraires du locataire
+   plafonnés par m² (zone très tendue : 12,10 € + 3,03 € pour l'état des lieux, baux signés depuis le 1er janvier 2026) ;
+   logement classé G non décent, donc non louable, depuis 2025 ; complément de loyer interdit si DPE F ou G. */
+const FEE_M2 = 12.10, FEE_EDL_M2 = 3.03;
+function rentFacts(f) {
+  const r = rentFor(f), surf = f.surface || null, cc = f.price || null;
+  const hc = f.rentHC ?? (cc && f.rentCharges != null ? cc - f.rentCharges : null);
+  const mb = f.furnished === true, part = f.seller === "particulier";
+  const depMax = hc ? hc * (mb ? 2 : 1) : null, feeMax = surf ? surf * (FEE_M2 + FEE_EDL_M2) : null;
+  let cap = null, capSrc = null, capLo = null, capHi = null;
+  if (f.refMaj && surf) { cap = f.refMaj; capSrc = "annonce"; }
+  else if (r && r.zone === "paris") { if (r.ep) { cap = r.max; capSrc = "quartier"; } else { capLo = r.maxLo; capHi = r.maxHi; capSrc = "quartier"; } }
+  const ppmHC = hc && surf ? (hc - (f.complement || 0)) / surf : null;
+  let verdict = null;
+  if (ppmHC != null && cap) verdict = ppmHC <= cap + .05 ? "ok" : "over";
+  else if (ppmHC != null && capLo) verdict = ppmHC <= capLo + .05 ? "ok" : ppmHC > capHi + .05 ? "over" : "depend";
+  const over = verdict === "over" && surf ? Math.round(hc - (f.complement || 0) - (cap || capHi) * surf) : 0;
+  return {r, surf, cc, hc, mb, part, depMax, feeMax, cap, capSrc, capLo, capHi, ppmHC, verdict, over};
+}
+function rentAnalysisHTML(f) {
+  const x = rentFacts(f), h = homeProfile(), lo = h.loc || {}, eur = v => fmtInt(Math.round(v)) + "&#8239;€";
+  // Encadrement
+  let enc = "";
+  if (x.r && (x.r.zone === "paris" || x.r.encadre)) {
+    const head = x.verdict === "ok" ? `<div class="rentv rentv--ok"><b>Dans le plafond légal</b><span>${x.cap ? `${fmt1(x.ppmHC)} €/m² hors charges pour un plafond de ${fmt1(x.cap)} €/m²` : `${fmt1(x.ppmHC)} €/m² hors charges, sous le plafond le plus bas du quartier (${fmt1(x.capLo)} €/m²)`}</span></div>`
+      : x.verdict === "over" ? `<div class="rentv rentv--over"><b>Au-dessus du plafond légal</b><span>Environ ${eur(x.over)} de trop par mois : ${fmt1(x.ppmHC)} €/m² hors charges${f.complement ? " (complément déduit)" : ""} pour un plafond de ${fmt1(x.cap || x.capHi)} €/m².</span></div>`
+      : x.verdict === "depend" ? `<div class="rentv"><b>Selon l’année de construction</b><span>${fmt1(x.ppmHC)} €/m² hors charges. Le plafond du quartier va de ${fmt1(x.capLo)} à ${fmt1(x.capHi)} €/m² selon l’époque de l’immeuble. Indiquez-la dans « Corriger les informations ».</span></div>`
+      : `<div class="rentv"><b>${x.r.zone === "paris" ? "Loyers encadrés dans ce quartier" : `Loyers encadrés à ${esc(x.r.name)}`}</b><span>${x.hc ? "" : "Il manque le loyer hors charges ou la surface pour comparer au plafond. "}Vérifiez avec le simulateur officiel.</span></div>`;
+    const facts = [];
+    if (x.r.zone === "paris") facts.push(`Quartier ${esc(x.r.name)}, ${x.r.rooms === 1 ? "1 pièce" : `${x.r.rooms}${x.r.rooms >= 4 ? " pièces et plus" : " pièces"}`}, ${x.mb ? "meublé" : "vide"}${f.epoque ? `, immeuble ${EPOQUES[f.epoque].toLowerCase()}` : ""} : référence ${fmt1(x.r.ref)} €/m², plafond ${fmt1(x.r.max)} €/m² (${x.r.annee})`);
+    if (x.capSrc === "annonce") facts.push(`Plafond indiqué dans l’annonce : ${fmt1(f.refMaj)} €/m²`);
+    if (f.complement) facts.push(`Complément de loyer annoncé : ${eur(f.complement)} par mois. Il doit être justifié par des atouts exceptionnels${f.dpe === "F" || f.dpe === "G" ? " et il est interdit ici, le DPE étant " + f.dpe : ""}.`);
+    if (x.r.zone === "paris" && f.refMaj == null) facts.push("L’annonce ne cite pas le loyer de référence majoré, pourtant obligatoire à Paris.");
+    enc = `<section class="lsec"><h2>Encadrement des loyers</h2>${head}
+      ${facts.length ? `<ul class="price__facts">${facts.map(t => `<li>${t}</li>`).join("")}</ul>` : ""}
+      ${x.verdict === "over" ? `<p class="hint2">Un loyer au-dessus du plafond se conteste, même après la signature : demandez la mise en conformité au propriétaire, puis saisissez la commission départementale de conciliation.</p>` : ""}
+      <p class="hint2"><a class="link" href="${SIMU_LOYER}" target="_blank" rel="noopener noreferrer">Simulateur officiel de l’encadrement ↗</a></p></section>`;
+  } else if (x.r) {
+    enc = `<section class="lsec"><h2>Le loyer</h2><div class="rentv"><b>${x.ppmHC || f.price && f.surface ? `${fmt1(f.price / f.surface)} €/m² charges comprises` : "Loyer à comparer"}</b><span>Loyers d’annonce à ${esc(x.r.name)} : ${fmt1(x.r.lo)} à ${fmt1(x.r.hi)} €/m², ${x.r.annee}. Pas d’encadrement dans cette commune.</span></div></section>`;
+  }
+  // Coût d'entrée
+  const fee = x.part ? 0 : f.agencyFee != null ? f.agencyFee : x.feeMax, dep = f.deposit != null ? f.deposit : x.depMax;
+  const rows = [["Premier loyer", x.cc, "charges comprises"], ["Dépôt de garantie", dep, f.deposit != null ? "indiqué dans l’annonce" : x.depMax ? `au plus ${x.mb ? "deux mois" : "un mois"} hors charges` : "inconnu"],
+    ["Frais d’agence", fee, x.part ? "particulier : aucun" : f.agencyFee != null ? "indiqués dans l’annonce" : x.feeMax ? "au plus, plafond légal" : "inconnus"]];
+  const tot = rows.reduce((a, [, v]) => a + (v || 0), 0);
+  const entry = x.cc ? `<section class="lsec"><h2>Coût d’entrée</h2>
+      <div class="cost"><b class="num">${f.deposit == null || (!x.part && f.agencyFee == null) ? "≤ " : ""}${eur(tot)}</b><span>à payer à la signature</span></div>
+      <dl class="cost__leg">${rows.map(([n, v, t]) => `<div><dt>${n}<small> · ${t}</small></dt><dd class="num">${v != null ? eur(v) : "–"}</dd></div>`).join("")}</dl>
+      <p class="hint2">Le dépôt de garantie est rendu au départ, moins les éventuelles réparations.</p></section>` : "";
+  // Taux d'effort
+  let eff = "";
+  if (x.cc) {
+    const need = x.cc * 3;
+    if (lo.revenus > 0) {
+      const t = x.cc / lo.revenus, pct = Math.round(t * 100), cls = t <= .33 ? "ok" : t <= .4 ? "mid" : "over";
+      eff = `<section class="lsec"><h2>Taux d’effort</h2>
+        <div class="effort effort--${cls}"><b class="num">${pct} %</b><span>${cls === "ok" ? "Le loyer fait moins d’un tiers de vos revenus : le dossier passe chez la plupart des propriétaires." : cls === "mid" ? "Un peu au-dessus du tiers : souvent accepté avec un garant ou la garantie Visale." : "Au-delà de 40 % : prévoyez un garant solide, ou la garantie Visale."}</span></div>
+        <div class="effort__bar" aria-hidden="true"><i style="width:${Math.min(100, pct / .6)}%"></i><em style="left:${33 / .6}%"></em></div>
+        <p class="hint2">Pour ${eur(lo.revenus)} de revenus nets par mois. La règle courante : des revenus d’au moins trois fois le loyer, soit ${eur(need)}.</p></section>`;
+    } else eff = `<section class="lsec"><h2>Taux d’effort</h2><p class="hint2">Les propriétaires demandent en général des revenus d’au moins trois fois le loyer, soit ${eur(need)} par mois. <button class="link" type="button" id="revEdit">Indiquez vos revenus</button> pour savoir si votre dossier passe.</p></section>`;
+  }
+  // Points de vigilance
+  const al = [];
+  if (f.dpe === "G") al.push(["over", "DPE G : ce logement n’est plus considéré comme décent et ne peut plus être loué depuis 2025."]);
+  else if (f.dpe === "F") al.push(["mid", "DPE F : il ne pourra plus être loué à partir de 2028, et son loyer ne peut pas augmenter."]);
+  if (x.surf && x.surf < 9) al.push(["over", "Moins de 9 m² : en dessous de la surface minimale d’un logement décent."]);
+  if (f.deposit != null && x.depMax && f.deposit > x.depMax + 1) al.push(["over", `Dépôt de garantie de ${eur(f.deposit)} : le maximum légal est ${eur(x.depMax)} (${x.mb ? "deux mois" : "un mois"} de loyer hors charges).`]);
+  if (!x.part && f.agencyFee != null && x.feeMax && f.agencyFee > x.feeMax + 1) al.push(["over", `Frais d’agence de ${eur(f.agencyFee)} : le plafond est d’environ ${eur(x.feeMax)} pour ${fmtInt(x.surf)} m².`]);
+  if (x.verdict === "over") al.push(["over", `Loyer au-dessus du plafond de l’encadrement, d’environ ${eur(x.over)} par mois.`]);
+  if (f.complement && (f.dpe === "F" || f.dpe === "G")) al.push(["over", "Complément de loyer interdit pour un logement classé F ou G."]);
+  if (x.mb) al.push(["info", "Meublé : la loi impose un équipement minimum (literie, plaques, four ou micro-ondes, frigo avec congélateur, vaisselle, rangements, luminaires, rideaux dans les chambres). À vérifier à la visite."]);
+  const vig = `<section class="lsec"><h2>Points de vigilance</h2>${al.length ? `<ul class="vig">${al.map(([c, t]) => `<li class="vig--${c}">${t}</li>`).join("")}</ul>` : `<p class="hint2">Rien à signaler d’après l’annonce.</p>`}</section>`;
+  return enc + entry + eff + vig + tripsHTML(f);
+}
 function analysisHTML(f) {
+  if (kindOf(f) === "location") return rentAnalysisHTML(f);
   const c = monthlyCost(f), com = commutes(f);
   const eur = v => fmtInt(Math.round(v)) + "&#8239;€";
   return `<section class="lsec" id="lfair"><h2>Le juste prix</h2><p class="hint2">Recherche des ventes comparables…</p></section>
@@ -5268,6 +5615,27 @@ function openFinance() {
   };
   el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
 }
+function openRentSettings() {
+  const h = homeProfile(), lo = h.loc;
+  let el = $("#lsheet");
+  if (!el) { el = document.createElement("div"); el.id = "lsheet"; el.className = "auth"; el.innerHTML = `<div class="auth__veil" data-lclose></div><div class="auth__card lsheet" role="dialog" aria-modal="true" aria-labelledby="lsTitle"></div>`; document.body.appendChild(el); }
+  const card = el.querySelector(".lsheet"), closeSheet = () => { el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); };
+  el.onclick = e => { if (e.target.closest("[data-lclose]")) closeSheet(); };
+  card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Votre location</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <p class="auth__txt">Sert à filtrer les annonces et à calculer le taux d’effort. Rien n’est partagé.</p>
+    <form class="lform" id="locF">
+      <label class="lf"><span>Loyer maximum, charges comprises</span><input name="loyerMax" inputmode="numeric" value="${lo.loyerMax ?? ""}" placeholder="€ par mois"></label>
+      <label class="lf"><span>Revenus nets du foyer</span><input name="revenus" inputmode="numeric" value="${lo.revenus ?? ""}" placeholder="€ par mois"></label>
+      <label class="lf"><span>Meublé ou vide</span><select name="meuble">${[["indiff", "Peu importe"], ["vide", "Vide"], ["meuble", "Meublé"]].map(([v, l]) => `<option value="${v}" ${lo.meuble === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    </form>
+    <div class="auth__foot"><button class="btn btn--primary btn--block" type="button" id="locSave">Enregistrer</button></div>`;
+  $("#locSave").onclick = () => {
+    const fd = new FormData($("#locF")), m = numFR(fd.get("loyerMax")), r = numFR(fd.get("revenus"));
+    h.loc = {loyerMax: m > 0 ? Math.round(m) : null, revenus: r > 0 ? Math.round(r) : null, meuble: fd.get("meuble") || "indiff"};
+    save(); closeSheet(); rerenderAll(); if (currentTab === "profile") renderProfile();
+  };
+  el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
+}
 
 /* ---------- Annonces sur la carte ---------- */
 let listingLayer = null;
@@ -5275,9 +5643,9 @@ function renderListingPins() {
   if (!listingLayer) listingLayer = L.layerGroup().addTo(map);
   listingLayer.clearLayers();
   if (mapFilter.annonces === false) return;
-  listings().filter(f => f.lat && f.status !== "ecartee").forEach(f => {
+  modeListings().filter(f => f.lat && f.status !== "ecartee").forEach(f => {
     const s = scoreListing(f);
-    const mk = L.marker([f.lat, f.lng], {icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin${f.status === "gardee" || f.status === "visite" ? " lpin--kept" : ""}${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9H4z"/></svg><em class="num">${f.price ? Math.round(f.price / 1000) + "&#8239;k€" : ""}</em></span>`}), zIndexOffset: 500});
+    const mk = L.marker([f.lat, f.lng], {icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin${f.status === "gardee" || f.status === "visite" ? " lpin--kept" : ""}${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9H4z"/></svg><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`}), zIndexOffset: 500});
     mk.on("click", () => { lui.openId = f.id; setTab("annonces"); });
     mk.addTo(listingLayer);
   });

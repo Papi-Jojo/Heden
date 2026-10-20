@@ -13,7 +13,7 @@ from datetime import date
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "data"
 UA = {"User-Agent": "Heden/1.0 (+https://github.com/Papi-Jojo/Heden)"}
-IDF = ("75", "77", "78", "91", "92", "93", "94", "95")
+IDF = ("75", "92", "93", "94")   # Paris et petite couronne, comme les ventes DVF
 
 
 def log(*a): print(*a, flush=True)

@@ -8,3 +8,12 @@
 - **Notes estimées** : pour chaque critère, l'indicateur de la zone est comparé à ceux de 6 000 lieux où des appartements se sont vendus. Les seuils sont rangés dans `data/meta.json`, et la formule de l'appli, `estimate()` dans `index.html`, est la même que celle de `metrics()`.
 
 Le résultat va dans `data/` : `meta.json` et des tuiles d'environ 1,1 km de côté, dans `t/`.
+
+## Loyers
+
+`loyers.py` écrit `data/loyers.json`, lancé par le workflow « Loyers » (juillet et octobre, ou à la main) :
+
+- **Paris** : loyers de référence de l'encadrement (opendata.paris.fr), par quartier administratif, nombre de pièces, époque de construction et location vide ou meublée. Valeurs hors charges en €/m² par mois : référence, majorée (plafond légal), minorée. Contours des 80 quartiers simplifiés à une trentaine de mètres.
+- **Paris et petite couronne** : indicateurs de loyers d'annonce par commune (Carte des loyers, ministère du Logement et ANIL, data.gouv.fr), charges comprises.
+
+L'appli s'en sert en mode location : plafond de l'encadrement d'une annonce, loyers d'une zone, critère « prix » des zones. Les communes encadrées hors Paris (Plaine Commune, Est Ensemble) renvoient vers le simulateur officiel.
