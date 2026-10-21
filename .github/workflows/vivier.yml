@@ -1,0 +1,22 @@
+name: Vivier (alertes → annonces)
+# Toutes les 10 minutes : lit les e-mails d'alerte arrivés dans Supabase et dépose les annonces dans le vivier.
+# Il faut le secret VIVIER_CLE (Settings > Secrets and variables > Actions) ; sans lui, rien ne se passe.
+# GitHub décale parfois les tâches planifiées de quelques minutes aux heures chargées.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+concurrency: {group: vivier, cancel-in-progress: false}
+permissions: {contents: read}
+jobs:
+  traiter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22", cache: npm}
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/vivier/traiter.mjs
+        env:
+          VIVIER_CLE: ${{ secrets.VIVIER_CLE }}

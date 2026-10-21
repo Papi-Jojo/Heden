@@ -30,7 +30,6 @@ $("#q").addEventListener("input", e => {
   searchTimer = setTimeout(() => doSearch(q), 450);
 });
 $("#search").addEventListener("submit", e => { e.preventDefault(); const q = $("#q").value.trim(); if (q) doSearch(q); });
-const sansAccent = s => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 async function doSearch(q) {
   const box = $("#results");
   const d = await loadLieux(), k = sansAccent(q);

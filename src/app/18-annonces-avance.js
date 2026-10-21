@@ -2,82 +2,6 @@
    Annonces, niveau 2 : import en lot, alertes e-mail, analyse, profil automatique
    ========================================================= */
 
-/* ---------- Plusieurs annonces sur une page (résultats de recherche, e-mail d'alerte) ----------
-   Fonction autonome : la même tourne dans la page visitée (bouton + Heden) et dans Heden (e-mails).
-   Une « carte » est le plus grand bloc qui ne contient qu'un seul prix de vente. */
-function extractCards(root, base) {
-  const BLK = /^(DIV|P|TD|TH|TR|LI|BR|H[1-6]|TABLE|TBODY|SECTION|ARTICLE|UL|OL|HEADER|FOOTER|DL|DT|DD|FIGURE|FIGCAPTION|ASIDE|MAIN)$/i;
-  const SKIP = /^(SCRIPT|STYLE|NOSCRIPT|SVG|TEMPLATE|IFRAME|HEAD|SELECT|OPTION)$/i;
-  const txt = el => { let o = ""; (function w(n) { if (n.nodeType === 3) { o += n.nodeValue; return; } if (n.nodeType !== 1 || SKIP.test(n.tagName)) return; const b = BLK.test(n.tagName); if (b) o += "\n"; for (let c = n.firstChild; c; c = c.nextSibling) w(c); if (b) o += "\n"; })(el); return o.replace(/[ \t   ]+/g, " ").replace(/ ?\n\s*/g, "\n").trim(); };
-  const PR = /(\d{1,3}(?:[    .]\d{3})+|\d{5,8})\s?(?:€|eur\b|euros?\b)/gi;
-  // loyers : un montant suivi de « /mois », « CC », « charges comprises » (ou sur une page de locations)
-  const RR = /(\d{1,2}[\s\u00a0\u202f\u2009.]?\d{3}|\d{3,4})(?:[.,]\d{1,2})?\s?(?:€|eur\b|euros?\b)/gi;
-  let page = ""; try { page = String(base || (root.ownerDocument && root.ownerDocument.defaultView && root.ownerDocument.defaultView.location.href) || ""); } catch (e) {}
-  const rentPage = /\/locations?(?:[\/_-]|$)|\/louer|a-louer|transaction=location|categorie=locations/i.test(page);
-  const prices = s => {
-    const o = [];
-    for (const m of s.matchAll(PR)) { const a = s.slice(m.index + m[0].length, m.index + m[0].length + 14).toLowerCase(); if (/^\s*(\/|par |le |du |hc|cc|charges)/.test(a)) continue; const v = +m[1].replace(/\D/g, ""); if (v >= 30000 && v <= 20000000) o.push(v); }
-    for (const m of s.matchAll(RR)) {
-      const a = s.slice(m.index + m[0].length, m.index + m[0].length + 20).toLowerCase(), b = s.slice(Math.max(0, m.index - 26), m.index).toLowerCase();
-      if (/(dont|charges?|honoraires|frais|d[ée]p[ôo]t|garantie|caution|[ée]tat des lieux)[^\d]{0,18}$/.test(b) || /^\s*(hc\b|h\.c|hors charges|de charges|\/ ?m|par m|m²)/.test(a)) continue;
-      const tagged = /^\s*(\/ ?mois|par mois|mensuel|cc\b|c\.c|charges comprises)/.test(a), v = +m[1].replace(/\D/g, "");
-      if ((tagged || rentPage) && v >= 200 && v <= 15000 && !o.includes(v)) o.push(v);
-    }
-    return o;
-  };
-  const cand = [];
-  for (const el of root.querySelectorAll("*")) {
-    if (SKIP.test(el.tagName)) continue;
-    const t = el.textContent || ""; if (t.length > 160 || t.length < 5) continue;
-    const p = prices(t); if (p.length) { el.__hp = p[0]; cand.push(el); }
-  }
-  const cs = new Set(cand);
-  const mins = cand.filter(el => { for (const d of el.querySelectorAll("*")) if (cs.has(d)) return false; return true; });
-  const cards = new Set();
-  for (const pe of mins) {
-    let card = pe;
-    for (let p = pe.parentElement; p && p !== root.parentElement; p = p.parentElement) {
-      const vals = new Set(); for (const x of mins) if (p.contains(x)) vals.add(x.__hp);
-      if (vals.size > 1 || (p.textContent || "").length > 2500) break;
-      card = p;
-    }
-    cards.add(card);
-  }
-  const list = [...cards].filter(c => ![...cards].some(o => o !== c && o.contains(c)));
-  const HOUSE = /m²|m2\b|pi[eè]ces?\b|chambres?\b|studio|\b[TF][1-9]\b/i;
-  const BAD = /unsub|d[ée]sabonn|d[ée]sinscri|preferen|mailto:|\/aide|help|contact|cgu|privacy|confidential|facebook|twitter|instagram|linkedin|youtube|apps\.apple|play\.google|tel:/i;
-  const abs = h => { try { return new URL(h, base || undefined).href; } catch (e) { try { return new URL(h, root.ownerDocument.baseURI).href; } catch (e2) { return ""; } } };
-  const out = [];
-  for (const c of list) {
-    const live = !!(c.ownerDocument && c.ownerDocument.defaultView);
-    const text = String(live && c.innerText ? c.innerText : txt(c)).replace(/[ \t  ]+/g, " ").replace(/\n\s*\n+/g, "\n").trim();
-    if (!HOUSE.test(text)) continue;
-    const as = [c.closest && c.closest("a[href]"), ...c.querySelectorAll("a[href]")].filter(Boolean);
-    let url = "", best = -1;
-    for (const a of as) {
-      const h = abs(a.getAttribute("href")); if (!/^https?:/i.test(h) || BAD.test(h)) continue;
-      const sc = (a.querySelector("img") ? 2 : 0) + (prices(a.textContent || "").length ? 2 : 0) + (/annonce|detail|\/ad\/|-r\d{5,}|\.htm/i.test(h) ? 3 : 0) + (a === as[0] ? 1 : 0);
-      if (sc > best) { best = sc; url = h; }
-    }
-    if (!url) continue;
-    // toutes les photos de la carte (carrousel compris), la plus grande d'abord
-    const seen = new Map();
-    for (const i of c.querySelectorAll("img")) {
-      const s = i.currentSrc || i.getAttribute("src") || i.getAttribute("data-src") || i.getAttribute("data-lazy-src") || i.getAttribute("data-original") || (i.getAttribute("srcset") || i.getAttribute("data-srcset") || "").split(/\s/)[0];
-      if (!s || /^data:|logo|pixel|spacer|tracking|icon|avatar|badge/i.test(s)) continue;
-      const w = i.naturalWidth || +i.getAttribute("width") || 200, hh = i.naturalHeight || +i.getAttribute("height") || 150;
-      if (w < 90 || hh < 60) continue;
-      const u = abs(s); if (u && !seen.has(u)) seen.set(u, w * hh);
-    }
-    const big = [...seen].sort((a, b) => b[1] - a[1])[0], imgs = big ? [big[0], ...[...seen.keys()].filter(u => u !== big[0])].slice(0, 12) : [];
-    out.push({url, img: imgs[0] || "", imgs, text: text.slice(0, 900)});
-  }
-  return out;
-}
-/* Page d'une seule annonce (et pas une page de résultats) */
-const isDetailUrl = u => /-r\d{6,}\b|\/annonces\/achat\/[^?#]+\/\d+\.htm|\/ad\/[a-z_]+\/\d+|\/vi\/\d+\.htm|\/annonce\/(?:vente|achat)\/|detail-vente|\/annonces\/annonce-|\/annonce-[a-z0-9-]+-\d+\.htm|\/annonce-immobiliere\//i.test(u || "");
-const SITE_NAMES = {"seloger.com": "SeLoger", "pap.fr": "PAP", "leboncoin.fr": "Leboncoin", "bienici.com": "Bien’ici", "logic-immo.com": "Logic-immo", "lefigaro.fr": "Figaro Immobilier", "orpi.com": "Orpi", "century21.fr": "Century 21", "laforet.com": "Laforêt", "guy-hoquet.com": "Guy Hoquet", "jinka.fr": "Jinka"};
-const siteName = host => { const h = String(host || "").toLowerCase().replace(/^www\./, ""); const k = Object.keys(SITE_NAMES).find(x => h === x || h.endsWith("." + x)); return k ? SITE_NAMES[k] : h; };
 
 /* ---------- Placement sur la carte : géocodage en file (1 requête par seconde) et mémorisé ---------- */
 const GEO_KEY = "heden.geo";
@@ -133,48 +57,6 @@ async function placeListing(f) {
   if (f.lat && !f.est) { const r = f.precise || /^(?:rue|metro|quartier)$/.test(f.placeLevel) ? 120 : 450; try { f.est = await estimate(circlePoints(f.lat, f.lng, r, 10)); } catch (e) {} }
   f.title = listingTitle(f);
 }
-/* ---------- DPE officiel (base ADEME des DPE depuis juillet 2021) : confirme le DPE, la surface, et situe l'immeuble ----------
-   Sans rue ni consommation, des centaines de logements se ressemblent dans un arrondissement : on ne cherche pas. */
-const ADEME = "https://data.ademe.fr/data-fair/api/v1/datasets/meg-83tjwtg8dyz4vv7h1dqe/lines";
-const ADEME_SEL = "numero_dpe,adresse_ban,nom_rue_ban,etiquette_dpe,surface_habitable_logement,conso_5_usages_par_m2_ep,date_etablissement_dpe,numero_etage_appartement,annee_construction,_geopoint";
-const rueCore = s => sansAccent(String(s || "").replace(/^\d+\s*(?:bis|ter)?\s*/i, "")).replace(/^(?:rue|avenue|boulevard|place|quai|passage|impasse|square|cite|villa|allee|cours|chaussee|faubourg|rond-point|sentier|hameau)\s+(?:de la |du |des |de l'|d'|de |la |le |les )?/, "").replace(/[’']/g, "'").trim();
-async function ademeCands(f) {
-  if (!f.surface || !/^(?:75|9[1-5]|7[78])\d{3}$/.test(f.postcode || "") || (!f.street && !f.dpeKwh)) return null;
-  const s = f.surface, qs = [`code_postal_ban:${f.postcode}`, `surface_habitable_logement:[${(s - 2).toFixed(1)} TO ${(s + 2).toFixed(1)}]`];
-  if (f.dpeKwh) qs.push(`conso_5_usages_par_m2_ep:[${f.dpeKwh - 0.5} TO ${f.dpeKwh + 0.5}]`);   // valeur affichée arrondie à l'unité
-  let u = `${ADEME}?size=30&select=${ADEME_SEL}&sort=-date_etablissement_dpe&qs=${encodeURIComponent(qs.join(" AND "))}`;
-  if (!f.dpeKwh) u += `&q=${encodeURIComponent(rueCore(f.street))}&q_fields=nom_rue_ban`;
-  try { const r = await fetch(u); if (!r.ok) return null; return (await r.json()).results || []; } catch (e) { return null; }
-}
-function ademeScore(f, r) {
-  const dS = Math.abs(r.surface_habitable_logement - f.surface), rue = f.street && rueCore(r.nom_rue_ban) === rueCore(f.street);
-  let sc = dS <= 0.5 ? 3 : dS <= 1 ? 2 : 1;
-  if (rue) sc += 3; else if (f.street) sc -= 2;
-  if (f.dpeKwh && Math.abs(r.conso_5_usages_par_m2_ep - f.dpeKwh) <= 0.5) sc += 4;
-  if (f.dpe) sc += r.etiquette_dpe === f.dpe ? 1 : -1;
-  if (f.floor > 0 && r.numero_etage_appartement === f.floor) sc += 1;
-  return sc;
-}
-const ademeOf = r => { const [lat, lng] = String(r._geopoint || "").split(",").map(Number);
-  return {n: r.numero_dpe, cls: r.etiquette_dpe, surf: r.surface_habitable_logement, kwh: r.conso_5_usages_par_m2_ep, date: r.date_etablissement_dpe, addr: r.adresse_ban, floor: r.numero_etage_appartement, year: r.annee_construction, lat, lng}; };
-/* rattache le DPE retrouvé : position de l'immeuble, DPE manquant complété (jamais d'écrasement de ce que dit l'annonce) */
-function adoptAdeme(f, a) {
-  f.ademe = Object.assign(a, {sure: true}); delete f.ademeCands;
-  if (a.lat && a.lng && !f.precise) { f.lat = a.lat; f.lng = a.lng; f.precise = true; f.placedBy = a.addr; f.placeLevel = "dpe"; f.est = null; }
-  if (!f.dpe && a.cls) f.dpe = a.cls;
-}
-async function ademeCheck(f, force) {
-  if (!force && f.ademeAt) return false;
-  const rs = await ademeCands(f); if (!rs) return false;
-  f.ademeAt = Date.now();
-  // un même logement peut avoir plusieurs DPE successifs : le plus récent seulement
-  const seen = new Set(), list = rs.map(r => [ademeScore(f, r), r]).filter(([sc]) => sc >= 4).sort((a, b) => b[0] - a[0])
-    .filter(([, r]) => { const k = r.adresse_ban + "|" + r.surface_habitable_logement; if (seen.has(k)) return false; seen.add(k); return true; });
-  if (list.length && list[0][0] >= 6 && (list.length === 1 || list[1][0] <= list[0][0] - 2)) adoptAdeme(f, ademeOf(list[0][1]));
-  else if (list.length) f.ademeCands = list.slice(0, 3).map(([, r]) => ademeOf(r));
-  else delete f.ademeCands;
-  return true;
-}
 const placeQ = {list: [], busy: false, tried: new Set()};
 function queuePlace(fs) {
   placeQ.list.push(...fs.filter(f => (!f.lat || !f.est) && !placeQ.tried.has(f.id)).map(f => f.id));
@@ -196,7 +78,6 @@ function queuePlace(fs) {
 
 /* ---------- Une annonce trouvée (page de résultats, alerte) : nouvelle, déjà connue, ou baisse de prix ---------- */
 /* même annonce : même lien (sans paramètres, sauf liens de suivi des e-mails), ou mêmes caractéristiques */
-const normUrl = u => { const x = String(u || "").split("#")[0]; return /emailing|click|track|link\.|\/c\//i.test(x) ? x : x.replace(/\?.*$/, ""); };
 function sameListing(a, b) {
   if (a.url && b.url && normUrl(a.url) === normUrl(b.url)) return true;
   if (kindOf(a) !== kindOf(b)) return false;
@@ -207,9 +88,9 @@ function sameListing(a, b) {
   if (!placeA || placeA !== placeB) return false;
   return Math.abs(a.price - b.price) / Math.max(a.price, b.price) < 0.2;
 }
-const cardImgs = c => Array.isArray(c.imgs) && c.imgs.length ? c.imgs : c.img ? [c.img] : [];
 function mergeCard(card, opts = {}) {
   const f = parseListing({url: card.url, text: card.text, imgs: cardImgs(card)});
+  if (card.data) Object.assign(f, card.data);                     // vivier : ce que le traitement ou un membre a déjà lu (position, DPE, fiche complète)
   if (card.price > 0) f.price = card.price;                       // vivier : le dernier prix vu, pas celui du premier e-mail
   if (!f.price || !(f.surface || f.rooms)) return {kind: "skip"};
   if (opts.onlyProject && projet() !== "deux" && kindOf(f) !== projet()) return {kind: "skip"};
@@ -279,7 +160,7 @@ async function kindAllowed(k) {
 }
 async function openBatchImport(items, pageUrl, oldBtn, title) {
   const src = siteName(hostOf(pageUrl));
-  let rows = items.map(c => { const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)}); if (c.price > 0) f.price = c.price; if (!(f.photos || []).length) f.photos = cardImgs(c); return {c, f}; })
+  let rows = items.map(c => { const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)}); if (c.data) Object.assign(f, c.data); if (c.price > 0) f.price = c.price; if (!(f.photos || []).length) f.photos = cardImgs(c); return {c, f}; })
     .filter(r => r.f.price && (r.f.surface || r.f.rooms));
   const nLoc = rows.filter(r => kindOf(r.f) === "location").length, major = nLoc * 2 >= rows.length ? "location" : "achat";
   if (rows.length && !(await kindAllowed(major))) return;
@@ -368,17 +249,8 @@ async function processVivier() {
       if (error) { if (schemaMissing(error) || /function|PGRST202/i.test((error.code || "") + error.message)) cloud.noVivier = true; break; }
       if (!data || !data.length) break;
       for (const m of data) {
-        let doc = null; try { doc = new DOMParser().parseFromString(m.html || "", "text/html"); } catch (e) {}
-        const src = siteName((String(m.sender).match(/@([\w.-]+)/) || [])[1]), head = doc ? (doc.body.textContent || "").replace(/\s+/g, " ").slice(0, 400) : "";
-        const gone = GONE_RE.test((m.subject || "") + " " + head);
-        let cards = []; try { if (doc && !gone) cards = extractCards(doc.body); } catch (e) {}
-        const ann = cards.map(c => {
-          const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)});
-          return f.price && (f.surface || f.rooms) ? {url: normUrl(c.url), source: src, kind: kindOf(f), postcode: f.postcode || null, price: f.price, surface: f.surface || null, rooms: f.rooms || null,
-            carte: {url: c.url, text: c.text.slice(0, 400), imgs: cardImgs(c).slice(0, 6)}} : null;
-        }).filter(Boolean);
-        const ret = gone && doc ? [...doc.querySelectorAll("a[href]")].map(a => normUrl(a.getAttribute("href"))).filter(u => /^https?:/.test(u)).slice(0, 40) : [];
-        await cloud.client.rpc("vivier_poser", {p_courrier: m.id, p_annonces: ann, p_retirees: ret});
+        const {ann, ret} = vivierLire(m);
+        await cloud.client.rpc("vivier_poser", {p_courrier: m.id, p_annonces: ann.map(x => x.a), p_retirees: ret});
         done++;
       }
     }
@@ -391,13 +263,13 @@ async function loadVivier() {
   if (!cloud.user || !cloud.client || cloud.noVivier) return null;
   if (cloud.vivierRows && Date.now() - (cloud.vivierAt || 0) < 300000) return cloud.vivierRows;
   const since = new Date(Date.now() - 30 * 864e5).toISOString();
-  const {data, error} = await cloud.client.from("vivier").select("id, url, source, kind, postcode, price, surface, rooms, carte, first_seen, last_seen")
+  const {data, error} = await cloud.client.from("vivier").select("id, url, source, kind, postcode, price, surface, rooms, carte, data, first_seen, last_seen")
     .is("gone_at", null).gt("last_seen", since).order("first_seen", {ascending: false}).limit(400);
   if (error) { if (schemaMissing(error)) cloud.noVivier = true; return null; }
   cloud.vivierAt = Date.now();
   return (cloud.vivierRows = (data || []).map(r => {
-    const c = r.carte || {}, item = {url: c.url || r.url, text: c.text || "", imgs: c.imgs || [], price: +r.price, source: r.source, origin: "vivier", first: Date.parse(r.first_seen) || 0};
-    const f = parseListing({url: item.url, text: item.text, imgs: item.imgs}); f.price = item.price;
+    const c = r.carte || {}, d = r.data || {}, item = {url: d.url || c.url || r.url, text: c.text || "", imgs: c.imgs || [], price: +r.price, source: r.source, origin: "vivier", data: d, first: Date.parse(r.first_seen) || 0};
+    const f = Object.assign(parseListing({url: item.url, text: item.text, imgs: item.imgs}), d, {price: item.price});
     return {item, f};
   }));
 }
@@ -417,6 +289,12 @@ async function paintVivier() {
     <div class="vivier__a">${neu.length ? `<button class="btn btn--sm btn--primary" type="button" data-viv="neuf">Voir</button>` : ""}<button class="link" type="button" data-viv="tout">Parcourir le vivier</button></div>`;
   const open = list => { h.vivierVu = Date.now(); save(); openBatchImport(list.map(r => r.item), "https://heden", false, n => `${plural(n, "annonce", "annonces")} du vivier Heden`); };
   $$("[data-viv]", el).forEach(b => b.onclick = () => open(b.dataset.viv === "neuf" ? neu : mine));
+}
+/* une annonce ouverte avec le bouton + Heden enrichit sa copie du vivier (toutes les photos, fiche complète) */
+function vivierEnrichir(p) {
+  if (!cloud.user || !cloud.client || cloud.noVivier || !p || !p.price || !cleanWeb(p.url)) return;
+  cloud.client.rpc("vivier_enrichir", {p_url: normUrl(p.url), p_bien: {price: p.price, surface: p.surface || null, rooms: p.rooms || null, postcode: p.postcode || null, kind: kindOf(p) === "location" ? "location" : "achat"},
+    p_data: vivierData(p), p_imgs: (p.photos || []).slice(0, 12)}).then(({data}) => { if (data) cloud.vivierAt = 0; }, () => {});
 }
 async function loadAlertState() {
   if (!cloud.user || !cloud.client) return null;

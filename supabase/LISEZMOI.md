@@ -23,7 +23,8 @@
    - créer la clé du vivier, dans une nouvelle requête : `insert into vivier_cles(cle, nom) values (encode(gen_random_bytes(24), 'hex'), 'gmail') returning cle;` et copier la valeur affichée (elle reste secrète : ne la mettez ni dans le dépôt ni dans `config.js`) ;
    - créer un compte Gmail dédié (par exemple heden.alertes@gmail.com), y installer `scripts/vivier/gmail.gs` en y collant la clé ;
    - avec cette adresse, créer des alertes larges sur les sites (Paris, achat et location) : chaque e-mail reçu nourrit le vivier, que tous les membres connectés voient dans Annonces.
-   Pour changer de clé : `delete from vivier_cles;` puis recréer.
+   - pour que le vivier se remplisse toutes les 10 minutes sans qu'un membre ait l'app ouverte : GitHub > Settings > Secrets and variables > Actions > New repository secret, nom `VIVIER_CLE`, valeur : la même clé. Le workflow « Vivier (alertes → annonces) » lit alors les e-mails, situe les rues (Base Adresse Nationale) et retrouve les DPE officiels (ADEME).
+   Pour changer de clé : `delete from vivier_cles;` puis recréer (et mettre à jour le script Gmail et le secret GitHub).
 5. **Récupérer les clés** : Project Settings → API (ou Data API / API Keys) :
    - Project URL (`https://xxxx.supabase.co`)
    - clé publique `anon` ou `publishable`

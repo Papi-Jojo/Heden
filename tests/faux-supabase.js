@@ -86,8 +86,12 @@ window.supabase = { createClient() {
       out = (db.vivier_courrier || []).splice(0, args.n || 5);
     } else if (name === "vivier_poser") {
       const at = new Date().toISOString(); db.vivier = db.vivier || [];
-      for (const a of args.p_annonces || []) db.vivier.push({id: uuid(), url: a.url, source: a.source, kind: a.kind, postcode: a.postcode, price: a.price, surface: a.surface, rooms: a.rooms, carte: a.carte, first_seen: at, last_seen: at, gone_at: null});
+      for (const a of args.p_annonces || []) db.vivier.push({id: uuid(), url: a.url, source: a.source, kind: a.kind, postcode: a.postcode, price: a.price, surface: a.surface, rooms: a.rooms, carte: a.carte, data: a.data || {}, first_seen: at, last_seen: at, gone_at: null});
       out = (args.p_annonces || []).length;
+    } else if (name === "vivier_enrichir") {
+      const v = (db.vivier || []).find(x => x.url === args.p_url || (x.postcode === args.p_bien.postcode && Math.abs(x.surface - args.p_bien.surface) <= 1.5));
+      if (v) { v.data = Object.assign({}, v.data, args.p_data, {url: args.p_url, complet: true}); if (args.p_imgs.length > (v.carte.imgs || []).length) v.carte.imgs = args.p_imgs; }
+      out = !!v;
     } else if (name === "leave_map") {
       db.map_members = db.map_members.filter(x => !(x.map_id === args.m && x.user_id === me));
     }

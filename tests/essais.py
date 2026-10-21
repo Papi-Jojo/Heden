@@ -272,6 +272,11 @@ def vivier(pw):
     got = pg.evaluate("__heden.state().listings.filter(f => f.origin === 'vivier').map(f => [f.source, f.price])")
     assert len(got) == 3 and all(s == "SeLoger" for s, _ in got), got
     assert "nouvelle" not in pg.locator("#vivier").inner_text(), "le bandeau annonce encore des nouveautés"
+    # un membre ouvre l'une d'elles avec le bouton + Heden : la copie du vivier reçoit toutes les photos et la fiche complète
+    importer(pg, {"v": 4, "url": "https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/1.htm", "title": "Appartement 3 pièces 46 m² Paris 11e", "meta": {}, "ld": [],
+                  "imgs": [f"https://img.ex.fr/1-{k}.jpg" for k in range(8)], "text": "Appartement 3 pièces 46 m², Paris 11ème (75011), 510 000 €. 5e étage avec ascenseur, DPE C."})
+    v1 = next(x for x in pg.evaluate(DBQ)["vivier"] if x["surface"] == 46)
+    assert v1["data"].get("complet") and v1["data"].get("floor") == 5 and len(v1["carte"]["imgs"]) == 8, v1
     assert not e.erreurs, e.erreurs; e.fermer()
 
 

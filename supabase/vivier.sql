@@ -41,6 +41,7 @@ create table if not exists public.vivier (
   last_seen  timestamptz not null default now(),
   gone_at    timestamptz
 );
+alter table public.vivier add column if not exists data jsonb not null default '{}'::jsonb;   -- tout ce que Heden a lu : étage, DPE, rue, position…
 create index if not exists vivier_vu_idx on public.vivier(last_seen desc);
 create index if not exists vivier_url_idx on public.vivier(url);
 create index if not exists vivier_bien_idx on public.vivier(postcode, rooms);
@@ -63,11 +64,19 @@ end $$;
 revoke all on function public.vivier_recevoir(text, text, text, text) from public;
 grant execute on function public.vivier_recevoir(text, text, text, text) to anon, authenticated;
 
--- Un appareil connecté prend quelques e-mails à lire ; s'il ne finit pas, un autre les reprend 10 minutes plus tard
-create or replace function public.vivier_prendre(n int default 5) returns setof public.vivier_courrier
+-- Qui peut lire et déposer : un membre connecté, ou le traitement automatique (toutes les 10 minutes) muni de la clé du vivier
+create or replace function public.vivier_autorise(p_cle text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null or (p_cle is not null and exists (select 1 from vivier_cles where cle = p_cle));
+$$;
+revoke all on function public.vivier_autorise(text) from public, anon, authenticated;
+
+-- Prendre quelques e-mails à lire ; s'ils ne sont pas traités, ils sont repris 10 minutes plus tard
+drop function if exists public.vivier_prendre(int);
+create or replace function public.vivier_prendre(n int default 5, p_cle text default null) returns setof public.vivier_courrier
 language plpgsql security definer set search_path = public as $$
 begin
-  if auth.uid() is null then raise exception 'non connecté'; end if;
+  if not vivier_autorise(p_cle) then raise exception 'non autorisé'; end if;
   delete from vivier_courrier where essais >= 3;                    -- illisible après trois essais : abandonné
   return query
     update vivier_courrier set pris_le = now(), essais = essais + 1
@@ -75,21 +84,22 @@ begin
                  order by received_at limit least(greatest(n, 1), 20) for update skip locked)
     returning *;
 end $$;
-revoke all on function public.vivier_prendre(int) from public, anon;
-grant execute on function public.vivier_prendre(int) to authenticated;
+revoke all on function public.vivier_prendre(int, text) from public;
+grant execute on function public.vivier_prendre(int, text) to anon, authenticated;
 
 -- Il dépose ce qu'il a lu : annonce nouvelle, déjà connue (revue, prix changé) ou retirée
-create or replace function public.vivier_poser(p_courrier uuid, p_annonces jsonb, p_retirees jsonb default '[]'::jsonb) returns int
+drop function if exists public.vivier_poser(uuid, jsonb, jsonb);
+create or replace function public.vivier_poser(p_courrier uuid, p_annonces jsonb, p_retirees jsonb default '[]'::jsonb, p_cle text default null) returns int
 language plpgsql security definer set search_path = public as $$
 declare a jsonb; v uuid; n int := 0; prix numeric; surf numeric; pc text; nb int; k text; u text; recu timestamptz;
 begin
-  if auth.uid() is null then raise exception 'non connecté'; end if;
+  if not vivier_autorise(p_cle) then raise exception 'non autorisé'; end if;
   select received_at into recu from vivier_courrier where id = p_courrier;
   if recu is null then return 0; end if;                              -- déjà traité par un autre appareil
   for a in select x.value from jsonb_array_elements(coalesce(p_annonces, '[]'::jsonb)) as x limit 80 loop
     u := left(coalesce(a->>'url', ''), 2000); k := case when a->>'kind' = 'location' then 'location' else 'achat' end;
     prix := nullif(a->>'price', '')::numeric; surf := nullif(a->>'surface', '')::numeric; nb := nullif(a->>'rooms', '')::int; pc := left(a->>'postcode', 5);
-    if prix is null or prix <= 0 or length(u) < 8 or length(coalesce(a->'carte', '{}'::jsonb)::text) > 8000 then continue; end if;
+    if prix is null or prix <= 0 or length(u) < 8 or length(coalesce(a->'carte', '{}'::jsonb)::text) > 8000 or length(coalesce(a->'data', '{}'::jsonb)::text) > 20000 then continue; end if;
     -- même annonce : même lien, ou même bien (code postal, pièces, surface à 1,5 m², prix à 20 %) revu dans les 60 jours
     v := null;
     select id into v from vivier
@@ -98,13 +108,14 @@ begin
                         and last_seen > now() - interval '60 days')
       order by (url = u) desc, last_seen desc limit 1;
     if v is null then
-      insert into vivier(url, source, kind, postcode, price, surface, rooms, carte, first_seen, last_seen)
-      values (u, left(coalesce(a->>'source', ''), 60), k, pc, prix, surf, nb, coalesce(a->'carte', '{}'::jsonb), recu, recu);
+      insert into vivier(url, source, kind, postcode, price, surface, rooms, carte, data, first_seen, last_seen)
+      values (u, left(coalesce(a->>'source', ''), 60), k, pc, prix, surf, nb, coalesce(a->'carte', '{}'::jsonb), coalesce(a->'data', '{}'::jsonb), recu, recu);
     else
       update vivier set
         prix_hist = case when recu >= last_seen and price <> prix then prix_hist || jsonb_build_object('price', price, 'at', last_seen) else prix_hist end,
         price     = case when recu >= last_seen then prix else price end,      -- un e-mail plus ancien ne remet pas un vieux prix
         carte     = case when jsonb_array_length(coalesce(a->'carte'->'imgs', '[]'::jsonb)) > jsonb_array_length(coalesce(carte->'imgs', '[]'::jsonb)) then a->'carte' else carte end,
+        data      = coalesce(a->'data', '{}'::jsonb) || data,                -- ce qui était déjà connu (fiche complète d'un membre) l'emporte
         last_seen = greatest(last_seen, recu), gone_at = null
       where id = v;
     end if;
@@ -116,5 +127,28 @@ begin
   delete from vivier where last_seen < now() - interval '120 days';   -- plus vue depuis quatre mois : sans doute vendue
   return n;
 end $$;
-revoke all on function public.vivier_poser(uuid, jsonb, jsonb) from public, anon;
-grant execute on function public.vivier_poser(uuid, jsonb, jsonb) to authenticated;
+revoke all on function public.vivier_poser(uuid, jsonb, jsonb, text) from public;
+grant execute on function public.vivier_poser(uuid, jsonb, jsonb, text) to anon, authenticated;
+
+-- Un membre ouvre une annonce du vivier avec le bouton + Heden : la fiche complète (toutes les photos, étage, DPE…)
+-- profite à tous. Seule une annonce déjà dans le vivier est enrichie ; rien d'autre n'est partagé.
+create or replace function public.vivier_enrichir(p_url text, p_bien jsonb, p_data jsonb, p_imgs jsonb) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare v uuid; prix numeric := nullif(p_bien->>'price', '')::numeric; surf numeric := nullif(p_bien->>'surface', '')::numeric; nb int := nullif(p_bien->>'rooms', '')::int;
+  pc text := left(p_bien->>'postcode', 5); k text := case when p_bien->>'kind' = 'location' then 'location' else 'achat' end;
+begin
+  if auth.uid() is null then raise exception 'non connecté'; end if;
+  if length(coalesce(p_data, '{}'::jsonb)::text) > 20000 or jsonb_typeof(coalesce(p_imgs, '[]'::jsonb)) <> 'array' then return false; end if;
+  select id into v from vivier
+    where gone_at is null and (url = left(p_url, 2000) or (pc is not null and postcode = pc and kind = k and surf is not null and abs(surface - surf) <= 1.5
+          and (nb is null or rooms is null or rooms = nb) and prix is not null and abs(price - prix) / greatest(price, prix) < 0.2))
+    order by (url = left(p_url, 2000)) desc, last_seen desc limit 1;
+  if v is null then return false; end if;
+  update vivier set data = data || coalesce(p_data, '{}'::jsonb) || jsonb_build_object('url', left(p_url, 2000), 'complet', true),
+    carte = case when jsonb_array_length(coalesce(p_imgs, '[]'::jsonb)) > jsonb_array_length(coalesce(carte->'imgs', '[]'::jsonb))
+                 then jsonb_set(carte, '{imgs}', (select coalesce(jsonb_agg(x.value), '[]'::jsonb) from (select value from jsonb_array_elements(p_imgs) limit 12) x)) else carte end
+  where id = v;
+  return true;
+end $$;
+revoke all on function public.vivier_enrichir(text, jsonb, jsonb, jsonb) from public, anon;
+grant execute on function public.vivier_enrichir(text, jsonb, jsonb, jsonb) to authenticated;
