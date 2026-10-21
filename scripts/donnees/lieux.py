@@ -1,19 +1,21 @@
-"""Lieux connus de Paris, avec une vraie forme, pour proposer une zone (bouton « Choisir un lieu »).
+"""Zones toutes prêtes pour Paris (bouton « Choisir un lieu », recherche, suggestion pendant le tracé).
 
-Source : OpenStreetMap (Overpass).
-  - les 80 quartiers administratifs (admin_level 10), tels quels ;
-  - les lieux nommés (place=neighbourhood / quarter) : leur contour s'il est dessiné,
-    sinon la part de Paris la plus proche de ce lieu que de tout autre (cellule de Voronoï),
-    coupée aux limites de l'arrondissement et à 450 m autour du lieu.
+Comment on découpe : les quartiers de Paris se lisent par leurs grandes rues. Les 80 quartiers administratifs (1860)
+et les îlots IRIS de l'INSEE sont délimités par des voies ; on fait de même avec le réseau d'OpenStreetMap :
+  1. les grands axes (autoroutes, voies principales, secondaires, tertiaires), les voies ferrées et les limites
+     d'arrondissement découpent Paris en îlots ;
+  2. chaque îlot rejoint le lieu connu le plus proche dans son arrondissement (station, place, parc, nom de quartier) ;
+  3. la zone d'un lieu est la réunion de ses îlots : ses bords suivent des rues, et les zones voisines se touchent
+     sans se chevaucher, sur tout Paris (hors bois de Boulogne et de Vincennes).
+Les quartiers administratifs sont gardés tels quels, comme choix plus larges.
 Sortie : data/lieux.json = {"v": date, "arr": {"1": [{"n": nom, "k": "lieu"|"quartier", "p": [[lat, lng], ...]}, ...], ...}}
 
-Usage : python scripts/donnees/lieux.py data            (télécharge)
-        python scripts/donnees/lieux.py data brut.json  (rejoue une réponse Overpass enregistrée)
+Usage : python scripts/donnees/lieux.py data   (ou : data brut.json connus.json rues.json bois.json pour rejouer)
 """
 import json, math, re, sys, time, urllib.request, urllib.parse, datetime
 from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiPoint
 from shapely.ops import polygonize, unary_union
-from shapely import voronoi_polygons
+import shapely
 
 OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
 Q = """[out:json][timeout:240];
@@ -43,7 +45,18 @@ LAT0 = 48.8566
 KX, KY = 111320 * math.cos(math.radians(LAT0)), 110540  # mètres par degré, à la latitude de Paris
 xy = lambda lat, lng: (lng * KX, lat * KY)
 ll = lambda x, y: [round(y / KY, 5), round(x / KX, 5)]
-RAYON, MAX_PTS, MIN_HA = 650, 18, 2
+MAX_PTS, MIN_HA, ECART = 24, 2, 280   # sommets au plus, surface minimale (ha), distance minimale entre deux lieux (m)
+Q_RUES = """[out:json][timeout:300];
+area["boundary"="administrative"]["admin_level"="8"]["name"="Paris"]->.p;
+(way["highway"~"^(motorway|trunk|primary|secondary|tertiary)$"](area.p);
+ way["railway"="rail"]["service"!~"."](area.p););
+out geom;"""
+Q_BOIS = """[out:json][timeout:120];
+area["boundary"="administrative"]["admin_level"="8"]["name"="Paris"]->.p;
+nwr["name"~"^Bois de (Boulogne|Vincennes)$"]["boundary"!="administrative"](area.p);
+out geom;"""
+# petits lieux nommés d'OSM qui ne sont pas des quartiers (une impasse, une cité, une villa)
+PETIT = re.compile(r"^(cité|villa|hameau|impasse|passage|cour|allée|résidence|square|les orgues|îlot)\b", re.I)
 
 
 def q_connus():
@@ -100,9 +113,9 @@ def rang(t):
     return 4
 
 
-def build(raw, connus=None):
+def build(raw, connus=None, rues=None, bois=None):
     els = raw["elements"]
-    arrs, quartiers, lieux = {}, [], []
+    arrs, quartiers, places = {}, [], []
     for el in els:
         t = el.get("tags", {})
         if t.get("boundary") == "administrative" and t.get("admin_level") == "9":
@@ -115,59 +128,64 @@ def build(raw, connus=None):
         if t.get("boundary") == "administrative" and t.get("admin_level") == "10":
             g = poly_of(el)
             if g is not None: quartiers.append((t.get("name", "").strip(), g))
-        elif t.get("place") in ("neighbourhood", "quarter") and t.get("name"):
-            if el["type"] == "node": lieux.append((t["name"].strip(), Point(*xy(el["lat"], el["lon"])), None))
+        elif t.get("place") in ("neighbourhood", "quarter") and t.get("name") and not PETIT.match(t["name"].strip()):
+            if el["type"] == "node": places.append((t["name"].strip(), Point(*xy(el["lat"], el["lon"]))))
             else:
                 g = poly_of(el)
-                if g is not None and g.area > 1: lieux.append((t["name"].strip(), g.representative_point(), g))
+                if g is not None and g.area > 1: places.append((t["name"].strip(), g.representative_point()))
     if len(arrs) < 20: raise SystemExit(f"arrondissements incomplets : {sorted(arrs)}")
     paris = unary_union(list(arrs.values()))
     arr_of = lambda pt: next((n for n, g in arrs.items() if g.contains(pt)), None)
-    # lieux connus : un repère par nom (le meilleur rang ; pour une rue ou un canal, le centre de ses morceaux)
+    # 1. les lieux : d'abord ceux que tout le monde cite, puis les noms de quartier d'OSM, enfin un par quartier administratif resté vide
     best = {}
     for el in (connus or {}).get("elements", []):
         t = el.get("tags", {}); nm = t.get("name", ""); c = el.get("center") or ({"lat": el["lat"], "lon": el["lon"]} if "lat" in el else None)
         if not nm or not c: continue
         key = next((n for n in ARR_DE if norm(n) == norm(nm)), None)
-        if not key or arr_of(Point(*xy(c["lat"], c["lon"]))) not in (ARR_DE[key], None): continue  # homonyme dans un autre arrondissement
+        if not key or arr_of(Point(*xy(c["lat"], c["lon"]))) != ARR_DE[key]: continue  # homonyme dans un autre arrondissement
         r = rang(t); cur = best.get(key)
         if cur is None or r < cur[0]: best[key] = [r, [(c["lat"], c["lon"])]]
         elif r == cur[0] and r >= 3: cur[1].append((c["lat"], c["lon"]))
-    have = {base(n) for n, _, _ in lieux} | {base(n) for n, _ in quartiers}  # déjà là sous un autre statut
-    for key, (r, cs) in best.items():
-        if base(key) in have: continue
-        la, lo = sum(c[0] for c in cs) / len(cs), sum(c[1] for c in cs) / len(cs)
-        lieux.append((key, Point(*xy(la, lo)), None))
-    out = {str(n): [] for n in range(1, 21)}
-    # quartiers administratifs : la forme officielle
+    cands = [(k, Point(*xy(sum(c[0] for c in cs) / len(cs), sum(c[1] for c in cs) / len(cs)))) for k, (r, cs) in best.items()]
+    cands += places
+    seeds = []
+    def ajoute(name, pt):
+        if not paris.contains(pt) or any(base(n) in base(name) or base(name) in base(n) for n, p in seeds if p.distance(pt) < 900): return   # « Square des Batignolles » près de « Batignolles »
+        if any(p.distance(pt) < ECART for _, p in seeds): return   # deux lieux trop proches : une seule zone
+        seeds.append((name, pt))
+    for name, pt in cands: ajoute(name, pt)
     for name, g in quartiers:
-        n = arr_of(g.representative_point())
+        if not any(g.contains(p) for _, p in seeds): ajoute(name, g.representative_point())
+    # 2. les îlots : Paris découpé par ses grands axes, ses voies ferrées et les limites d'arrondissement
+    lines = [LineString([xy(p["lat"], p["lon"]) for p in w["geometry"]]) for w in (rues or {}).get("elements", []) if len(w.get("geometry") or []) >= 2]
+    lines += [g.exterior if isinstance(g, Polygon) else unary_union([x.exterior for x in g.geoms]) for g in arrs.values()]
+    exclus = unary_union([g for g in (poly_of(el) for el in (bois or {}).get("elements", []) if el["type"] != "node") if g is not None]) if bois else Polygon()
+    ilots = [f for f in polygonize(unary_union(lines)) if f.area > 50]
+    print(f"{len(ilots)} îlots, {len(seeds)} lieux")
+    # 3. chaque îlot rejoint le lieu le plus proche de son arrondissement ; la zone est la réunion de ses îlots
+    by_arr = {n: [i for i, (_, p) in enumerate(seeds) if arr_of(p) == n] for n in arrs}
+    parts = {i: [] for i in range(len(seeds))}
+    for f in ilots:
+        c = f.representative_point()
+        if not paris.contains(c) or exclus.contains(c): continue
+        n = arr_of(c); cand = by_arr.get(n) or list(range(len(seeds)))
+        parts[min(cand, key=lambda i: seeds[i][1].distance(c))].append(f)
+    zones = []
+    for i, fs in parts.items():
+        if not fs: continue
+        g = unary_union(fs).buffer(4).buffer(-4)   # referme les fentes laissées par les voies à double sens
+        if isinstance(g, MultiPolygon): g = max(g.geoms, key=lambda x: x.area)
+        if g.area < MIN_HA * 1e4: continue
+        zones.append((seeds[i][0], arr_of(seeds[i][1]), Polygon(g.exterior)))
+    # bords communs simplifiés ensemble : les zones voisines restent jointives
+    simp = list(shapely.coverage_simplify([z[2] for z in zones], 10)) if hasattr(shapely, "coverage_simplify") else [z[2].simplify(10) for z in zones]
+    out = {str(n): [] for n in range(1, 21)}
+    for (name, n, _), g in zip(zones, simp):
         p = small(g)
+        if n and p: out[str(n)].append({"n": name, "k": "lieu", "p": p})
+    for name, g in quartiers:
+        n = arr_of(g.representative_point()); p = small(g)
         if n and p and name: out[str(n)].append({"n": name, "k": "quartier", "p": p})
-    # lieux : un seul par nom, dans Paris
-    seen, pts = set(), []
-    for name, pt, g in lieux:
-        key = base(name)
-        if key in seen or not paris.contains(pt): continue
-        seen.add(key); pts.append((name, pt, g))
-    cells = voronoi_polygons(MultiPoint([p for _, p, _ in pts]), extend_to=paris.envelope)
-    by_pt = {}
-    for c in cells.geoms:
-        for i, (_, p, _) in enumerate(pts):
-            if c.contains(p): by_pt[i] = c; break
-    for i, (name, pt, g) in enumerate(pts):
-        n = arr_of(pt)
-        if not n: continue
-        if g is not None and g.area < 4e6: shape = g.intersection(paris)          # contour dessiné dans OSM
-        else:
-            # bornée par ses voisins (Voronoï), son arrondissement et son quartier administratif (dont les limites suivent les rues),
-            # le quartier élargi de 120 m pour ne pas couper net un lieu posé sur sa limite ; le disque n'est qu'un garde-fou
-            q = next((g2 for _, g2 in quartiers if g2.contains(pt)), None)
-            shape = by_pt.get(i, pt.buffer(RAYON)).intersection(arrs[n]).intersection(pt.buffer(RAYON, 32))
-            if q is not None: shape = shape.intersection(q.buffer(120))
-        if shape.is_empty or shape.area < MIN_HA * 1e4: continue
-        p = small(shape)
-        if p: out[str(n)].append({"n": name, "k": "lieu", "p": p})
     for k in out: out[k].sort(key=lambda x: (x["k"] != "lieu", x["n"].lower()))
     return {"v": datetime.date.today().isoformat(), "arr": out}
 
@@ -176,7 +194,9 @@ if __name__ == "__main__":
     dest = sys.argv[1] if len(sys.argv) > 1 else "data"
     raw = json.load(open(sys.argv[2])) if len(sys.argv) > 2 else fetch()
     connus = json.load(open(sys.argv[3])) if len(sys.argv) > 3 else fetch(q_connus())
-    res = build(raw, connus)
+    rues = json.load(open(sys.argv[4])) if len(sys.argv) > 4 else fetch(Q_RUES)
+    bois = json.load(open(sys.argv[5])) if len(sys.argv) > 5 else fetch(Q_BOIS)
+    res = build(raw, connus, rues, bois)
     print("lieux connus situés :", sum(1 for v in res["arr"].values() for x in v if x["k"] == "lieu" and x["n"] in ARR_DE), "/", len(ARR_DE))
     n_l = sum(1 for v in res["arr"].values() for x in v if x["k"] == "lieu")
     n_q = sum(1 for v in res["arr"].values() for x in v if x["k"] == "quartier")
