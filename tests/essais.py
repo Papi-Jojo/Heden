@@ -233,6 +233,27 @@ def lecture(pw):
     assert not e.erreurs, e.erreurs; e.fermer()
 
 
+@essai
+def dpe_officiel(pw):
+    """Rue lue → Base Adresse Nationale ; consommation lue → DPE officiel retrouvé (position de l'immeuble) ; sinon choix parmi les logements possibles."""
+    e = Essai(pw); pg = e.page()
+    importer(pg, {"v": 4, "url": "https://ex.fr/annonce-dpe-1.htm", "title": "3 pièces 68 m² Paris 11e", "meta": {}, "ld": [], "imgs": [],
+                  "text": "Appartement 3 pièces 68 m², Paris 11ème (75011), 725 000 €. Rue Oberkampf, 4e étage. DPE : C (212 kWh/m²/an)."})
+    pg.locator("#lsave").click(); pg.wait_for_timeout(1500)
+    f = pg.evaluate("__heden.state().listings.find(x => x.url.includes('dpe-1'))")
+    assert f["street"] == "rue Oberkampf" and f["dpeKwh"] == 212, f
+    assert f.get("ademe", {}).get("sure") and f["precise"] and abs(f["lat"] - 48.8667) < 1e-4, f
+    assert "DPE annoncé C, DPE officiel D" in pg.locator(".trust--check").inner_text(), "écart de DPE non signalé"
+    importer(pg, {"v": 4, "url": "https://ex.fr/annonce-dpe-2.htm", "title": "2 pièces 41 m² Paris 18e", "meta": {}, "ld": [], "imgs": [],
+                  "text": "2 pièces 41 m², Paris 18ème, 389 000 €, rue Caulaincourt, DPE D."})
+    pg.locator("#lsave").click(); pg.wait_for_timeout(1500)
+    assert pg.locator("[data-ademe]").count() == 2, "pas de choix parmi les DPE possibles"
+    pg.locator("[data-ademe]").first.click(); pg.wait_for_timeout(1200)
+    g = pg.evaluate("__heden.state().listings.find(x => x.url.includes('dpe-2'))")
+    assert g["ademe"]["sure"] and g["placeLevel"] == "dpe" and pg.locator(".ademe").count() == 0, g
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
 if __name__ == "__main__":
     voulus = sys.argv[1:]
     srv = demarrer(); echecs = 0

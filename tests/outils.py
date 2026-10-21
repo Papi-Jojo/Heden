@@ -45,6 +45,20 @@ def routes(r):
         if u.split("?")[0].endswith(k): return r.fulfill(body=lire(f), content_type=t)
     if "nominatim" in u:  # géocodage : un point fixe dans Paris
         return r.fulfill(body=json.dumps([{"lat": "48.8840", "lon": "2.3375", "display_name": "Paris"}]), content_type="application/json", headers={"access-control-allow-origin": "*"})
+    if "data.geopf.fr/geocodage" in u:  # Base Adresse Nationale : la rue demandée, au code postal demandé
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(u).query); cp = q.get("postcode", ["75011"])[0]
+        f = {"type": "Feature", "geometry": {"type": "Point", "coordinates": [2.3700, 48.8650]}, "properties": {"score": 0.9, "type": "street", "postcode": cp, "label": q["q"][0] + " " + cp + " Paris"}}
+        return r.fulfill(body=json.dumps({"features": [f]}), content_type="application/json", headers={"access-control-allow-origin": "*"})
+    if "data.ademe.fr" in u:  # DPE officiels : un logement si la consommation est donnée, deux possibles sinon
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(u).query); qs = q.get("qs", [""])[0]
+        import re
+        lo, hi = map(float, re.search(r"surface_habitable_logement:\[([\d.]+) TO ([\d.]+)\]", qs).groups()); mid = (lo + hi) / 2
+        cp = re.search(r"code_postal_ban:(\d+)", qs).group(1); kw = re.search(r"conso_5_usages_par_m2_ep:\[([\d.]+) TO", qs)
+        rue = "Rue " + q.get("q", ["Oberkampf"])[0].title()
+        rec = lambda n, s, k, ad, pt: {"numero_dpe": f"2375E00000{n}", "adresse_ban": f"{ad} {cp} Paris", "nom_rue_ban": rue, "etiquette_dpe": "D", "surface_habitable_logement": s,
+                                       "conso_5_usages_par_m2_ep": k, "date_etablissement_dpe": "2023-01-13", "numero_etage_appartement": None, "annee_construction": 1930, "_geopoint": pt}
+        rs = [rec(1, round(mid, 1), float(kw.group(1)) + 0.5, "147 " + rue, "48.8667,2.3814")] if kw else [rec(2, round(mid, 1), 190, "3 " + rue, "48.8885,2.3359"), rec(3, round(mid + .3, 1), 240, "41 " + rue, "48.8890,2.3370")]
+        return r.fulfill(body=json.dumps({"total": len(rs), "results": rs}), content_type="application/json", headers={"access-control-allow-origin": "*"})
     return r.abort()  # tuiles, polices, photos : hors ligne
 
 

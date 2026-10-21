@@ -128,3 +128,12 @@ input,textarea{caret-color:var(--email)}
 .trust__l{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:2px}
 .lf em.lf__doubt{color:var(--laiton);cursor:help}
 .lf__dtxt{color:var(--laiton);font-weight:600}
+
+/* DPE officiel à choisir parmi quelques logements de la base ADEME */
+.ademe{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:var(--rayon-m);border:1px solid var(--trait-fort);background:color-mix(in srgb,var(--enduit) 55%,transparent)}
+.ademe p{margin:0}
+.ademe__r{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ademe__r span{display:flex;flex-direction:column;min-width:0}
+.ademe__r small{color:var(--zinc);font-size:12.5px}
+.ademe__r .chip{flex:none}
+.ademe .link{align-self:flex-start;font-size:13px}

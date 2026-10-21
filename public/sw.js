@@ -3,7 +3,7 @@
    - fichiers de l'app (noms à empreinte), bibliothèques, polices, données du quartier : cache, mis à jour en arrière-plan ;
    - Supabase, géocodage, itinéraires, photos des annonces : jamais en cache (comptes et données vivantes). */
 const CACHE = "heden-v1";
-const VIVANT = /supabase\.co|nominatim|routing\.openstreetmap|\/auth\/|\/rest\/|\/storage\//;
+const VIVANT = /supabase\.co|nominatim|data\.geopf\.fr|data\.ademe\.fr|routing\.openstreetmap|\/auth\/|\/rest\/|\/storage\//;
 self.addEventListener("install", e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html", "./manifest.webmanifest"]).catch(() => {}))); });
 self.addEventListener("activate", e => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);

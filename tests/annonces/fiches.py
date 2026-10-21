@@ -27,7 +27,7 @@ Agence Oberkampf Immobilier
 01 43 55 22 11
 Réf. : OBK-2291""",
   attendu=dict(price=725000, surface=68, rooms=3, bedrooms=2, floor=4, floors=6, elevator=True, dpe="D", charges=2640, taxe=1150,
-               postcode="75011", quartier="Folie-Méricourt", cave=True, traversant=True, lots=32, agencyPhone="0143552211", ref="OBK-2291", kind=None)),
+               postcode="75011", quartier="Folie-Méricourt", cave=True, traversant=True, lots=32, agencyPhone="0143552211", ref="OBK-2291", kind=None, street="rue Oberkampf")),
 
  dict(nom="PAP vente", url="https://www.pap.fr/annonces/appartement-paris-18e-r467301922",
   title="Vente appartement 2 pièces 41 m² Paris 18E", text="""Vente appartement 2 pièces 41 m²
@@ -41,7 +41,7 @@ Particulier vend 2 pièces au 3e étage sans ascenseur, rue Caulaincourt. Séjou
 Classe énergie E
 Référence annonce : 467-B-301922""",
   attendu=dict(price=389000, surface=41, rooms=2, bedrooms=1, floor=3, elevator=False, dpe="E", charges=2160, taxe=820, postcode="75018",
-               metro="Lamarck-Caulaincourt", exposure="sud", seller="particulier", quiet=True)),
+               metro="Lamarck-Caulaincourt", exposure="sud", seller="particulier", quiet=True, street="rue Caulaincourt")),
 
  dict(nom="Leboncoin vente (critères en colonnes)", url="https://www.leboncoin.fr/ad/ventes_immobilieres/2846113377",
   title="Appartement 4 pièces 82 m²", text="""Appartement 4 pièces 82 m²
@@ -102,7 +102,7 @@ Charges de copropriété : 2 100 €/an
 Nombre de lots : 18
 Honoraires à la charge du vendeur""",
   attendu=dict(price=549000, surface=59, rooms=3, bedrooms=2, floor=3, floors=5, elevator=True, dpe="D", charges=2100, postcode="75020",
-               quartier="Belleville", exposure="sud-ouest", lots=18, cave=True)),
+               quartier="Belleville", exposure="sud-ouest", lots=18, cave=True, dpeKwh=212)),
 
  dict(nom="Site d'agence, tableau oui/non", url="https://www.agence-exemple.fr/annonce/vente-appartement-paris-16-5-pieces-4471",
   title="Vente Appartement 5 pièces Paris 16e", text="""Vente Appartement 5 pièces Paris 16e
@@ -163,7 +163,7 @@ Description
 Studio meublé rue Gay-Lussac, 5e étage avec ascenseur, idéal étudiant. Loyer 890 € charges comprises (dont 60 € de charges). Disponible immédiatement.
 Particulier""",
   attendu=dict(kind="location", price=890, rentCharges=60, rentHC=830, furnished=True, rooms=1, surface=22, floor=5, elevator=True, dpe="F",
-               postcode="75005", seller="particulier")),
+               postcode="75005", seller="particulier", street="rue Gay-Lussac")),
 
  dict(nom="Viager occupé", url="https://www.viager-exemple.fr/annonce-viager-paris-14-889.htm",
   title="Viager occupé - Appartement 3 pièces 70 m² - Paris 14e", text="""Viager occupé - Appartement 3 pièces 70 m² - Paris 14e
@@ -187,13 +187,14 @@ Surface loi Carrez : 64,2 m² (72 m² au sol)
 Situé au dernier étage (7e), sans ascenseur, avec une terrasse de 25 m² et une chambre de service de 9 m².
 Lot de deux caves de 8 m².
 Performance énergétique : 255 kWh/m².an (classe E)
-Copropriété de 12 lots, pas de procédure en cours.""",
-  attendu=dict(price=799000, surface=64.2, rooms=3, floor=7, top=True, elevator=False, outdoor="terrasse", outdoorArea=25, dpe="E", lots=12, postcode="75009")),
+Copropriété de 12 lots, pas de procédure en cours.
+Agence Opéra Transactions, 12 rue de Provence 75009 Paris""",
+  attendu=dict(price=799000, surface=64.2, rooms=3, floor=7, top=True, elevator=False, outdoor="terrasse", outdoorArea=25, dpe="E", lots=12, postcode="75009", dpeKwh=255, street=None)),
 
  dict(nom="Rez-de-jardin", url="https://www.agence-exemple.fr/annonce/vente-appartement-paris-13-1182",
   title="2 pièces en rez-de-jardin, Paris 13", text="""2 pièces de 44 m² en rez-de-jardin avec jardin privatif de 30 m², Paris 13e, quartier Butte-aux-Cailles.
-Prix 455 000 € FAI. Charges courantes : 1 300 € par an.""",
-  attendu=dict(price=455000, surface=44, rooms=2, floor=0, outdoor="jardin", outdoorArea=30, charges=1300, postcode="75013", quartier="Butte-aux-Cailles")),
+Prix 455 000 € FAI. Charges courantes : 1 300 € par an. À deux pas de la place d'Italie.""",
+  attendu=dict(price=455000, surface=44, rooms=2, floor=0, outdoor="jardin", outdoorArea=30, charges=1300, postcode="75013", quartier="Butte-aux-Cailles", street=None)),
 
  dict(nom="Vente avec mots de location", url="https://www.agence-exemple.fr/annonce/1029",
   title="Investissement locatif 2 pièces", text="""Investissement locatif : 2 pièces 35 m² vendu loué, Paris 19e.

@@ -92,15 +92,35 @@ async function nominatim(q) {
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&viewbox=${vb}&bounded=1&limit=1&countrycodes=fr&accept-language=fr`);
     if (!r.ok) return null;
     const j = await r.json(), res = j[0] ? {lat: +j[0].lat, lng: +j[0].lon} : null;
-    geoCache[q] = res;
-    const keys = Object.keys(geoCache); if (keys.length > 400) delete geoCache[keys[0]];
-    try { localStorage.setItem(GEO_KEY, JSON.stringify(geoCache)); } catch (e) {}
-    return res;
+    return keepGeo(q, res);
+  } catch (e) { return null; }
+}
+function keepGeo(k, res) {
+  geoCache[k] = res;
+  const keys = Object.keys(geoCache); if (keys.length > 400) delete geoCache[keys[0]];
+  try { localStorage.setItem(GEO_KEY, JSON.stringify(geoCache)); } catch (e) {}
+  return res;
+}
+/* Base Adresse Nationale (Géoplateforme de l'IGN) : adresses et rues françaises, 50 requêtes par seconde */
+async function banGeo(q, postcode) {
+  const k = `ban|${q}|${postcode || ""}`;
+  if (Object.prototype.hasOwnProperty.call(geoCache, k)) return geoCache[k];
+  try {
+    const r = await fetch(`https://data.geopf.fr/geocodage/search/?q=${encodeURIComponent(q)}${postcode ? "&postcode=" + postcode : ""}&limit=1`);
+    if (!r.ok) return null;
+    const x = ((await r.json()).features || [])[0], p = x && x.properties;
+    // une rue ou une adresse, pas une commune entière ; et dans le code postal annoncé
+    const ok = p && p.score >= 0.55 && (p.type === "housenumber" || p.type === "street") && (!postcode || p.postcode === postcode);
+    return keepGeo(k, ok ? {lat: x.geometry.coordinates[1], lng: x.geometry.coordinates[0], type: p.type, label: p.label} : null);
   } catch (e) { return null; }
 }
 async function geocodeListing(f) {
   if (f.lat && f.lng) return;
   const city = f.city || (f.postcode && f.postcode.startsWith("75") ? "Paris" : "");
+  if (f.street && (f.postcode || city)) {
+    const g = await banGeo(`${f.street} ${f.postcode ? "" : city}`.trim(), f.postcode);
+    if (g) { Object.assign(f, {lat: g.lat, lng: g.lng, precise: g.type === "housenumber", placedBy: g.label, placeLevel: g.type === "housenumber" ? "adresse" : "rue"}); return; }
+  }
   const tries = [[f.metro && `${f.metro}, ${city || "Paris"}`, "metro"], [f.quartier && `${f.quartier}, ${city}`, "quartier"], [f.postcode && `${f.postcode} ${city}`, "cp"], [city, "ville"]].filter(x => x[0]);
   for (const [q, lvl] of tries) {
     const g = await nominatim(q);
@@ -109,8 +129,51 @@ async function geocodeListing(f) {
 }
 async function placeListing(f) {
   await geocodeListing(f);
-  if (f.lat && !f.est) { const r = f.precise || f.placeLevel === "metro" || f.placeLevel === "quartier" ? 120 : 450; try { f.est = await estimate(circlePoints(f.lat, f.lng, r, 10)); } catch (e) {} }
+  await ademeCheck(f);
+  if (f.lat && !f.est) { const r = f.precise || /^(?:rue|metro|quartier)$/.test(f.placeLevel) ? 120 : 450; try { f.est = await estimate(circlePoints(f.lat, f.lng, r, 10)); } catch (e) {} }
   f.title = listingTitle(f);
+}
+/* ---------- DPE officiel (base ADEME des DPE depuis juillet 2021) : confirme le DPE, la surface, et situe l'immeuble ----------
+   Sans rue ni consommation, des centaines de logements se ressemblent dans un arrondissement : on ne cherche pas. */
+const ADEME = "https://data.ademe.fr/data-fair/api/v1/datasets/meg-83tjwtg8dyz4vv7h1dqe/lines";
+const ADEME_SEL = "numero_dpe,adresse_ban,nom_rue_ban,etiquette_dpe,surface_habitable_logement,conso_5_usages_par_m2_ep,date_etablissement_dpe,numero_etage_appartement,annee_construction,_geopoint";
+const rueCore = s => sansAccent(String(s || "").replace(/^\d+\s*(?:bis|ter)?\s*/i, "")).replace(/^(?:rue|avenue|boulevard|place|quai|passage|impasse|square|cite|villa|allee|cours|chaussee|faubourg|rond-point|sentier|hameau)\s+(?:de la |du |des |de l'|d'|de |la |le |les )?/, "").replace(/[’']/g, "'").trim();
+async function ademeCands(f) {
+  if (!f.surface || !/^(?:75|9[1-5]|7[78])\d{3}$/.test(f.postcode || "") || (!f.street && !f.dpeKwh)) return null;
+  const s = f.surface, qs = [`code_postal_ban:${f.postcode}`, `surface_habitable_logement:[${(s - 2).toFixed(1)} TO ${(s + 2).toFixed(1)}]`];
+  if (f.dpeKwh) qs.push(`conso_5_usages_par_m2_ep:[${f.dpeKwh - 0.5} TO ${f.dpeKwh + 0.5}]`);   // valeur affichée arrondie à l'unité
+  let u = `${ADEME}?size=30&select=${ADEME_SEL}&sort=-date_etablissement_dpe&qs=${encodeURIComponent(qs.join(" AND "))}`;
+  if (!f.dpeKwh) u += `&q=${encodeURIComponent(rueCore(f.street))}&q_fields=nom_rue_ban`;
+  try { const r = await fetch(u); if (!r.ok) return null; return (await r.json()).results || []; } catch (e) { return null; }
+}
+function ademeScore(f, r) {
+  const dS = Math.abs(r.surface_habitable_logement - f.surface), rue = f.street && rueCore(r.nom_rue_ban) === rueCore(f.street);
+  let sc = dS <= 0.5 ? 3 : dS <= 1 ? 2 : 1;
+  if (rue) sc += 3; else if (f.street) sc -= 2;
+  if (f.dpeKwh && Math.abs(r.conso_5_usages_par_m2_ep - f.dpeKwh) <= 0.5) sc += 4;
+  if (f.dpe) sc += r.etiquette_dpe === f.dpe ? 1 : -1;
+  if (f.floor > 0 && r.numero_etage_appartement === f.floor) sc += 1;
+  return sc;
+}
+const ademeOf = r => { const [lat, lng] = String(r._geopoint || "").split(",").map(Number);
+  return {n: r.numero_dpe, cls: r.etiquette_dpe, surf: r.surface_habitable_logement, kwh: r.conso_5_usages_par_m2_ep, date: r.date_etablissement_dpe, addr: r.adresse_ban, floor: r.numero_etage_appartement, year: r.annee_construction, lat, lng}; };
+/* rattache le DPE retrouvé : position de l'immeuble, DPE manquant complété (jamais d'écrasement de ce que dit l'annonce) */
+function adoptAdeme(f, a) {
+  f.ademe = Object.assign(a, {sure: true}); delete f.ademeCands;
+  if (a.lat && a.lng && !f.precise) { f.lat = a.lat; f.lng = a.lng; f.precise = true; f.placedBy = a.addr; f.placeLevel = "dpe"; f.est = null; }
+  if (!f.dpe && a.cls) f.dpe = a.cls;
+}
+async function ademeCheck(f, force) {
+  if (!force && f.ademeAt) return false;
+  const rs = await ademeCands(f); if (!rs) return false;
+  f.ademeAt = Date.now();
+  // un même logement peut avoir plusieurs DPE successifs : le plus récent seulement
+  const seen = new Set(), list = rs.map(r => [ademeScore(f, r), r]).filter(([sc]) => sc >= 4).sort((a, b) => b[0] - a[0])
+    .filter(([, r]) => { const k = r.adresse_ban + "|" + r.surface_habitable_logement; if (seen.has(k)) return false; seen.add(k); return true; });
+  if (list.length && list[0][0] >= 6 && (list.length === 1 || list[1][0] <= list[0][0] - 2)) adoptAdeme(f, ademeOf(list[0][1]));
+  else if (list.length) f.ademeCands = list.slice(0, 3).map(([, r]) => ademeOf(r));
+  else delete f.ademeCands;
+  return true;
 }
 const placeQ = {list: [], busy: false, tried: new Set()};
 function queuePlace(fs) {
@@ -335,7 +398,7 @@ const ago = t => { const m = Math.round((Date.now() - new Date(t).getTime()) / 6
 async function comparables(f) {
   const meta = await loadMeta();
   if (!meta || !f.lat || !f.lng) return null;
-  const g = meta.grid, c = {lat: f.lat, lng: f.lng}, R = f.precise || f.placeLevel === "metro" || f.placeLevel === "quartier" ? 450 : 800;
+  const g = meta.grid, c = {lat: f.lat, lng: f.lng}, R = f.precise || /^(?:rue|metro|quartier)$/.test(f.placeLevel) ? 450 : 800;
   if (c.lat < g.s || c.lat > g.n || c.lng < g.w || c.lng > g.e) return null;
   const have = new Set(meta.tiles), keys = [];
   const i0 = Math.floor((c.lat - R / KYm - g.s) / g.dlat), i1 = Math.floor((c.lat + R / KYm - g.s) / g.dlat);

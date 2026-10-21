@@ -161,6 +161,10 @@ function parseListing(src) {
   const mq = raw.match(/[Qq]uartier\s(?:de\s|du\s|des\s|d['’])?([A-ZÉÈ][\wÀ-ÿ'’\- ]{2,28}?)(?=[,.\n(/]| à | et |$)/); if (mq) set("quartier", mq[1].trim());
   else if (/^Paris\s+75\d{3}\s+[A-ZÉÈ]/m.test(raw)) set("quartier", raw.match(/^Paris\s+75\d{3}\s+([A-ZÉÈ][\wÀ-ÿ'’\- ]{2,40}?)\s*$/m)?.[1]);
   else { const mp = raw.match(/\b(?:75\d{3}\s+)?Paris\s+\d{1,2}(?:e|er|ème)?\s*\(([A-ZÉÈ][^()\n]{2,40}?)\)/); if (mp && !/^\d/.test(mp[1])) set("quartier", mp[1].split(/\s+-\s+/)[0].trim()); }
+  // Rue (et numéro) du bien : pas celle de l'agence, ni un repère « proche de… »
+  const st = readStreet(raw); if (st) set("street", st);
+  // Consommation affichée avec le DPE (kWh/m²/an) : permet de retrouver le diagnostic officiel
+  const mk = raw.match(/(\d{2,3}(?:[.,]\d)?)\s?kWh\s?(?:EP\s?|ep\s?)?(?:\/|par)\s?m(?:²|2)/i); if (mk) { const v = numFR(mk[1]); if (v >= 10 && v <= 800) set("dpeKwh", v); }
   // Photos
   const photos = [];
   const addP = u => { if (typeof u === "string" && /^https?:/.test(u) && !photos.includes(u) && photos.length < 12) photos.push(u); };
@@ -191,6 +195,19 @@ function parseListing(src) {
   f.found = found;
   return f;
 }
+/* Rue citée dans l'annonce : « 12 rue Oberkampf », « boulevard de Clichy » ; on écarte l'adresse de l'agence et les repères (« proche de la place… ») */
+const VOIES = ["rue", "avenue", "boulevard", "bd", "place", "quai", "passage", "impasse", "square", "cité", "villa", "allée", "cours", "chaussée", "faubourg", "rond-point", "sentier", "hameau"];
+const VOIE_RE = new RegExp(`(?:\\b(\\d{1,3})(?:\\s?(?:bis|ter))?,?[ \\u00a0]+)?\\b(${VOIES.map(w => `[${w[0].toUpperCase()}${w[0]}]${w.slice(1)}`).join("|")})\\.?[ \\u00a0]+((?:de la |du |des |de l['’]|d['’]|de |la |le |les )?[A-ZÉÈÎÔ][\\wÀ-ÿ'’-]+(?:[ -](?:de la |du |des |de l['’]|d['’]|de |la |le |et )?[A-ZÉÈÎÔ][\\wÀ-ÿ'’-]+){0,3})`, "g");
+function readStreet(raw) {
+  for (const m of raw.matchAll(VOIE_RE)) {
+    const line = raw.slice(raw.lastIndexOf("\n", m.index) + 1, m.index).toLowerCase(), before = raw.slice(Math.max(0, m.index - 30), m.index).toLowerCase();
+    if (/agence|agency|bureau|contact|si[èe]ge|cabinet|notre|nos locaux|horaires/.test(line)) continue;
+    if (/(?:proche|pr[èe]s|[àa] deux pas|[àa] proximit[ée]|[àa] \d+ ?(?:min|m\b)|m[ée]tro|station|face|vue sur|donnant sur|entre|non loin|depuis)\b[^.\n]{0,20}$/.test(before)) continue;
+    const voie = m[2].toLowerCase() === "bd" ? "boulevard" : m[2].toLowerCase();
+    return (m[1] ? m[1] + " " : "") + voie + " " + m[3].trim();
+  }
+  return null;
+}
 /* ---------- Contrôle de cohérence : les valeurs lues qui méritent un coup d'œil (rien n'est modifié) ---------- */
 function checkListing(f) {
   const o = [], loc = kindOf(f) === "location", paris = String(f.postcode || "").startsWith("75") || f.city === "Paris", fr = v => fmtInt(Math.round(v));
@@ -206,9 +223,19 @@ function checkListing(f) {
   if (f.bedrooms != null && f.rooms > 1 && f.bedrooms >= f.rooms) o.push(["bedrooms", `${f.bedrooms} chambres pour ${f.rooms} pièces`]);
   if (f.floor != null && f.floors && f.floor > f.floors) o.push(["floor", `${f.floor}e étage d’un immeuble de ${f.floors} étages`]);
   if (f.floor > 15 && paris) o.push(["floor", `${f.floor}e étage, rare à Paris`]);
+  const a = f.ademe;
+  if (a && a.cls && f.dpe && a.cls !== f.dpe) o.push(["dpe", `DPE annoncé ${f.dpe}, DPE officiel ${a.cls} (ADEME, ${fmtDate(a.date)})`]);
+  if (a && a.surf && f.surface && Math.abs(a.surf - f.surface) > 2) o.push(["surface", `${fr(f.surface)} m² annoncés, ${fmtInt(a.surf)} m² au DPE officiel`]);
   if (!loc && f.charges && f.surface && (f.charges / f.surface > 110 || f.charges / f.surface < 4)) o.push(["charges", `${fr(f.charges)} € par an pour ${fr(f.surface)} m² : charges par mois lues comme par an, ou l’inverse ?`]);
   if (loc && f.rentCharges && f.price && f.rentCharges > f.price * 0.35) o.push(["rentCharges", `${fr(f.rentCharges)} € de charges pour ${fr(f.price)} € de loyer`]);
   return o;
+}
+/* DPE officiel : plusieurs logements possibles, l'utilisateur choisit */
+function ademeHTML(f) {
+  if (f.ademe || !(f.ademeCands || []).length) return "";
+  return `<div class="ademe"><p><b>DPE officiel</b> : ${f.ademeCands.length > 1 ? `${f.ademeCands.length} logements correspondent` : "un logement correspond"} dans la base de l’ADEME. C’est lequel ?</p>
+    ${f.ademeCands.map((a, i) => `<div class="ademe__r"><span>${esc(a.addr)}<small class="num">${esc(a.cls)}, ${fmtInt(a.surf)} m²${a.floor ? `, ${a.floor}e étage` : ""}, ${esc(fmtDate(a.date))}</small></span><button class="chip chip--sm" type="button" data-ademe="${i}">C’est celui-ci</button></div>`).join("")}
+    <button class="link" type="button" data-ademenone>Aucun de ceux-là</button></div>`;
 }
 function checkHTML(f) {
   // une info vérifiée et enregistrée dans le formulaire n'est plus signalée
@@ -635,6 +662,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
     ${trustHTML(trustSignals(f, s))}
     ${checkHTML(f)}
+    ${ademeHTML(f)}
     <div class="feel" role="group" aria-label="Votre avis sur la note"><span>Cette note vous semble</span>${[["juste", "Juste"], ["haut", "Trop haute"], ["bas", "Trop basse"]].map(([k, l]) => `<button class="chip chip--sm" type="button" data-feel="${k}" aria-pressed="${!!(f.feel && f.feel.v === k)}">${l}</button>`).join("")}
       ${f.feel && f.feel.v !== "juste" ? `<p class="feel__next">Noté. Une info mal lue ? <button class="link" type="button" id="feelFix">Corrigez-la</button>.</p>` : ""}</div>
     ${freshHTML(f)}
@@ -657,7 +685,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
       <h2>Le logement</h2>
       <div class="lcrit">${crits.map(([cid]) => `<div class="${s.fixed[cid] ? "fix" : s.known[cid] ? "" : "unk"}" ${s.fixed[cid] ? `title="Corrigé"` : ""}><span>${esc(HOME_LIB[cid].name)}</span><i style="--c:${colorFor(s.values[cid] * 20)}"></i><b class="num">${s.known[cid] ? fmtNote(Math.round(s.values[cid] * 2) / 2) : "?"}</b></div>`).join("")}</div>
       <dl class="meta">${[["Viager", f.viager && [f.viager === "occupe" ? "occupé" : f.viager === "libre" ? "libre" : "", f.price && `bouquet de ${fmtInt(f.price)} €`, f.rente && `rente de ${fmtInt(f.rente)} € par mois`].filter(Boolean).join(", ")], ["Surface", f.surface && fmtInt(f.surface) + " m²"], ["Pièces", f.rooms && `${f.rooms}${f.bedrooms != null ? `, dont ${f.bedrooms} chambre${f.bedrooms > 1 ? "s" : ""}` : ""}`], ["Étage", f.floor != null && (f.floor === 0 ? "rez-de-chaussée" : (f.floor === 1 ? "1er" : f.floor + "e") + (f.floors ? ` sur ${f.floors}` : "")) + (f.elevator ? ", ascenseur" : f.elevator === false ? ", sans ascenseur" : "")],
-        ["DPE", f.dpe], ["Charges", f.charges && fmtInt(f.charges) + " € par an"], ["Taxe foncière", f.taxe && fmtInt(f.taxe) + " €"], ["Copropriété", f.lots && `${fmtInt(f.lots)} lots`], ["Lieu", [f.metro && "métro " + f.metro, f.quartier, f.postcode, f.city].filter(Boolean).join(", ") + (f.lat && !f.precise ? " (position approximative)" : "")]]
+        ["DPE", [f.dpe, f.dpeKwh && `${fmtInt(f.dpeKwh)} kWh/m²/an`].filter(Boolean).join(", ")], ["DPE officiel", f.ademe && `${f.ademe.cls}, ${fmtInt(f.ademe.surf)} m², établi le ${fmtDate(f.ademe.date)}, ${f.ademe.addr}`], ["Charges", f.charges && fmtInt(f.charges) + " € par an"], ["Taxe foncière", f.taxe && fmtInt(f.taxe) + " €"], ["Copropriété", f.lots && `${fmtInt(f.lots)} lots`], ["Lieu", [f.street, f.metro && "métro " + f.metro, f.quartier, f.postcode, f.city].filter(Boolean).join(", ") + (f.lat && !f.precise ? " (position approximative)" : "")]]
         .filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
       ${Object.keys(s.fixed).length ? `<p class="hint2"><span class="fixdot"></span> Corrigé après lecture ou visite.</p>` : ""}
     </section>
@@ -684,6 +712,9 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
   $("#lnote").oninput = e => { f.note = e.target.value; f.updatedAt = Date.now(); save(); };
   $("#ledit").onclick = () => openAddListing(f);
   const cf = $("[data-checkfix]", box); if (cf) cf.onclick = () => openAddListing(f);
+  $$("[data-ademe]", box).forEach(b => b.onclick = async () => { adoptAdeme(f, f.ademeCands[+b.dataset.ademe]); await placeListing(f); f.updatedAt = Date.now(); save(); renderListingPins(); renderListingDetail(f.id); toast("DPE officiel rattaché à l’annonce"); });
+  const an = $("[data-ademenone]", box); if (an) an.onclick = () => { f.ademeCands = []; f.updatedAt = Date.now(); save(); renderListingDetail(f.id); };
+  if (!f.ademeAt && (f.street || f.dpeKwh)) ademeCheck(f).then(async ch => { if (!ch) return; await placeListing(f); f.updatedAt = Date.now(); save(); renderListingPins(); if (lui.openId === f.id && currentTab === "annonces") renderListingDetail(f.id); });
   $("#lfix").onclick = () => openScoreFix(f);
   $$("[data-feel]", box).forEach(b => b.onclick = () => {
     const k = b.dataset.feel; f.feel = f.feel && f.feel.v === k ? null : {v: k, at: Date.now(), total: s.total}; if (!f.feel) delete f.feel;
@@ -809,9 +840,9 @@ function openScoreFix(f) {
 
 /* ---------- Ajouter ou corriger une annonce ---------- */
 const FIELDS = [["price", "Prix", "num", "€"], ["surface", "Surface", "num", "m²"], ["rooms", "Pièces", "num"], ["bedrooms", "Chambres", "num"], ["floor", "Étage (0 = RDC)", "num"],
-  ["elevator", "Ascenseur", "bool"], ["outdoor", "Extérieur", "sel", ["", "balcon", "loggia", "terrasse", "jardin"]], ["dpe", "DPE", "sel", ["", ..."ABCDEFG"]], ["charges", "Charges par an", "num", "€"], ["lots", "Lots de copropriété", "num"],
+  ["elevator", "Ascenseur", "bool"], ["outdoor", "Extérieur", "sel", ["", "balcon", "loggia", "terrasse", "jardin"]], ["dpe", "DPE", "sel", ["", ..."ABCDEFG"]], ["dpeKwh", "Consommation", "num", "kWh/m²/an"], ["charges", "Charges par an", "num", "€"], ["lots", "Lots de copropriété", "num"],
   ["works", "État", "sel", ["", "neuf", "bon", "rafraichir", "travaux"]], ["quiet", "Au calme, sur cour", "bool"], ["traversant", "Traversant", "bool"], ["bright", "Lumineux", "bool"],
-  ["cave", "Cave", "bool"], ["parking", "Parking", "bool"], ["view", "Vue dégagée", "bool"], ["postcode", "Code postal", "txt"], ["metro", "Métro le plus proche", "txt"],
+  ["cave", "Cave", "bool"], ["parking", "Parking", "bool"], ["view", "Vue dégagée", "bool"], ["street", "Rue", "txt"], ["postcode", "Code postal", "txt"], ["metro", "Métro le plus proche", "txt"],
   ["seller", "Vendu par", "sel", ["", "agence", "particulier"]], ["agencyName", "Agence", "txt"], ["agencyPhone", "Téléphone", "txt"], ["agencyEmail", "E-mail", "txt"], ["agencyUrl", "Site de l’agence", "txt"], ["agencyAddress", "Adresse de l’agence", "txt"], ["ref", "Référence de l’annonce", "txt"]];
 const FIELDS_LOC = [["rentHC", "Loyer hors charges", "num", "€ par mois"], ["rentCharges", "Dont charges", "num", "€ par mois"], ["furnished", "Meublé ou vide", "sel", ["", "true", "false"]],
   ["deposit", "Dépôt de garantie", "num", "€"], ["agencyFee", "Frais d’agence", "num", "€"], ["available", "Disponible", "txt"], ["epoque", "Construction", "sel", ["", "a", "b", "c", "d"]],
@@ -859,7 +890,8 @@ function openAddListing(existing, imported, opts = {}) {
       if (existing) { f.checked = checkListing(f).map(x => x[0]); if (!f.checked.length) delete f.checked; }
       if (!existing && !(await kindAllowed(kindOf(f)))) return;
       const b = $("#lsave"); b.disabled = true; b.textContent = "Placement sur la carte…";
-      const moved = existing && (existing.postcode !== f.postcode || existing.metro !== f.metro);
+      const moved = existing && ["postcode", "metro", "street"].some(k => existing[k] !== f[k]);
+      if (existing && (moved || ["surface", "dpe", "dpeKwh"].some(k => existing[k] !== f[k]))) { delete f.ademeAt; delete f.ademeCands; if (f.ademe) { if (f.placeLevel === "dpe") f.precise = false; delete f.ademe; } }
       if (moved && !f.precise) { f.lat = f.lng = null; f.est = null; }
       await placeListing(f); f.updatedAt = Date.now();
       if (existing) Object.assign(existing, f);
