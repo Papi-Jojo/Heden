@@ -142,11 +142,11 @@ function listingFilters(f, h) {
 /* Quartier : la zone qui contient l'annonce, sinon la plus proche (moins de 300 m), sinon l'estimation des données du coin */
 function listingArea(f) {
   if (!(f.lat && f.lng)) return null;
-  const p = {lat: f.lat, lng: f.lng};
-  const inside = state.zones.find(z => Array.isArray(z.points) && inPoly(f.lat, f.lng, z.points));
+  const p = {lat: f.lat, lng: f.lng}, coarse = f.placeLevel === "cp" || f.placeLevel === "ville";   // posée au centre de l'arrondissement : aucune zone ne la contient vraiment
+  const inside = !coarse && state.zones.find(z => Array.isArray(z.points) && inPoly(f.lat, f.lng, z.points));
   if (inside) return {zone: inside, score: zoneScore(inside).score, how: "dans"};
   let best = null;
-  for (const z of state.zones) { if (!z.points) continue; const d = Math.min(...z.points.map(q => distM(p, {lat: q[0], lng: q[1]}))); if (d < 300 && (!best || d < best.d)) best = {zone: z, d}; }
+  for (const z of coarse ? [] : state.zones) { if (!z.points) continue; const d = Math.min(...z.points.map(q => distM(p, {lat: q[0], lng: q[1]}))); if (d < 300 && (!best || d < best.d)) best = {zone: z, d}; }
   if (best) { const s = zoneScore(best.zone).score; return {zone: best.zone, score: s == null ? null : Math.max(0, s - 5), how: "près", d: best.d}; }
   if (f.est) {
     const tmp = {est: f.est, ratings: {}}, cs = crit().filter(c => c.weight > 0), sw = scoreWith(tmp, {}, cs, zoneBudget());

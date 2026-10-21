@@ -87,6 +87,8 @@ const zoneLayer = L.layerGroup().addTo(map);
 const mapFilter = (() => { try { return Object.assign({zones: true, annonces: true}, JSON.parse(localStorage.getItem("heden.mapf") || "{}")); } catch (e) { return {zones: true, annonces: true}; } })();
 let justSaved = null;
 function renderZones() {
+  // une zone notée ou modifiée change la note des favoris autour : leurs pastilles suivent
+  clearTimeout(renderZones.pins); renderZones.pins = setTimeout(() => { if (typeof renderListingPins === "function") renderListingPins(); }, 150);
   zoneLayer.clearLayers();
   for (const z of state.zones) {
     if (draft && draft.id === z.id) continue;
