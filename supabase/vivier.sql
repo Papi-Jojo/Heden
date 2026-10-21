@@ -81,12 +81,12 @@ grant execute on function public.vivier_prendre(int) to authenticated;
 -- Il dépose ce qu'il a lu : annonce nouvelle, déjà connue (revue, prix changé) ou retirée
 create or replace function public.vivier_poser(p_courrier uuid, p_annonces jsonb, p_retirees jsonb default '[]'::jsonb) returns int
 language plpgsql security definer set search_path = public as $$
-declare a jsonb; v uuid; n int := 0; prix numeric; surf numeric; pc text; nb int; k text; u text; at timestamptz;
+declare a jsonb; v uuid; n int := 0; prix numeric; surf numeric; pc text; nb int; k text; u text; recu timestamptz;
 begin
   if auth.uid() is null then raise exception 'non connecté'; end if;
-  select received_at into at from vivier_courrier where id = p_courrier;
-  if at is null then return 0; end if;                              -- déjà traité par un autre appareil
-  for a in select x from jsonb_array_elements(coalesce(p_annonces, '[]'::jsonb)) x limit 80 loop
+  select received_at into recu from vivier_courrier where id = p_courrier;
+  if recu is null then return 0; end if;                              -- déjà traité par un autre appareil
+  for a in select x.value from jsonb_array_elements(coalesce(p_annonces, '[]'::jsonb)) as x limit 80 loop
     u := left(coalesce(a->>'url', ''), 2000); k := case when a->>'kind' = 'location' then 'location' else 'achat' end;
     prix := nullif(a->>'price', '')::numeric; surf := nullif(a->>'surface', '')::numeric; nb := nullif(a->>'rooms', '')::int; pc := left(a->>'postcode', 5);
     if prix is null or prix <= 0 or length(u) < 8 or length(coalesce(a->'carte', '{}'::jsonb)::text) > 8000 then continue; end if;
@@ -99,19 +99,19 @@ begin
       order by (url = u) desc, last_seen desc limit 1;
     if v is null then
       insert into vivier(url, source, kind, postcode, price, surface, rooms, carte, first_seen, last_seen)
-      values (u, left(coalesce(a->>'source', ''), 60), k, pc, prix, surf, nb, coalesce(a->'carte', '{}'::jsonb), at, at);
+      values (u, left(coalesce(a->>'source', ''), 60), k, pc, prix, surf, nb, coalesce(a->'carte', '{}'::jsonb), recu, recu);
     else
       update vivier set
-        prix_hist = case when at >= last_seen and price <> prix then prix_hist || jsonb_build_object('price', price, 'at', last_seen) else prix_hist end,
-        price     = case when at >= last_seen then prix else price end,      -- un e-mail plus ancien ne remet pas un vieux prix
+        prix_hist = case when recu >= last_seen and price <> prix then prix_hist || jsonb_build_object('price', price, 'at', last_seen) else prix_hist end,
+        price     = case when recu >= last_seen then prix else price end,      -- un e-mail plus ancien ne remet pas un vieux prix
         carte     = case when jsonb_array_length(coalesce(a->'carte'->'imgs', '[]'::jsonb)) > jsonb_array_length(coalesce(carte->'imgs', '[]'::jsonb)) then a->'carte' else carte end,
-        last_seen = greatest(last_seen, at), gone_at = null
+        last_seen = greatest(last_seen, recu), gone_at = null
       where id = v;
     end if;
     n := n + 1;
   end loop;
-  update vivier set gone_at = at
-    where gone_at is null and url in (select left(x, 2000) from jsonb_array_elements_text(coalesce(p_retirees, '[]'::jsonb)) x);
+  update vivier set gone_at = recu
+    where gone_at is null and url in (select left(x.value, 2000) from jsonb_array_elements_text(coalesce(p_retirees, '[]'::jsonb)) as x);
   delete from vivier_courrier where id = p_courrier;
   delete from vivier where last_seen < now() - interval '120 days';   -- plus vue depuis quatre mois : sans doute vendue
   return n;
