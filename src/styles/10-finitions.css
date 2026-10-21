@@ -110,8 +110,6 @@ input,textarea{caret-color:var(--email)}
 ::view-transition-image-pair(lph){isolation:auto}
 ::view-transition-old(lph),::view-transition-new(lph){height:100%;object-fit:cover;overflow:clip}
 
-/* Épingles regroupées : une pastille ronde avec le nombre, liseré à la couleur de la meilleure note. */
-.lpin--grp{min-width:30px;height:30px;padding:0 8px;justify-content:center;border-radius:var(--pilule);box-shadow:0 0 0 3px var(--c),0 2px 8px rgba(38,35,31,.35);font:700 13px/1 var(--sans);cursor:pointer}
 
 /* Zones toutes prêtes dans le panneau de tracé : discret, sous les compteurs. */
 .prets{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:var(--rayon-m);background:color-mix(in srgb,var(--bourgeon) 16%,var(--calcaire));border:1px solid color-mix(in srgb,var(--bourgeon) 45%,transparent);animation:vue-in .22s var(--ease-sortie) both}
@@ -138,10 +136,142 @@ input,textarea{caret-color:var(--email)}
 .ademe__r .chip{flex:none}
 .ademe .link{align-self:flex-start;font-size:13px}
 
-/* Le vivier Heden : bandeau discret en tête des annonces */
-.vivier{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;border-radius:var(--rayon-m);background:color-mix(in srgb,var(--bourgeon) 16%,var(--calcaire));border:1px solid color-mix(in srgb,var(--bourgeon) 45%,transparent);animation:vue-in .22s var(--ease-sortie) both}
-.vivier p{margin:0;font-size:14px;line-height:1.4}
-.vivier__a{display:flex;align-items:center;gap:14px;flex:none}
 
 /* Indication sous « Voir l'annonce » : récupérer la galerie avec le bouton + Heden */
 .lact__hint{margin:-6px 0 0}
+
+/* ---------- Annonces : deux flux côte à côte (Mes annonces, Explorer) ----------
+   Mes annonces : cartes sombres (café). Explorer : cartes claires (calcaire), le flux commun. */
+.feeds{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:-4px}
+.feed{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:72px;padding:12px 16px 12px 12px;border:1px solid var(--trait);border-radius:var(--rayon-l);background:var(--calcaire);color:var(--ardoise);text-align:left;font:inherit;cursor:pointer;
+  transition:background-color .2s var(--ease-sortie),border-color .2s,color .2s,box-shadow .25s var(--ease-sortie),transform .14s var(--ease-sortie)}
+.feed:active{transform:scale(.98)}
+.feed:hover{border-color:var(--trait-fort)}
+.feed__ic{width:42px;height:42px;display:grid;place-items:center;border-radius:var(--galet-a);background:var(--enduit);color:var(--email);transition:background-color .2s,color .2s}
+.feed--explorer .feed__ic{border-radius:var(--galet-c)}
+.feed__t{display:flex;flex-direction:column;gap:1px;min-width:0}
+.feed__t b{font-size:16px;line-height:20px;font-weight:650}
+.feed__t small{font-size:12.5px;line-height:16px;color:var(--zinc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed__n{font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:24px;line-height:1}
+.feed__n em{display:inline-block;font:700 12px/1 var(--sans);font-style:normal;padding:6px 10px;border-radius:var(--pilule);background:var(--bourgeon);color:var(--on-bourgeon);white-space:nowrap}
+.feed[aria-selected="true"]{background:var(--ardoise);border-color:var(--ardoise);color:var(--calcaire);box-shadow:var(--ombre-flottant)}
+.feed--explorer[aria-selected="true"]{background:var(--email);border-color:var(--email)}
+.feed[aria-selected="true"] .feed__ic{background:var(--bourgeon);color:var(--on-bourgeon)}
+.feed[aria-selected="true"] .feed__t small{color:color-mix(in srgb,var(--calcaire) 72%,transparent)}
+@media (prefers-color-scheme: dark){
+  .feed[aria-selected="true"]{background:var(--enduit);border-color:var(--trait-fort);color:var(--ardoise)}
+  .feed--explorer[aria-selected="true"]{background:color-mix(in srgb,var(--bourgeon) 26%,var(--calcaire));border-color:var(--bourgeon)}
+  .feed[aria-selected="true"] .feed__t small{color:var(--zinc)}
+}
+.feed__lead{margin:-6px 0 0;font-size:14px;line-height:20px;color:var(--ardoise-2);max-width:62ch}
+.feed__more{margin-top:4px}
+@media (max-width: 560px){
+  .feed{grid-template-columns:auto 1fr;grid-template-areas:"ic n" "t t";row-gap:10px;padding:12px 14px 14px;min-height:0}
+  .feed__ic{grid-area:ic;width:38px;height:38px}
+  .feed__n{grid-area:n;justify-self:end;font-size:22px}
+  .feed__t{grid-area:t}
+  .feed__t b{font-size:15px}
+}
+
+/* Le cœur des favoris, posé sur la carte d'annonce */
+@media (min-width: 900px){.hero__b{padding-right:40px}}
+.hero__fav{position:absolute;top:14px;right:14px;z-index:3;width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:50%;background:color-mix(in srgb,var(--calcaire) 94%,transparent);color:var(--ardoise);cursor:pointer;
+  box-shadow:0 1px 2px rgba(38,35,31,.18),0 6px 16px -8px rgba(38,35,31,.45);transition:transform .14s var(--ease-sortie),color .15s}
+.hero__fav svg{width:21px;height:21px;transition:fill .15s}
+.hero__fav:active{transform:scale(.9)}
+.hero__fav[aria-pressed="true"]{color:var(--alerte)}
+.hero__fav[aria-pressed="true"] svg{fill:currentColor}
+.hero__fav.is-pop svg{animation:coeur .42s var(--ease-ressort)}
+@keyframes coeur{0%{transform:scale(1)}35%{transform:scale(1.28)}100%{transform:scale(1)}}
+.hero__ph{position:relative}
+.hero__nph{position:absolute;right:13%;bottom:9%;padding:4px 9px;border-radius:var(--pilule);background:color-mix(in srgb,#26231F 72%,transparent);color:#F8F2EC;font-size:12px;font-weight:650}
+.hero__src{display:inline-block;margin-left:4px;padding:2px 8px;border:1px solid color-mix(in srgb,currentColor 40%,transparent);border-radius:var(--pilule);font-size:11.5px;font-weight:600;line-height:16px}
+.hero__k .hero__src::before{content:none}
+
+/* Explorer : la même carte, en clair */
+.hero--ex{background:var(--calcaire);color:var(--ardoise);box-shadow:inset 0 0 0 1px var(--trait)}
+.hero--ex h2{color:var(--ardoise)}
+.hero--ex .hero__k{color:var(--email)}
+.hero--ex .hero__ph{background:var(--enduit)}
+.hero--ex::after{opacity:.22}
+.hero--ex .hero__acts .chip{color:var(--ardoise);border-color:var(--trait-fort)}
+.hero--ex .hero__fav{background:var(--pierre)}
+@media (prefers-color-scheme: dark){.hero--ex{background:var(--calcaire);color:var(--ardoise)}}
+.hero--wait{cursor:default}
+.hero--wait .hero__ph{animation:attente 1.4s ease-in-out infinite alternate}
+.hero--wait .hero__b{gap:12px}
+.hero--wait .hero__b i{display:block;height:14px;border-radius:7px;background:var(--enduit);animation:attente 1.4s ease-in-out infinite alternate}
+.hero--wait .hero__b i:nth-child(1){width:40%}.hero--wait .hero__b i:nth-child(2){width:85%;height:26px}.hero--wait .hero__b i:nth-child(3){width:55%}
+@keyframes attente{from{opacity:.55}to{opacity:1}}
+.ann__empty--fav{align-items:flex-start}
+.fav__ic{width:64px;height:56px;display:grid;place-items:center;border-radius:var(--galet-b);background:var(--bourgeon);color:var(--alerte)}
+.fav__ic svg{width:28px;height:28px;fill:currentColor}
+
+/* ---------- Carte : les favoris en pastilles ----------
+   Une pilule claire posée sur son point (la pointe touche l'adresse) : la note dans un galet à sa couleur, puis le prix. */
+.lpin{position:relative;display:inline-flex;align-items:center;gap:6px;height:30px;padding:3px 11px 3px 3px;transform:translate(-50%,calc(-100% - 7px));border-radius:var(--pilule);background:var(--calcaire);color:var(--ardoise);
+  border:1px solid color-mix(in srgb,var(--trait-fort) 55%,transparent);box-shadow:0 1px 2px rgba(38,35,31,.22),0 8px 18px -8px rgba(38,35,31,.5);font:700 12.5px/1 var(--sans);white-space:nowrap;cursor:pointer;
+  transition:transform .18s var(--ease-sortie),background-color .15s,color .15s}
+.lpin::after{content:"";position:absolute;left:50%;bottom:-6px;width:10px;height:10px;margin-left:-5px;background:inherit;border-right:inherit;border-bottom:inherit;transform:rotate(45deg);border-bottom-right-radius:3px}
+.lpin__s{min-width:24px;height:24px;padding:0 4px;display:grid;place-items:center;box-sizing:border-box;border-radius:var(--galet-a);background:var(--c);color:var(--on-score);font-size:12px}
+.lpin em{font-style:normal;font-variant-numeric:tabular-nums}
+.lpin--approx{border-style:dashed}
+.lpin:hover{transform:translate(-50%,calc(-100% - 9px))}
+.lpin.is-on{background:var(--ardoise);color:var(--calcaire);border-color:var(--ardoise);transform:translate(-50%,calc(-100% - 9px)) scale(1.06)}
+.map--far .lpin{padding-right:3px;gap:0}
+.map--far .lpin em{display:none}
+.lpin--grp{width:38px;height:38px;padding:0;justify-content:center;transform:translate(-50%,-50%);border:0;background:var(--ardoise);color:var(--calcaire);font:700 14px/1 var(--sans);
+  box-shadow:0 0 0 3px var(--c),0 0 0 4px color-mix(in srgb,var(--calcaire) 85%,transparent),5px -4px 0 1px color-mix(in srgb,var(--ardoise) 35%,transparent),0 8px 18px -6px rgba(38,35,31,.55)}
+.lpin--grp::after{content:none}
+.lpin--grp:hover{transform:translate(-50%,-50%) scale(1.06)}
+@media (prefers-color-scheme: dark){.lpin{background:var(--enduit);color:var(--ardoise);border-color:var(--trait-fort)}.lpin--grp{background:var(--bourgeon);color:var(--on-bourgeon)}}
+
+/* Popup d'une pastille : photos à faire défiler, note, prix, « Voir la fiche » */
+.mpop-wrap .leaflet-popup-content-wrapper{padding:0;border-radius:24px;background:var(--calcaire);color:var(--ardoise);box-shadow:0 2px 4px rgba(38,35,31,.18),0 18px 40px -16px rgba(38,35,31,.55);overflow:hidden}
+.mpop-wrap .leaflet-popup-content{margin:0;width:min(280px,calc(100vw - 56px))!important;font:inherit}
+.mpop-wrap .leaflet-popup-tip{background:var(--calcaire);box-shadow:none}
+.mpop-wrap a.leaflet-popup-close-button{top:10px;right:10px;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:color-mix(in srgb,var(--calcaire) 92%,transparent);color:var(--ardoise);font:400 20px/1 var(--sans);z-index:3;box-shadow:0 2px 8px -2px rgba(38,35,31,.4)}
+.mpop{display:flex;flex-direction:column}
+.mpop__ph{position:relative;aspect-ratio:4/3;background:var(--enduit)}
+.mpop__track{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.mpop__track::-webkit-scrollbar{display:none}
+.mpop__track img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:start;display:block}
+.mpop__none{height:100%;display:grid;place-items:center;opacity:.6}
+.mpop__s{position:absolute;left:10px;top:10px;min-width:44px;height:38px;padding:0 8px;display:grid;place-items:center;box-sizing:border-box;border-radius:var(--galet-a);background:var(--c);color:var(--on-score);font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:21px}
+.mpop__n{position:absolute;right:10px;bottom:10px;padding:3px 9px;border-radius:var(--pilule);background:color-mix(in srgb,#26231F 70%,transparent);color:#F8F2EC;font-size:12px;font-weight:650}
+.mpop__nav{display:none;position:absolute;top:50%;width:30px;height:30px;margin-top:-15px;border:0;border-radius:50%;background:color-mix(in srgb,var(--calcaire) 92%,transparent);color:var(--ardoise);font:600 18px/1 var(--sans);cursor:pointer;box-shadow:0 2px 8px -2px rgba(38,35,31,.4)}
+.mpop__nav--p{left:8px}.mpop__nav--n{right:8px}
+@media (hover: hover) and (pointer: fine){.mpop__nav{display:grid;place-items:center;opacity:0;transition:opacity .15s}.mpop__ph:hover .mpop__nav{opacity:1}}
+.mpop__b{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px}
+.mpop__b h3{margin:0;font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:19px;line-height:23px;text-wrap:balance}
+.mpop .mpop__p{margin:0;font-size:14.5px;font-weight:700}
+.mpop__p small{margin-left:6px;font-weight:500;color:var(--zinc)}
+.mpop__why{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--ardoise-2)}
+.mpop__why li{position:relative;padding-left:14px}
+.mpop__why li::before{content:"";position:absolute;left:0;top:6px;width:7px;height:6px;border-radius:var(--galet-a);background:var(--bourgeon)}
+.mpop__acts{display:flex;align-items:center;gap:8px;margin-top:6px}
+.mpop__tag{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--email)}
+.mpop__fav{margin-left:auto;width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--trait);border-radius:50%;background:var(--pierre);color:var(--alerte);cursor:pointer}
+.mpop__fav svg{fill:currentColor;width:19px;height:19px}
+.mpop__back{align-self:flex-start;margin:10px 0 0 12px;padding:4px 0;border:0;background:none;font:600 13px var(--sans);color:var(--email);cursor:pointer}
+.mpop--grp{padding:14px 0 8px}
+.mpop .mpop__h{margin:0 48px 8px 14px;font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:18px}
+.mpop__list{margin:0;padding:0 6px;list-style:none;display:flex;flex-direction:column;max-height:264px;overflow-y:auto}
+.mpop__list button{width:100%;display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:10px;padding:7px 8px;border:0;border-radius:14px;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.mpop__list button:hover{background:var(--enduit)}
+.mpop__th{width:52px;height:42px;border-radius:12px;overflow:hidden;background:var(--enduit)}
+.mpop__th img{width:100%;height:100%;object-fit:cover}
+.mpop__lt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mpop__lt b{font-size:13.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mpop__lt small{font-size:12.5px;color:var(--zinc)}
+.mpop__list i{font-style:normal;min-width:34px;height:28px;display:grid;place-items:center;border-radius:var(--galet-a);background:var(--c);color:var(--on-score);font-size:13px;font-weight:700}
+
+/* Guide pas à pas : le reste de l'écran s'assombrit, l'élément expliqué reste net */
+.tipveil{position:fixed;inset:0;z-index:2898;background:transparent}
+.tiphalo--tour{box-shadow:0 0 0 9999px color-mix(in srgb,#1E1611 52%,transparent);animation:none!important;border-color:var(--bourgeon)}
+.tiphalo--tour.is-in{animation:none}
+.tip--tour{max-width:min(320px,calc(100vw - 24px));padding:16px 16px 12px}
+.tip__titre{margin:0 0 4px;font-family:var(--display);font-weight:var(--display-w);font-variation-settings:var(--display-v);font-size:19px;line-height:23px}
+.tip--tour .tip__txt::before{content:none}
+.tip--tour .tip__acts{padding-left:0;margin-top:12px}
+.tip__n{margin-left:auto;font-size:12px;font-weight:650;color:color-mix(in srgb,currentColor 60%,transparent)}

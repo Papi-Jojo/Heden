@@ -233,12 +233,14 @@ function scoreListing(f, raw = false) {
 }
 
 /* ---------- Onglet Annonces ---------- */
-const LSTAT = {nouvelle: "À trier", gardee: "Gardée", visite: "Visite prévue", ecartee: "Écartée"};
-let lui = {filter: "atrier", sort: "reco", openId: null};
+const LSTAT = {nouvelle: "Nouvelle", gardee: "Favori", visite: "Visite prévue", ecartee: "Masquée"};
+let lui = {filter: "toutes", sort: "reco", openId: null, feed: "mes", favf: "tous", exf: "pour", exMore: 0};
 const isKept = f => f.status === "gardee" || f.status === "visite";
 const ICO = {
   keep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>',
-  drop: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  drop: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12s3.4-6.5 9-6.5c1.6 0 3 .5 4.2 1.2M21 12s-3.4 6.5-9 6.5c-1.6 0-3-.5-4.2-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M4 4l16 16"/></svg>',
+  mine: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h10a1.5 1.5 0 0 1 1.5 1.5v15.5L12 16.6l-6.5 3.9V5A1.5 1.5 0 0 1 7 3.5Z"/></svg>',
+  explore: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m15.6 8.4-2.1 5.1-5.1 2.1 2.1-5.1 5.1-2.1Z"/></svg>',
   visit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>',
   back: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12"/></svg>'
 };
@@ -247,7 +249,7 @@ function setStatus(f, st, after) {
   if (prev === st) return;
   f.status = st; f.updatedAt = Date.now(); learnMemo.key = null; save(); renderListingPins();
   if (after) after(); else renderListings();
-  toast({gardee: "Annonce gardée", visite: "Visite prévue", ecartee: "Annonce écartée", nouvelle: "Annonce remise à trier"}[st], {label: "Annuler", fn: () => { f.status = prev; f.updatedAt = Date.now(); learnMemo.key = null; save(); renderListingPins(); renderListings(); }});
+  toast({gardee: "Ajoutée aux favoris", visite: "Visite prévue", ecartee: "Annonce masquée", nouvelle: prev === "ecartee" ? "Annonce de nouveau affichée" : "Retirée des favoris"}[st], {label: "Annuler", fn: () => { f.status = prev; f.updatedAt = Date.now(); learnMemo.key = null; save(); renderListingPins(); renderListings(); }});
 }
 function renderListings() { setTimeout(() => tipsKick(), 0);
   const vw = $("#view-annonces"), box = $("#annonces");
@@ -261,53 +263,135 @@ function renderListings() { setTimeout(() => tipsKick(), 0);
   }
   lui.lastView = lui.openId && listings().some(x => x.id === lui.openId) ? "d:" + lui.openId : "list";
 }
+/* Liste : onglet Favoris, ou onglet Annonces en deux flux (Mes annonces, Explorer) */
+const mineListings = () => modeListings().filter(f => f.origin !== "vivier");
+const listSort = (a, b) => (!!a.f.gone - !!b.f.gone) || (lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : lui.sort === "match" ? (b.s.total ?? -1) - (a.s.total ?? -1) : recoScore(b) - recoScore(a));
+const sortHTML = () => `<label class="ann__sort">Trier par <select id="lsort">${[["reco", "Recommandé"], ["match", "Note"], ["prix", "Prix"], ["recent", "Ajout récent"]].map(([v, l]) => `<option value="${v}" ${lui.sort === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>`;
+const segHTML = (key, opts) => `<div class="seg seg--sm" role="group" aria-label="Filtrer">${opts.map(([k, l, n]) => `<button type="button" data-${key}="${k}" aria-pressed="${lui[key] === k}">${l}${n != null ? `<span class="num">${n}</span>` : ""}</button>`).join("")}</div>`;
 function renderListingsView() {
   const box = $("#annonces"); if (!box) return;
   if (lui.openId && listings().some(x => x.id === lui.openId)) return renderListingDetail(lui.openId);
-  const all = modeListings().map(f => ({f, s: scoreListing(f)}));
-  if (!["atrier", "gardees", "ecartees"].includes(lui.filter)) lui.filter = "atrier";
   if (!["reco", "match", "prix", "recent"].includes(lui.sort)) lui.sort = "reco";
-  const shown = all.filter(({f}) => lui.filter === "gardees" ? isKept(f) : lui.filter === "ecartees" ? f.status === "ecartee" : !isKept(f) && f.status !== "ecartee")
-    .sort((a, b) => (!!a.f.gone - !!b.f.gone) || (lui.sort === "prix" ? (a.f.price ?? 1e12) - (b.f.price ?? 1e12) : lui.sort === "recent" ? (b.f.addedAt || 0) - (a.f.addedAt || 0) : lui.sort === "match" ? (b.s.total ?? -1) - (a.s.total ?? -1) : recoScore(b) - recoScore(a)));
-  const counts = {atrier: all.filter(x => !isKept(x.f) && x.f.status !== "ecartee").length, gardees: all.filter(x => isKept(x.f)).length, ecartees: all.filter(x => x.f.status === "ecartee").length};
-  box.innerHTML = `
-    <div class="ann__head">
-      <div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1><p class="lead">${all.length ? (counts.atrier ? `${plural(counts.atrier, "annonce à trier", "annonces à trier")}.` : "Tout est trié.") : ""}</p></div>
-      <button class="btn btn--primary" type="button" id="addListing">+ Ajouter une annonce</button>
-    </div>
-    <div class="vivier" id="vivier" hidden></div>
-    ${all.length ? `<div class="ann__bar">
-      <div class="seg seg--sm" role="group" aria-label="Filtrer">${[["atrier", "À trier"], ["gardees", "Gardées"], ["ecartees", "Écartées"]].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${lui.filter === k}">${l}<span class="num">${counts[k]}</span></button>`).join("")}</div>
-      <label class="ann__sort">Trier par <select id="lsort">${[["reco", "Recommandé"], ["match", "Note"], ["prix", "Prix"], ["recent", "Ajout récent"]].map(([v, l]) => `<option value="${v}" ${lui.sort === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-    </div>` : ""}
-    ${(() => { const other = projet() === "deux" ? 0 : listings().filter(f => kindOf(f) !== curMode()).length; return other ? `<p class="hint2 ann__other">${plural(other, curMode() === "achat" ? "annonce de location masquée" : "annonce de vente masquée", curMode() === "achat" ? "annonces de location masquées" : "annonces de vente masquées")} : votre projet est ${curMode() === "achat" ? "l’achat" : "la location"}. <button class="link" type="button" id="addOther">Ajouter ${curMode() === "achat" ? "la location" : "l’achat"} à mon projet</button></p>` : ""; })()}
-    ${all.length ? `<div class="ann__feed">${shown.map(({f, s}, k) => heroHTML(f, s, k)).join("") || `<p class="hint2 ann__none">${lui.filter === "gardees" ? "Aucune annonce gardée : touchez le cœur d’une annonce pour la garder." : lui.filter === "ecartees" ? "Aucune annonce écartée." : "Rien à trier."}</p>`}</div>` : ""}
-    ${all.length ? "" : `<div class="ann__empty">${GALETS}<p>Vos annonces apparaîtront ici, notées et placées sur la carte.</p></div>`}`;
-  $("#addListing").onclick = () => openAddFlow();
-  $$("[data-f]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.f; renderListings(); });
+  box.classList.toggle("ann--fav", currentTab === "favoris");
+  box.classList.toggle("ann--ex", currentTab !== "favoris" && lui.feed === "explorer");
+  if (currentTab === "favoris") renderFavoris(box);
+  else if (lui.feed === "explorer") renderExplorer(box);
+  else renderMine(box);
+  $$("[data-feed]", box).forEach(b => b.onclick = () => { if (lui.feed === b.dataset.feed) return; lui.feed = b.dataset.feed; lui.exMore = 0; renderListings(); const vw = $("#view-annonces"); if (vw) vw.scrollTop = 0; });
   const so = $("#lsort"); if (so) so.onchange = e => { lui.sort = e.target.value; renderListings(); };
-  $$(".hero", box).forEach(card => {
+  bindHeroes(box);
+  const first = $(".hero", box); if (first) countUp(first);
+  bindModeSel(box);
+  const ao = $("#addOther", box); if (ao) ao.onclick = () => { const h = homeProfile(), k = curMode() === "achat" ? "location" : "achat"; h.projet = "deux"; if (h.setup) h.setup.projet = "deux"; save(); setMode(k); toast(k === "location" ? "Location ajoutée à votre projet" : "Achat ajouté à votre projet"); };
+  const ad = $("#addListing", box); if (ad) ad.onclick = () => openAddFlow();
+  if (cloud.user && cloud.alert === undefined && !cloud.noInbox) { cloud.alert = null; loadAlertState().then(() => { if (currentTab === "annonces" && !lui.openId) renderListings(); }); }
+}
+/* En-tête commun de l'onglet Annonces : le titre, puis les deux flux côte à côte */
+function feedsHTML(nMine, exLabel) {
+  const f = (k, ico, t, sub, n) => `<button class="feed feed--${k}" type="button" role="tab" data-feed="${k}" aria-selected="${lui.feed === k}"><span class="feed__ic">${ico}</span><span class="feed__t"><b>${t}</b><small>${sub}</small></span><span class="feed__n num">${n}</span></button>`;
+  return `<div class="ann__head"><div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1></div>
+      <button class="btn btn--primary" type="button" id="addListing">+ Ajouter une annonce</button></div>
+    <div class="feeds" role="tablist" aria-label="Flux d’annonces">${f("mes", ICO.mine, "Mes annonces", "Ajoutées par vous", nMine)}${f("explorer", ICO.explore, "Explorer", "Reçues par Heden", exLabel)}</div>`;
+}
+function otherKindHTML() {
+  const other = projet() === "deux" ? 0 : listings().filter(f => kindOf(f) !== curMode()).length;
+  return other ? `<p class="hint2 ann__other">${plural(other, curMode() === "achat" ? "annonce de location masquée" : "annonce de vente masquée", curMode() === "achat" ? "annonces de location masquées" : "annonces de vente masquées")} : votre projet est ${curMode() === "achat" ? "l’achat" : "la location"}. <button class="link" type="button" id="addOther">Ajouter ${curMode() === "achat" ? "la location" : "l’achat"} à mon projet</button></p>` : "";
+}
+function exploreLabel() {
+  const rows = cloud.vivierRows; if (!cloud.user) return "";
+  if (!rows) return "";
+  const seen = homeProfile().vivierVu || 0, n = explorerItems().filter(x => !x.ex && x.r.item.first > seen).length;
+  return n ? `<em>${plural(n, "nouvelle", "nouvelles")}</em>` : fmtInt(explorerItems().length);
+}
+function renderMine(box) {
+  if (!["toutes", "masquees"].includes(lui.filter)) lui.filter = "toutes";
+  const all = mineListings().map(f => ({f, s: scoreListing(f)})), hid = all.filter(x => x.f.status === "ecartee");
+  const shown = (lui.filter === "masquees" ? hid : all.filter(x => x.f.status !== "ecartee")).sort(listSort);
+  box.innerHTML = `${feedsHTML(fmtInt(all.length - hid.length), exploreLabel())}
+    <p class="feed__lead">Les annonces que vous avez ajoutées : bouton + Heden, alertes e-mail, texte collé. Touchez le cœur pour les garder en favoris.</p>
+    ${all.length ? `<div class="ann__bar">${segHTML("filter", [["toutes", "Affichées", all.length - hid.length], ["masquees", "Masquées", hid.length]])}${sortHTML()}</div>` : ""}
+    ${otherKindHTML()}
+    ${all.length ? `<div class="ann__feed">${shown.map(({f, s}, k) => heroHTML(f, s, k)).join("") || `<p class="hint2 ann__none">${lui.filter === "masquees" ? "Aucune annonce masquée." : "Toutes vos annonces sont masquées."}</p>`}</div>`
+      : `<div class="ann__empty">${GALETS}<p>Vos annonces apparaîtront ici, notées et placées sur la carte. Ajoutez-en une, ou parcourez Explorer.</p></div>`}`;
+  $$("[data-filter]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.filter; renderListings(); });
+  if (cloud.user && !cloud.vivierRows && !cloud.noVivier) loadVivier().then(r => { if (r && currentTab === "annonces" && lui.feed === "mes" && !lui.openId) { const n = $(".feed--explorer .feed__n"); if (n) n.innerHTML = exploreLabel(); } });
+}
+/* Explorer : les annonces reçues par l'adresse d'alertes de Heden, communes à tous les membres */
+function explorerItems() {
+  return (cloud.vivierRows || []).filter(r => kindOf(r.f) === curMode()).map(r => {
+    const ex = listings().find(x => x.vivierId === r.id) || listings().find(x => sameListing(x, r.f));
+    return {r, ex, f: ex || r.f};
+  }).filter(x => !(x.ex && x.ex.status === "ecartee"));
+}
+function renderExplorer(box) {
+  if (!["pour", "tout"].includes(lui.exf)) lui.exf = "pour";
+  const head = feedsHTML(fmtInt(mineListings().filter(f => f.status !== "ecartee").length), exploreLabel());
+  const lead = `<p class="feed__lead">Les annonces que Heden reçoit chaque jour des sites immobiliers, communes à tous les membres. Gardez celles qui vous plaisent : elles iront dans vos favoris.</p>`;
+  if (!cloud.user) { box.innerHTML = `${head}${lead}<div class="ann__empty ann__empty--ex">${GALETS}<p>Connectez-vous pour explorer les annonces reçues par Heden.</p><button class="btn btn--primary" type="button" id="exLogin">Se connecter</button></div>`; const b = $("#exLogin", box); if (b) b.onclick = () => openAuth(); return; }
+  if (!cloud.vivierRows) {
+    box.innerHTML = `${head}${lead}<div class="ann__feed">${'<article class="hero hero--ex hero--wait" aria-hidden="true"><div class="hero__ph"></div><div class="hero__b"><i></i><i></i><i></i></div></article>'.repeat(2)}</div>`;
+    loadVivier().then(() => { if (currentTab === "annonces" && lui.feed === "explorer" && !lui.openId) renderListings(); });
+    return;
+  }
+  const h = homeProfile(), seen = lui.exSeen ?? (lui.exSeen = h.vivierVu || 0);
+  const items = explorerItems().map(x => Object.assign(x, {s: scoreListing(x.f), neu: x.r.item.first > seen}));   // pas « !x.ex » : un cœur ne doit pas déplacer la carte
+  const pour = items.filter(x => !x.s.fails.length), list = (lui.exf === "pour" ? pour : items).sort((a, b) => (b.neu - a.neu) || listSort(a, b));
+  const max = 30 + (lui.exMore || 0), shown = list.slice(0, max);
+  box.innerHTML = `${head}${lead}
+    ${items.length ? `<div class="ann__bar">${segHTML("exf", [["pour", "Pour vous", pour.length], ["tout", "Toutes", items.length]])}${sortHTML()}</div>` : ""}
+    ${otherKindHTML()}
+    ${items.length ? `<div class="ann__feed">${shown.map(({f, s, neu}, k) => heroHTML(f, s, k, neu)).join("") || `<p class="hint2 ann__none">Aucune annonce ne correspond à vos critères pour l’instant. Touchez « Toutes » pour tout voir.</p>`}</div>
+      ${list.length > max ? `<button class="btn btn--block feed__more" type="button" id="exMore">Afficher ${Math.min(30, list.length - max)} annonces de plus</button>` : ""}`
+      : `<div class="ann__empty ann__empty--ex">${GALETS}<p>Rien de neuf pour l’instant : les annonces arrivent au fil des alertes reçues par Heden.</p></div>`}`;
+  $$("[data-exf]", box).forEach(b => b.onclick = () => { lui.exf = b.dataset.exf; lui.exMore = 0; renderListings(); });
+  const mo = $("#exMore", box); if (mo) mo.onclick = () => { lui.exMore = (lui.exMore || 0) + 30; renderListings(); };
+  if (!h.vivierVu || h.vivierVu < Date.now() - 60000) { h.vivierVu = Date.now(); save(); }
+  estimerExplorer(shown.map(x => x.f).filter(f => String(f.id).startsWith("v:")));
+}
+/* une annonce d'Explorer devient une annonce de l'utilisateur au premier geste (ouverture, cœur, masquer) */
+function adoptVivier(id) {
+  const r = (cloud.vivierRows || []).find(x => "v:" + x.id === id); if (!r) return null;
+  const ex = listings().find(x => x.vivierId === r.id) || listings().find(x => sameListing(x, r.f)); if (ex) return ex;
+  const m = mergeCard(r.item, {origin: "vivier", source: r.item.source, at: r.item.first}); if (!m.f) return null;
+  m.f.vivierId = r.id; save(); queuePlace([m.f]);
+  return m.f;
+}
+function renderFavoris(box) {
+  if (!["tous", "visite"].includes(lui.favf)) lui.favf = "tous";
+  const all = modeListings().filter(isKept).map(f => ({f, s: scoreListing(f)})), vis = all.filter(x => x.f.status === "visite");
+  const shown = (lui.favf === "visite" ? vis : all).sort(listSort);
+  box.innerHTML = `<div class="ann__head"><div>${modeSelHTML("ann__mode")}<h1>Favoris</h1><p class="lead">${all.length ? `${plural(all.length, "annonce gardée", "annonces gardées")}, sur la carte aussi.` : ""}</p></div></div>
+    ${all.length ? `<div class="ann__bar">${segHTML("favf", [["tous", "Tous", all.length], ["visite", "Visite prévue", vis.length]])}${sortHTML()}</div>` : ""}
+    ${all.length ? `<div class="ann__feed">${shown.map(({f, s}, k) => heroHTML(f, s, k)).join("") || `<p class="hint2 ann__none">Aucune visite prévue : touchez « Prévoir la visite » sur un favori.</p>`}</div>`
+      : `<div class="ann__empty ann__empty--fav"><span class="fav__ic" aria-hidden="true">${ICO.keep}</span><p>Touchez le cœur d’une annonce, dans Mes annonces ou Explorer : elle se range ici et apparaît sur la carte.</p><button class="btn" type="button" id="favGo">Voir les annonces</button></div>`}`;
+  $$("[data-favf]", box).forEach(b => b.onclick = () => { lui.favf = b.dataset.favf; renderListings(); });
+  const go = $("#favGo", box); if (go) go.onclick = () => setTab("annonces");
+}
+function bindHeroes(box) {
+  const get = id => id.startsWith("v:") ? adoptVivier(id) : listings().find(x => x.id === id);
+  $$(".hero[data-id]", box).forEach(card => {
     card.onclick = e => {
       if (e.target.closest("[data-hst]")) return;
+      const f = get(card.dataset.id); if (!f) return;
       const vw = $("#view-annonces"); lui.listScroll = vw.scrollTop;
       morph([[card.querySelector(".hero__ph"), "lph"], [card.querySelector(".hero__s"), "lsc"]],
-        () => { lui.openId = card.dataset.id; renderListings(); vw.scrollTop = 0; },
+        () => { lui.openId = f.id; renderListings(); vw.scrollTop = 0; },
         () => [[$(".ldet .lgal"), "lph"], [$(".ldet__score b"), "lsc"]]);
     };
-    $$("[data-hst]", card).forEach(b => b.onclick = () => {
-      const f = listings().find(x => x.id === card.dataset.id); if (!f) return;
-      let st = b.dataset.hst; if (st === "visite") st = f.status === "visite" ? "gardee" : "visite";
-      const stays = (st === "visite" || st === "gardee") && lui.filter === "gardees";
-      if (stays || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setStatus(f, st);
+    $$("[data-hst]", card).forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const f = get(card.dataset.id); if (!f) return;
+      let st = b.dataset.hst;
+      if (st === "fav") st = isKept(f) ? "nouvelle" : "gardee";
+      else if (st === "visite") st = f.status === "visite" ? "gardee" : "visite";
+      else if (st === "ecartee" && f.status === "ecartee") st = "nouvelle";
+      const leaves = st === "ecartee" || (currentTab === "favoris" && st === "nouvelle") || (lui.filter === "masquees" && st === "nouvelle" && currentTab !== "favoris" && lui.feed === "mes");
+      if (st === "gardee" || st === "nouvelle") { const hb = card.querySelector(".hero__fav"); if (hb) { hb.setAttribute("aria-pressed", String(st === "gardee")); hb.classList.remove("is-pop"); void hb.offsetWidth; hb.classList.add("is-pop"); } }
+      if (!leaves || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setTimeout(() => setStatus(f, st), st === "gardee" ? 220 : 0);
       card.style.height = card.offsetHeight + "px"; card.classList.add(st === "ecartee" ? "hero--out-l" : "hero--out-r");
       setTimeout(() => setStatus(f, st), 260);
     });
   });
-  const first = $(".hero", box); if (first) countUp(first);
-  paintVivier();
-  bindModeSel(box);
-  const ao = $("#addOther", box); if (ao) ao.onclick = () => { const h = homeProfile(), k = curMode() === "achat" ? "location" : "achat"; h.projet = "deux"; if (h.setup) h.setup.projet = "deux"; save(); setMode(k); toast(k === "location" ? "Location ajoutée à votre projet" : "Achat ajouté à votre projet"); };
-  if (cloud.user && cloud.alert === undefined && !cloud.noInbox) { cloud.alert = null; loadAlertState().then(() => { if (currentTab === "annonces" && !lui.openId) renderListings(); }); }
 }
 /* Recommandé : la note, plus un bonus pour les annonces récentes (qui s'efface en deux à trois semaines), hors critères en dernier */
 function recoScore({f, s}) {
@@ -338,7 +422,7 @@ function heroKicker(f, s, k) {
   const tr = trustSignals(f, s); if (tr.level) return tr.level === "fort" ? "Annonce suspecte" : "Annonce à vérifier";
   if (f.viager) return f.viager === "occupe" ? "Viager occupé" : f.viager === "libre" ? "Viager libre" : "Viager";
   if (f.dropped) return "Baisse de prix";
-  if (k === 0 && lui.sort === "reco" && lui.filter === "atrier" && s.total != null) return "Recommandée";
+  if (k === 0 && lui.sort === "reco" && currentTab === "annonces" && s.total != null) return "Recommandée";
   const days = Math.floor((Date.now() - (f.addedAt || 0)) / 864e5);
   if (days < 2) return "Nouvelle";
   return days < 60 ? `Ajoutée il y a ${days} jours` : (kindOf(f) === "location" ? "Location" : "Vente");
@@ -350,21 +434,22 @@ function trustHTML(t) {
     ${t.photo.length ? `<p><b>Photos à prendre avec recul</b> : ${esc(t.photo.join(", "))}. Les pièces réelles peuvent être différentes : demandez des photos actuelles ou une visite vidéo.</p>` : ""}
   </div>`;
 }
-function heroHTML(f, s, k = 0) {
-  const ph = f.photos && f.photos[0], why = s.fails.length ? s.fails.slice(0, 1).map(x => "Hors critères : " + x).concat(s.plus.slice(0, 2)) : s.plus.slice(0, 3);
-  const acts = lui.filter === "gardees"
-    ? `<button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.drop}Écarter</button><button class="chip hero__keep" type="button" data-hst="visite" aria-pressed="${f.status === "visite"}">${ICO.visit}${f.status === "visite" ? "Visite prévue" : "Prévoir la visite"}</button>`
-    : lui.filter === "ecartees"
-    ? `<button class="chip hero__drop" type="button" data-hst="nouvelle">${ICO.back}Remettre à trier</button><button class="chip hero__keep" type="button" data-hst="gardee">${ICO.keep}Garder</button>`
-    : `<button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.drop}Écarter</button><button class="chip hero__keep" type="button" data-hst="gardee">${ICO.keep}Garder</button>`;
-  return `<article class="hero${ph ? "" : " hero--nophoto"}${f.gone || f.status === "ecartee" ? " hero--off" : ""}${s.fails.length ? " hero--fail" : ""}" data-id="${f.id}" style="--c:${colorFor(s.total)}">
-    <div class="hero__ph">${ph ? `<img src="${esc(ph)}" alt="" loading="${k < 2 ? "eager" : "lazy"}" referrerpolicy="no-referrer" onerror="this.remove()">` : GALETS}</div>
+function heroHTML(f, s, k = 0, neu = false) {
+  const ph = f.photos && f.photos[0], why = s.fails.length ? s.fails.slice(0, 1).map(x => "Hors critères : " + x).concat(s.plus.slice(0, 2)) : s.plus.slice(0, 3), fav = isKept(f), ex = f.origin === "vivier" && currentTab !== "favoris";
+  const acts = currentTab === "favoris"
+    ? `<button class="chip hero__keep" type="button" data-hst="visite" aria-pressed="${f.status === "visite"}">${ICO.visit}${f.status === "visite" ? "Visite prévue" : "Prévoir la visite"}</button>`
+    : f.status === "ecartee"
+    ? `<button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.back}Afficher de nouveau</button>`
+    : `<button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.drop}Masquer</button>`;
+  return `<article class="hero${ex ? " hero--ex" : ""}${ph ? "" : " hero--nophoto"}${f.gone || f.status === "ecartee" ? " hero--off" : ""}${s.fails.length ? " hero--fail" : ""}" data-id="${f.id}" style="--c:${colorFor(s.total)}">
+    <div class="hero__ph">${ph ? `<img src="${esc(ph)}" alt="" loading="${k < 2 ? "eager" : "lazy"}" referrerpolicy="no-referrer" onerror="this.remove()">` : GALETS}${(f.photos || []).length > 1 ? `<span class="hero__nph num">${f.photos.length} photos</span>` : ""}</div>
+    <button class="hero__fav" type="button" data-hst="fav" aria-pressed="${fav}" aria-label="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}">${ICO.keep}</button>
     <b class="hero__s num"${k === 0 && s.total != null ? ` data-count="${s.total}"` : ""}>${s.total ?? "–"}</b>
     <div class="hero__b">
-      <span class="hero__k">${esc(heroKicker(f, s, k))}</span>
+      <span class="hero__k">${esc(neu ? "Nouvelle" : heroKicker(f, s, k))}${ex && f.source ? `<span class="hero__src">${esc(siteName(f.source))}</span>` : ""}</span>
       <h2${(f.title || listingTitle(f)).length > 70 ? ' class="is-long"' : ""}>${esc(f.title || listingTitle(f))}</h2>
       <p class="hero__p num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer ?" : "Prix ?"}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
-      ${why.length ? `<ul class="hero__why">${why.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="hero__why hero__why--none">${f.lat ? "À compléter" : placeQ.tried.has(f.id) ? "Lieu introuvable : ouvrez-la pour le préciser" : "Placement sur la carte…"}</p>`}
+      ${why.length ? `<ul class="hero__why">${why.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="hero__why hero__why--none">${f.lat ? "À compléter" : String(f.id).startsWith("v:") ? [f.postcode, f.city].filter(Boolean).join(" ") || "À compléter" : placeQ.tried.has(f.id) ? "Lieu introuvable : ouvrez-la pour le préciser" : "Placement sur la carte…"}</p>`}
       <div class="hero__acts">${acts}</div>
     </div>
   </article>`;
@@ -375,7 +460,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
   const bar = (label, val, hint) => `<div class="mbar"><span>${label}</span><span class="bar"><i style="width:${val ?? 0}%;--c:${traitFor(val)}"></i></span><b class="num">${val ?? "–"}</b>${hint ? `<small>${hint}</small>` : ""}</div>`;
   const crits = Object.entries(homeWeights()).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]);
   box.innerHTML = `
-    <div class="ldet__top"><button class="link ann__back" type="button" id="lback">‹ Toutes les annonces</button><button class="x x--del" type="button" id="ldel" aria-label="Supprimer l’annonce" title="Supprimer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></div>
+    <div class="ldet__top"><button class="link ann__back" type="button" id="lback">‹ ${currentTab === "favoris" ? "Favoris" : f.origin === "vivier" && lui.feed === "explorer" ? "Explorer" : "Mes annonces"}</button><button class="x x--del" type="button" id="ldel" aria-label="Supprimer l’annonce" title="Supprimer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></div>
     ${f.photos && f.photos.length ? `<div class="lgal">${f.photos.map(u => `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : ""}
     <div class="ldet__head">
       <div><h1${(f.title || listingTitle(f)).length > 70 ? ' class="is-long"' : ""}>${esc(f.title || listingTitle(f))}</h1>
@@ -385,8 +470,8 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
       <div class="ldet__score" style="--c:${colorFor(s.total)}"><b class="num" ${s.total != null ? `data-count="${s.total}"` : ""}>${s.total ?? "–"}</b><span>${s.hasFix ? `corrigée${s.heden != null && s.heden !== s.total ? ` · Heden&nbsp;${s.heden}` : ""}` : "note"}</span>${s.range ? `<span class="ldet__rng num" title="Fourchette tant que l’annonce ne dit pas tout">${s.range[0]} à ${s.range[1]}</span>` : ""}${(() => { const others = modeListings().filter(x => x.id !== f.id && x.status !== "ecartee").map(x => scoreListing(x).total).filter(v => v != null); if (others.length < 3 || s.total == null) return ""; const pct = Math.round(others.filter(v => v < s.total).length / others.length * 100); return `<span class="ldet__pct">${pct >= 50 ? `mieux que ${pct} %` : `moins bien que ${100 - pct} %`} de vos annonces</span>`; })()}</div>
     </div>
     <div class="lstat">
-      <button class="lst lst--keep" type="button" data-st="gardee" aria-pressed="${isKept(f)}">${ICO.keep}<span>${isKept(f) ? "Gardée" : "Garder"}</span></button>
-      <button class="lst lst--drop" type="button" data-st="ecartee" aria-pressed="${f.status === "ecartee"}">${ICO.drop}<span>${f.status === "ecartee" ? "Écartée" : "Écarter"}</span></button>
+      <button class="lst lst--keep" type="button" data-st="gardee" aria-pressed="${isKept(f)}">${ICO.keep}<span>${isKept(f) ? "En favori" : "Ajouter aux favoris"}</span></button>
+      <button class="lst lst--drop" type="button" data-st="ecartee" aria-pressed="${f.status === "ecartee"}">${ICO.drop}<span>${f.status === "ecartee" ? "Masquée" : "Masquer"}</span></button>
     </div>
     <div class="lact">
       ${isKept(f) ? `<button class="chip chip--sm" type="button" data-st="visite" aria-pressed="${f.status === "visite"}">${ICO.visit}Visite prévue</button>` : ""}

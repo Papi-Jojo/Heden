@@ -154,7 +154,7 @@ async function syncNow() {
         // on met à jour l'objet en place : écrans et boutons « Annuler » ouverts gardent la bonne annonce
         const f = listings()[i], n = listingFromRow(r), keep = f.updatedAt;
         Object.keys(f).forEach(k => { if (!(k in n)) delete f[k]; }); Object.assign(f, n, {updatedAt: keep}); cur.listings[r.id] = JSON.stringify(listingRow(f)); });
-      if (ml.gone.length && currentTab === "annonces") renderListings();
+      if (ml.gone.length && (currentTab === "annonces" || currentTab === "favoris")) renderListings();
     }
     if (lUp.length) {
       const {error} = await c.from("listings").upsert(lUp);
@@ -776,7 +776,7 @@ function rerenderAll() {
   if (typeof renderZones !== "function") return;
   paintModeSel();
   renderZones(); renderListingPins();
-  if (currentTab === "annonces") renderListings();
+  if (currentTab === "annonces" || currentTab === "favoris") renderListings();
   else if (currentTab === "map") { if (ui.mode === "list" || ui.mode === "detail") renderPanel(); }
   else renderProfile();
   refreshEstimates();

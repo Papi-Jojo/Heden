@@ -370,7 +370,7 @@ function extractCards(root, base) {
 /* Page d'une seule annonce (et pas une page de résultats) */
 const isDetailUrl = u => /-r\d{6,}\b|\/annonces\/achat\/[^?#]+\/\d+\.htm|\/ad\/[a-z_]+\/\d+|\/vi\/\d+\.htm|\/annonce\/(?:vente|achat)\/|detail-vente|\/annonces\/annonce-|\/annonce-[a-z0-9-]+-\d+\.htm|\/annonce-immobiliere\//i.test(u || "");
 const SITE_NAMES = {"seloger.com": "SeLoger", "pap.fr": "PAP", "leboncoin.fr": "Leboncoin", "bienici.com": "Bien’ici", "logic-immo.com": "Logic-immo", "lefigaro.fr": "Figaro Immobilier", "orpi.com": "Orpi", "century21.fr": "Century 21", "laforet.com": "Laforêt", "guy-hoquet.com": "Guy Hoquet", "jinka.fr": "Jinka"};
-const siteName = host => { const h = String(host || "").toLowerCase().replace(/^www\./, ""); const k = Object.keys(SITE_NAMES).find(x => h === x || h.endsWith("." + x)); return k ? SITE_NAMES[k] : h; };
+const siteName = host => { const h = String(host || "").toLowerCase().replace(/^www\./, ""); const k = Object.keys(SITE_NAMES).find(x => h === x || h.endsWith("." + x)); return k ? SITE_NAMES[k] : /\./.test(h) ? h : String(host || ""); };   // déjà un nom (« SeLoger ») : inchangé
 
 const normUrl = u => { const x = String(u || "").split("#")[0]; return /emailing|click|track|link\.|\/c\//i.test(x) ? x : x.replace(/\?.*$/, ""); };
 const cardImgs = c => Array.isArray(c.imgs) && c.imgs.length ? c.imgs : c.img ? [c.img] : [];

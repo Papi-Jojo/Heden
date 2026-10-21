@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Heden</title>
-<script src="i18n/runtime.js?v=12"></script>
+<script src="i18n/runtime.js?v=13"></script>
 <style>html.i18n-wait body{visibility:hidden}</style>
 <meta name="description" content="Notez les coins de Paris que vous visitez et repérez ceux qui vous correspondent.">
 <meta name="theme-color" content="#F8F2EC" media="(prefers-color-scheme: light)">
@@ -35,6 +35,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-tab="map" aria-selected="true">Carte</button>
       <button class="tab" role="tab" data-tab="annonces" aria-selected="false">Annonces</button>
+      <button class="tab" role="tab" data-tab="favoris" aria-selected="false">Favoris</button>
       <button class="tab" role="tab" data-tab="profile" aria-selected="false">Profil</button>
     </nav>
   </header>
@@ -93,6 +94,9 @@
     </button>
     <button role="tab" data-tab="annonces" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 11 12 4l8 7v9H4z"/><path d="M10 20v-5h4v5"/></svg>Annonces
+    </button>
+    <button role="tab" data-tab="favoris" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>Favoris
     </button>
     <button role="tab" data-tab="profile" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profil

@@ -181,7 +181,8 @@ def annuler(pw):
     e = Essai(pw); pg = e.page(); e.connexion(pg, "johan@x.fr", "Johan")
     pg.evaluate("() => { const s = __heden.state(); s.listings = [{id: crypto.randomUUID(), title: 'T', price: 500000, surface: 50, rooms: 3, postcode: '75017', status: 'nouvelle', mapId: __heden.cloud().mapId, createdBy: __heden.cloud().user.id, photos: [], addedAt: Date.now(), firstSeen: Date.now()}]; __heden.save(); }")
     pg.wait_for_timeout(1500); e.onglet(pg, "annonces"); pg.wait_for_timeout(500)
-    pg.locator(".hero .hero__keep").first.click(); pg.wait_for_timeout(2200)   # la synchro passe pendant que la notification est affichée
+    pg.locator(".hero .hero__fav").first.click(); pg.wait_for_timeout(2200)   # la synchro passe pendant que la notification est affichée
+    assert pg.evaluate("__heden.state().listings[0].status") == "gardee", "le cœur n'a pas mis l'annonce en favori"
     pg.locator("#toast .toast__act").click(); pg.wait_for_timeout(600)
     assert pg.evaluate("__heden.state().listings[0].status") == "nouvelle", "Annuler n'a rien fait"
     pg.wait_for_timeout(1500)
@@ -191,14 +192,28 @@ def annuler(pw):
 
 @essai
 def epingles(pw):
+    """Carte : seuls les favoris ; regroupés au loin, séparés de près ; plusieurs au même point → liste ; clic → popup photos + note."""
     e = Essai(pw, 1280, 860); pg = e.page()
-    pg.evaluate("() => { const s = __heden.state(); s.listings = []; for (let i = 0; i < 40; i++) s.listings.push({id: 'l' + i, title: 'T' + i, price: 400000 + i * 9000, surface: 50, rooms: 3, postcode: '75017', status: 'nouvelle', lat: 48.876 + (i % 8) * .0012, lng: 2.30 + Math.floor(i / 8) * .0015, photos: [], addedAt: Date.now(), firstSeen: Date.now()}); __heden.save(); }")
+    pg.evaluate("""() => { const s = __heden.state(); s.listings = [];
+      for (let i = 0; i < 40; i++) s.listings.push({id: 'l' + i, title: 'T' + i, price: 400000 + i * 9000, surface: 50, rooms: 3, postcode: '75017', status: i < 36 ? 'gardee' : 'nouvelle', lat: 48.876 + (i % 8) * .0012, lng: 2.30 + Math.floor(i / 8) * .0015, photos: ['https://img.ex.fr/' + i + 'a.jpg', 'https://img.ex.fr/' + i + 'b.jpg'], addedAt: Date.now(), firstSeen: Date.now(), precise: true});
+      for (let i = 0; i < 3; i++) s.listings.push({id: 'm' + i, title: 'Même point ' + i, price: 500000, surface: 40 + i, rooms: 2, postcode: '75018', status: 'gardee', lat: 48.892, lng: 2.345, photos: [], addedAt: Date.now(), firstSeen: Date.now()});
+      __heden.save(); }""")
     e.onglet(pg, "annonces"); e.onglet(pg, "map")
     pg.evaluate("__heden.map.setView([48.879, 2.306], 13, {animate: false})"); pg.wait_for_timeout(800)
     g = pg.evaluate("document.querySelectorAll('.lpin--grp').length")
-    assert 1 <= g <= 4, f"{g} pastilles au zoom 13"
+    assert 1 <= g <= 5, f"{g} pastilles au zoom 13"
     pg.evaluate("__heden.map.setView([48.879, 2.306], 16, {animate: false})"); pg.wait_for_timeout(800)
-    assert pg.evaluate("document.querySelectorAll('.lpin--grp').length") == 0
+    singles = pg.evaluate("document.querySelectorAll('.lpin:not(.lpin--grp)').length")
+    assert singles == 36 and pg.evaluate("document.querySelectorAll('[data-pin=l38]').length") == 0, f"{singles} favoris seuls, ou une annonce non favorite sur la carte"
+    pg.locator("[data-pin=l3]").click(); pg.wait_for_timeout(500)
+    assert pg.locator(".mpop[data-id=l3] .mpop__track").count() == 1 and "/2" in pg.locator(".mpop__n").inner_text() and pg.locator(".mpop__s").count() == 1, "popup sans photos ou sans note"
+    pg.evaluate("__heden.map.closePopup(); __heden.map.setView([48.892, 2.345], 17, {animate: false})"); pg.wait_for_timeout(800)
+    pg.locator(".lpin--grp").first.click(); pg.wait_for_timeout(500)
+    assert pg.locator(".mpop--grp [data-pick]").count() == 3, "trois favoris au même point : pas de liste"
+    pg.locator("[data-pick=m1]").click(); pg.wait_for_timeout(400)
+    assert pg.locator(".mpop[data-id=m1]").count() == 1 and pg.evaluate("document.body.dataset.mode") != "placing", "le clic dans le popup a commencé une zone"
+    pg.locator("[data-open]").click(); pg.wait_for_timeout(700)
+    assert pg.evaluate("document.body.dataset.tab") == "favoris" and pg.locator(".ldet__head").count() == 1, "« Voir la fiche » n'ouvre pas la fiche"
     assert not e.erreurs, e.erreurs; e.fermer()
 
 
@@ -264,16 +279,20 @@ def vivier(pw):
     db = pg.evaluate(DBQ)
     assert len(db.get("vivier", [])) == 3 and not db.get("vivier_courrier"), [c for c in db["calls"] if "vivier" in c or "rpc" in c][-8:]
     e.onglet(pg, "annonces"); pg.wait_for_timeout(800)
-    v = pg.locator("#vivier")
-    assert v.is_visible() and "3 nouvelles annonces" in v.inner_text(), v.inner_text() if v.count() else "pas de bandeau"
-    v.locator("[data-viv=neuf]").click(); pg.wait_for_timeout(600)
-    assert "du vivier Heden" in pg.locator("#lsTitle").inner_text()
-    pg.click("#bgo"); pg.wait_for_timeout(1500)
-    got = pg.evaluate("__heden.state().listings.filter(f => f.origin === 'vivier').map(f => [f.source, f.price])")
-    assert len(got) == 3 and all(s == "SeLoger" for s, _ in got), got
-    assert "nouvelle" not in pg.locator("#vivier").inner_text(), "le bandeau annonce encore des nouveautés"
+    assert "3 nouvelles" in pg.locator(".feed--explorer .feed__n").inner_text(), "Explorer n'annonce pas les nouveautés"
+    pg.locator("[data-feed=explorer]").click(); pg.wait_for_timeout(800)
+    assert pg.locator(".hero--ex").count() == 3, "Explorer ne montre pas les annonces du flux Heden"
+    pg.locator(".hero--ex .hero__fav").first.click(); pg.wait_for_timeout(900)
+    got = pg.evaluate("__heden.state().listings.filter(f => f.origin === 'vivier').map(f => [f.source, f.status])")
+    assert got == [["SeLoger", "gardee"]], got
+    pg.locator(".hero--ex .hero__drop").nth(1).click(); pg.wait_for_timeout(900)
+    assert pg.locator(".hero--ex").count() == 2, "l'annonce masquée reste dans Explorer"
+    pg.locator("[data-feed=mes]").click(); pg.wait_for_timeout(500)
+    assert pg.locator(".hero").count() == 0, "une annonce d'Explorer apparaît dans Mes annonces"
+    e.onglet(pg, "favoris"); pg.wait_for_timeout(500)
+    assert pg.locator(".hero").count() == 1, ("le favori d'Explorer n'est pas dans Favoris", pg.evaluate("__heden.state().listings.map(f => [f.origin, f.status, f.kind, f.price])"), pg.locator("#annonces").inner_text()[:300])
     # un membre ouvre l'une d'elles avec le bouton + Heden : la copie du vivier reçoit toutes les photos et la fiche complète
-    importer(pg, {"v": 5, "url": "https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/1.htm", "title": "Appartement 3 pièces 46 m² Paris 11e", "meta": {}, "ld": [],
+    importer(pg, {"v": 6, "url": "https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/1.htm", "title": "Appartement 3 pièces 46 m² Paris 11e", "meta": {}, "ld": [],
                   "imgs": [f"https://img.ex.fr/1-{k}.jpg" for k in range(8)], "text": "Appartement 3 pièces 46 m², Paris 11ème (75011), 510 000 €. 5e étage avec ascenseur, DPE C."})
     v1 = next(x for x in pg.evaluate(DBQ)["vivier"] if x["surface"] == 46)
     assert v1["data"].get("complet") and v1["data"].get("floor") == 5 and len(v1["carte"]["imgs"]) == 8, v1
@@ -307,6 +326,29 @@ def bouton_photos(pw):
     assert len(d["imgs"]) == 12 and d["imgs"][-1].endswith("plan.jpg") and not any("agence" in u for u in d["imgs"]), d["imgs"]
     assert "entièrement rénové" in d["text"], "description complète absente"
     e.fermer()
+
+
+@essai
+def guide(pw):
+    """Premier lancement : le guide parcourt Carte, Annonces, Favoris, Profil ; « Passer » l'arrête ; Profil le relance."""
+    e = Essai(pw); e.ctx.add_init_script("localStorage.setItem('__tips', '1')")
+    pg = e.page(); pg.wait_for_timeout(2600)
+    assert pg.locator(".tip--tour").count() == 1, "pas de guide au premier lancement"
+    vus = []
+    for _ in range(3): vus.append(pg.evaluate("document.body.dataset.tab")); pg.locator(".tip__ok").click(); pg.wait_for_timeout(700)
+    vus.append(pg.evaluate("document.body.dataset.tab"))
+    assert vus == ["map", "map", "map", "annonces"], vus
+    pg.locator(".tip__skip").click(); pg.wait_for_timeout(600)
+    assert pg.locator(".tip--tour").count() == 0 and pg.evaluate("document.body.dataset.tab") == "map", "« Passer le guide » ne l'arrête pas"
+    assert pg.evaluate("JSON.parse(localStorage.getItem('heden.tips')).done") is True
+    pg.reload(); pg.wait_for_timeout(2600)
+    assert pg.locator(".tip--tour").count() == 0, "le guide revient après avoir été passé"
+    e.onglet(pg, "profile"); pg.click("[data-ptab='compte']"); pg.wait_for_timeout(300)
+    pg.click("#tourGo"); pg.wait_for_timeout(1500)
+    assert pg.locator(".tip--tour").count() == 1 and pg.evaluate("document.body.dataset.tab") == "map", "« Revoir le guide » ne le relance pas"
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(500)
+    assert pg.locator(".tip--tour").count() == 0, "Échap ne ferme pas le guide"
+    assert not e.erreurs, e.erreurs; e.fermer()
 
 
 if __name__ == "__main__":

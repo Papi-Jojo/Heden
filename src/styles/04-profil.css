@@ -116,11 +116,7 @@
 .lf em{font-style:normal;font-size:11px;font-weight:650;color:#4A7A3E;margin-left:4px}
 .lf--bool{flex-direction:row;align-items:center;gap:8px;min-height:42px}
 .lf--bool input{flex:none;width:18px;height:18px;accent-color:var(--email)}
-.lpin{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px 0 6px;transform:translate(-50%,-50%);border-radius:6px;background:var(--ardoise);color:var(--calcaire);box-shadow:0 1px 4px rgba(38,35,31,.35),inset 0 -3px 0 var(--c);font:700 11.5px/1 var(--sans);white-space:nowrap}
-.lpin em{font-style:normal}
-.lpin--kept{background:var(--email)}
-.lpin--approx{opacity:.85;border:1px dashed var(--calcaire)}
-.map--far .lpin em{display:none}
+
 @media (max-width:899px){
   #view-annonces{padding-block:24px 96px}
   .ann h1{font-size:28px;line-height:32px}

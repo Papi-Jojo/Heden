@@ -13,18 +13,21 @@ function countUp(root = document) {
   });
 }
 function setTab(t) { setTimeout(() => tipsKick(), 0);
+  const prev = currentTab;
   currentTab = t;
   document.body.dataset.tab = t;
   $$("[role=tab][data-tab]").forEach(b => { const on = b.dataset.tab === t; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; });
   $("#view-map").hidden = t !== "map";
   $("#view-profile").hidden = t !== "profile";
-  $("#view-annonces").hidden = t !== "annonces";
+  const ann = t === "annonces" || t === "favoris";
+  $("#view-annonces").hidden = !ann;
+  if (ann && (prev === "annonces" || prev === "favoris") && prev !== t) { lui.openId = null; lui.lastView = null; }   // Annonces et Favoris partagent la vue : chacun revient à sa liste
   if (t === "map") { setTimeout(() => map.invalidateSize(), 0); renderZones(); renderPanel(); renderListingPins(); }
-  else if (t === "annonces") renderListings();
+  else if (ann) renderListings();
   else renderProfile();
-  const vw = $(t === "annonces" ? "#view-annonces" : t === "profile" ? "#view-profile" : "#view-map");
+  const vw = $(ann ? "#view-annonces" : t === "profile" ? "#view-profile" : "#view-map");
   if (vw) { vw.classList.remove("view--in"); void vw.offsetWidth; vw.classList.add("view--in"); setTimeout(() => vw.classList.remove("view--in"), 400); }
-  try { if (!/(access_token|error_description|error_code|import)=/.test(location.hash)) history.replaceState(null, "", t === "profile" ? "#profil" : t === "annonces" ? "#annonces" : "#carte"); } catch (e) {}
+  try { if (!/(access_token|error_description|error_code|import)=/.test(location.hash)) history.replaceState(null, "", t === "profile" ? "#profil" : t === "annonces" ? "#annonces" : t === "favoris" ? "#favoris" : "#carte"); } catch (e) {}
 }
 $$("[role=tab][data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab === currentTab ? tabHome(b.dataset.tab) : setTab(b.dataset.tab)));
 /* Clavier : les flèches passent d'un onglet à l'autre dans chaque barre d'onglets (Début et Fin aussi). */
@@ -42,7 +45,7 @@ document.addEventListener("keydown", e => {
 /* Onglet déjà ouvert : on revient à son menu (liste des annonces, liste des zones, haut du profil) */
 function tabHome(t) {
   const smooth = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-  if (t === "annonces") {
+  if (t === "annonces" || t === "favoris") {
     if (lui.openId) { lui.openId = null; renderListings(); }
     else $("#view-annonces").scrollTo({top: 0, behavior: smooth});
   } else if (t === "map") {

@@ -256,7 +256,23 @@ async function processVivier() {
     }
   } catch (e) { console.warn("Heden : vivier", e); }
   finally { cloud.vivierBusy = false; }
-  if (done) { cloud.vivierAt = 0; paintVivier(); }
+  if (done) { cloud.vivierAt = 0; if (currentTab === "annonces" && !lui.openId) loadVivier().then(() => renderListings()); }
+}
+/* Centre habité de chaque arrondissement (hors bois) : une annonce d'Explorer sans adresse y est placée, pour estimer son quartier */
+const ARR_CENTRE = [[48.8625, 2.3364], [48.8683, 2.3428], [48.8630, 2.3600], [48.8543, 2.3576], [48.8445, 2.3497], [48.8491, 2.3327], [48.8562, 2.3122], [48.8727, 2.3125], [48.8770, 2.3375], [48.8761, 2.3608],
+  [48.8590, 2.3800], [48.8405, 2.3920], [48.8283, 2.3622], [48.8292, 2.3266], [48.8401, 2.2928], [48.8580, 2.2760], [48.8873, 2.3067], [48.8925, 2.3484], [48.8871, 2.3848], [48.8634, 2.4011]];
+const estParCp = {};   // une estimation par arrondissement suffit : toutes ses annonces sans adresse partagent le même point
+async function estimerExplorer(fs) {
+  if (estimerExplorer.busy) return; estimerExplorer.busy = true;
+  try {
+    let n = 0;
+    for (const f of fs) {
+      if (f.est || !f.lat || f.placeLevel !== "cp") continue;
+      if (!estParCp[f.postcode]) { try { estParCp[f.postcode] = await estimate(circlePoints(f.lat, f.lng, 450, 10)); } catch (e) { estParCp[f.postcode] = null; } n++; }
+      f.est = estParCp[f.postcode] || undefined;
+    }
+    if (n && currentTab === "annonces" && lui.feed === "explorer" && !lui.openId) { const vw = $("#view-annonces"), y = vw ? vw.scrollTop : 0; renderListings(); if (vw) vw.scrollTop = y; }
+  } finally { estimerExplorer.busy = false; }
 }
 /* annonces du vivier vues depuis 30 jours, encore en ligne ; relues au plus toutes les 5 minutes */
 async function loadVivier() {
@@ -267,28 +283,20 @@ async function loadVivier() {
     .is("gone_at", null).gt("last_seen", since).order("first_seen", {ascending: false}).limit(400);
   if (error) { if (schemaMissing(error)) cloud.noVivier = true; return null; }
   cloud.vivierAt = Date.now();
-  return (cloud.vivierRows = (data || []).map(r => {
+  cloud.vivierRows = (data || []).map(r => {
     const c = r.carte || {}, d = r.data || {}, item = {url: d.url || c.url || r.url, text: c.text || "", imgs: c.imgs || [], price: +r.price, source: r.source, origin: "vivier", data: d, first: Date.parse(r.first_seen) || 0};
-    const f = Object.assign(parseListing({url: item.url, text: item.text, imgs: item.imgs}), d, {price: item.price});
-    return {item, f};
-  }));
-}
-async function paintVivier() {
-  const el = $("#vivier"); if (!el) return;
-  const rows = await loadVivier(); if (!rows || $("#vivier") !== el) return;
-  const h = homeProfile(), mine = rows.filter(r => kindOf(r.f) === curMode()), seen = h.vivierVu || 0;
-  // une annonce déjà dans Heden dont le prix a changé dans le vivier : mise à jour (baisse signalée)
+    const f = Object.assign(parseListing({url: item.url, text: item.text, imgs: item.imgs}), d, {price: item.price, id: "v:" + r.id, status: "nouvelle", origin: "vivier", source: r.source, addedAt: item.first, firstSeen: item.first});
+    if (!(f.photos || []).length) f.photos = item.imgs;
+    const ar = !f.lat && /^750(\d\d)$/.exec(f.postcode || ""), ctr = ar && ARR_CENTRE[+ar[1] - 1];
+    if (ctr) Object.assign(f, {lat: ctr[0], lng: ctr[1], precise: false, placeLevel: "cp", est: estParCp[f.postcode] || undefined});
+    f.title = listingTitle(f);
+    return {id: r.id, item, f};
+  });
+  // une annonce déjà gardée dont le prix a changé dans le flux Heden : mise à jour (baisse signalée)
   let up = 0;
-  for (const r of mine) { const ex = listings().find(x => sameListing(x, r.f)); if (ex && r.item.price && ex.price !== r.item.price && r.item.first >= (ex.firstSeen || 0) - 864e5) { const m = mergeCard(r.item, {source: r.item.source}); if (m.kind === "drop" || m.kind === "change") up++; } }
+  for (const r of cloud.vivierRows) { const ex = listings().find(x => x.vivierId === r.id || sameListing(x, r.f)); if (ex && r.item.price && ex.price !== r.item.price && r.item.first >= (ex.firstSeen || 0) - 864e5) { const m = mergeCard(r.item, {source: r.item.source}); if (m.kind === "drop" || m.kind === "change") up++; } }
   if (up) { save(); renderListingPins(); }
-  const fresh = mine.filter(r => !listings().some(x => sameListing(x, r.f)) && !listingFilters(r.f, h).length);
-  const neu = fresh.filter(r => r.item.first > seen);
-  if (!mine.length) { el.hidden = true; return; }
-  el.hidden = false;
-  el.innerHTML = `<p>${neu.length ? `<b>${plural(neu.length, "nouvelle annonce", "nouvelles annonces")}</b> du vivier Heden ${neu.length > 1 ? "correspondent" : "correspond"} à vos critères.` : `Le vivier Heden : ${plural(mine.length, "annonce reçue", "annonces reçues")} ces 30 derniers jours.`}</p>
-    <div class="vivier__a">${neu.length ? `<button class="btn btn--sm btn--primary" type="button" data-viv="neuf">Voir</button>` : ""}<button class="link" type="button" data-viv="tout">Parcourir le vivier</button></div>`;
-  const open = list => { h.vivierVu = Date.now(); save(); openBatchImport(list.map(r => r.item), "https://heden", false, n => `${plural(n, "annonce", "annonces")} du vivier Heden`); };
-  $$("[data-viv]", el).forEach(b => b.onclick = () => open(b.dataset.viv === "neuf" ? neu : mine));
+  return cloud.vivierRows;
 }
 /* une annonce ouverte avec le bouton + Heden enrichit sa copie du vivier (toutes les photos, fiche complète) */
 function vivierEnrichir(p) {
@@ -926,38 +934,89 @@ function openRentSettings() {
 /* ---------- Annonces sur la carte ---------- */
 let listingLayer = null;
 function renderListingPins() {
-  if (!listingLayer) { listingLayer = L.layerGroup().addTo(map); map.on("zoomend", () => currentTab === "map" && renderListingPins()); }
+  if (!listingLayer) {
+    listingLayer = L.layerGroup().addTo(map);
+    map.on("zoomend", () => currentTab === "map" && renderListingPins());
+    map.on("popupclose", () => { $$(".lpin.is-on").forEach(x => x.classList.remove("is-on")); });
+  }
   listingLayer.clearLayers();
   if (mapFilter.annonces === false) return;
   queuePlace(modeListings().filter(f => !f.lat && f.status !== "ecartee"));
-  // épingles proches regroupées en une pastille (nombre + meilleure note) tant qu'on n'est pas zoomé sur la rue
-  const pts = modeListings().filter(f => f.lat && f.status !== "ecartee"), z = map.getZoom(), groups = new Map();
-  const near = [];   // [centre en pixels, annonces] : une annonce rejoint le groupe dont le centre est à moins de 46 px
+  // seules les annonces en favori sont sur la carte. Proches à l'écran : une pastille groupée (nombre, meilleure note).
+  // Même au plus près, deux annonces placées au même point (par leur code postal) restent groupées : la pastille ouvre leur liste.
+  const pts = modeListings().filter(f => f.lat && isKept(f)), z = map.getZoom(), near = [];
   for (const f of pts) {
-    const p = map.project([f.lat, f.lng], z), g = z < 16 && near.find(([c]) => c.distanceTo(p) < 46);
+    const p = map.project([f.lat, f.lng], z), g = near.find(([c]) => c.distanceTo(p) < (z < 16 ? 46 : 16));
     if (g) { g[1].push(f); g[0] = g[0].multiplyBy(g[1].length - 1).add(p).divideBy(g[1].length); } else near.push([p, [f]]);
   }
-  near.forEach(([, fs], i) => groups.set(i, fs));
-  for (const g of groups.values()) {
-    if (g.length < 2) continue;
-    const best = Math.max(...g.map(f => scoreListing(f).total ?? 0)), kept = g.some(f => f.status === "gardee" || f.status === "visite");
-    const mk = L.marker([g.reduce((a, f) => a + f.lat, 0) / g.length, g.reduce((a, f) => a + f.lng, 0) / g.length], {zIndexOffset: 600, keyboard: true, title: `${g.length} annonces`,
-      icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin lpin--grp${kept ? " lpin--kept" : ""}" style="--c:${colorFor(best)}"><b class="num">${g.length}</b></span>`})});
-    mk.on("click", () => map.flyToBounds(L.latLngBounds(g.map(f => [f.lat, f.lng])).pad(0.4), {maxZoom: 17, duration: .5}));
-    mk.addTo(listingLayer);
+  for (const [, g] of near) {
+    const lat = g.reduce((a, f) => a + f.lat, 0) / g.length, lng = g.reduce((a, f) => a + f.lng, 0) / g.length;
+    if (g.length > 1) {
+      const best = Math.max(...g.map(f => scoreListing(f).total ?? 0));
+      const mk = L.marker([lat, lng], {zIndexOffset: 600, keyboard: true, title: `${g.length} favoris`,
+        icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin lpin--grp" style="--c:${colorFor(best)}"><b class="num">${g.length}</b></span>`})});
+      mk.on("click", () => {
+        const b = L.latLngBounds(g.map(f => [f.lat, f.lng])), wide = map.project(b.getNorthEast(), z).distanceTo(map.project(b.getSouthWest(), z));
+        // assez écartées pour se séparer en zoomant : on zoome ; sinon (même point, ou déjà au plus près) : la liste
+        if (wide > 8 && z < 17) map.flyToBounds(b.pad(0.5), {maxZoom: 17, duration: .5});
+        else openPinPopup([lat, lng], g, mk);
+      });
+      mk.addTo(listingLayer);
+    } else {
+      const f = g[0], s = scoreListing(f);
+      const mk = L.marker([f.lat, f.lng], {zIndexOffset: 500, keyboard: true, title: f.title || listingTitle(f), icon: L.divIcon({className: "", iconSize: null,
+        html: `<span class="lpin${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}" data-pin="${f.id}"><b class="lpin__s num">${s.total ?? "–"}</b><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : f.price >= 1e6 ? String(Math.round(f.price / 1e5) / 10).replace(".", ",") + "&#8239;M€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`})});
+      mk.on("click", () => openPinPopup([f.lat, f.lng], [f], mk));
+      mk.addTo(listingLayer);
+    }
   }
-  [...groups.values()].filter(g => g.length === 1).map(g => g[0]).forEach(f => {
-    const s = scoreListing(f);
-    const mk = L.marker([f.lat, f.lng], {icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin${f.status === "gardee" || f.status === "visite" ? " lpin--kept" : ""}${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9H4z"/></svg><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`}), zIndexOffset: 500});
-    mk.on("click", () => { lui.openId = f.id; setTab("annonces"); });
-    mk.addTo(listingLayer);
-  });
+}
+/* Popup d'une pastille : les photos et la note ; pour un groupe, la liste des favoris à cet endroit */
+function pinCardHTML(f, back) {
+  const s = scoreListing(f), ph = (f.photos || []).slice(0, 12), why = s.fails.length ? ["Hors critères : " + s.fails[0]] : s.plus.slice(0, 2);
+  return `<div class="mpop" data-id="${f.id}">
+    ${back ? `<button class="mpop__back" type="button" data-back>‹ ${esc(back)}</button>` : ""}
+    <div class="mpop__ph">${ph.length ? `<div class="mpop__track">${ph.map((u, i) => `<img src="${esc(u)}" alt="" ${i > 1 ? 'loading="lazy"' : ""} referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : `<div class="mpop__none">${GALETS}</div>`}
+      <b class="mpop__s num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</b>
+      ${ph.length > 1 ? `<span class="mpop__n num"><span data-i>1</span>/${ph.length}</span><button class="mpop__nav mpop__nav--p" type="button" data-nav="-1" aria-label="Photo précédente">‹</button><button class="mpop__nav mpop__nav--n" type="button" data-nav="1" aria-label="Photo suivante">›</button>` : ""}
+    </div>
+    <div class="mpop__b">
+      <h3>${esc(f.title || listingTitle(f))}</h3>
+      <p class="mpop__p num">${f.price ? priceTxt(f) : "Prix ?"}${s.ppm ? ` <small>${ppmTxt(f)}</small>` : ""}</p>
+      ${why.length ? `<ul class="mpop__why">${why.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      <div class="mpop__acts"><button class="btn btn--sm btn--primary" type="button" data-open>Voir la fiche</button>${f.status === "visite" ? `<span class="mpop__tag">${ICO.visit}Visite prévue</span>` : ""}<button class="mpop__fav" type="button" data-unfav aria-pressed="true" aria-label="Retirer des favoris" title="Retirer des favoris">${ICO.keep}</button></div>
+    </div>
+  </div>`;
+}
+function pinListHTML(fs) {
+  return `<div class="mpop mpop--grp"><p class="mpop__h">${plural(fs.length, "favori à cet endroit", "favoris à cet endroit")}</p><ul class="mpop__list">${fs.map(f => { const s = scoreListing(f), ph = (f.photos || [])[0];
+    return `<li><button type="button" data-pick="${f.id}"><span class="mpop__th">${ph ? `<img src="${esc(ph)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span><span class="mpop__lt"><b>${esc(f.title || listingTitle(f))}</b><small class="num">${f.price ? priceTxt(f) : ""}</small></span><i class="num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</i></button></li>`; }).join("")}</ul></div>`;
+}
+function openPinPopup(ll, fs, mk) {
+  $$(".lpin.is-on").forEach(x => x.classList.remove("is-on"));
+  const el = mk && mk.getElement && mk.getElement(), pin = el && el.querySelector(".lpin"); if (pin) pin.classList.add("is-on");
+  const pop = L.popup({className: "mpop-wrap", maxWidth: 300, minWidth: 260, autoPanPaddingTopLeft: [16, 84], autoPanPaddingBottomRight: [68, 24], offset: [0, fs.length > 1 ? -18 : -32], closeButton: true})
+    .setLatLng(ll).setContent(fs.length > 1 ? pinListHTML(fs) : pinCardHTML(fs[0])).openOn(map);
+  const bind = () => {
+    const root = pop.getElement(); if (!root) return;
+    // un clic dans le popup ne doit jamais atteindre la carte (il y commencerait une zone), même quand le contenu change
+    if (!root.__stop) { root.__stop = true; ["click", "pointerdown", "mousedown", "touchstart", "dblclick"].forEach(t => root.addEventListener(t, e => e.stopPropagation())); }
+    const tr = root.querySelector(".mpop__track"), ni = root.querySelector("[data-i]");
+    if (tr && ni) tr.addEventListener("scroll", () => { ni.textContent = Math.round(tr.scrollLeft / tr.clientWidth) + 1; }, {passive: true});
+    root.querySelectorAll("[data-nav]").forEach(b => b.onclick = e => { e.stopPropagation(); tr.scrollBy({left: +b.dataset.nav * tr.clientWidth, behavior: "smooth"}); });
+    const card = root.querySelector(".mpop[data-id]"), f = card && listings().find(x => x.id === card.dataset.id);
+    const op = root.querySelector("[data-open]"); if (op && f) op.onclick = () => { map.closePopup(); lui.openId = f.id; lui.feed = f.origin === "vivier" ? "explorer" : "mes"; setTab("favoris"); };
+    const uf = root.querySelector("[data-unfav]"); if (uf && f) uf.onclick = () => { map.closePopup(); setStatus(f, "nouvelle", () => {}); };
+    root.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { const g = listings().find(x => x.id === b.dataset.pick); if (g) setTimeout(() => { pop.setContent(pinCardHTML(g, plural(fs.length, "favori ici", "favoris ici"))); bind(); }, 0); });
+    const bk = root.querySelector("[data-back]"); if (bk) bk.onclick = () => setTimeout(() => { pop.setContent(pinListHTML(fs)); bind(); }, 0);
+  };
+  bind();
 }
 
 
 /* Démarrage */
 renderZones();
-setTab(/profil/.test(location.hash) ? "profile" : /annonces|import=/.test(location.hash) ? "annonces" : "map");
+setTab(/profil/.test(location.hash) ? "profile" : /favoris/.test(location.hash) ? "favoris" : /annonces|import=/.test(location.hash) ? "annonces" : "map");
 cloudInit();
 refreshEstimates();
 maybeAutoQuiz();

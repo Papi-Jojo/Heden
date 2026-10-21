@@ -191,8 +191,8 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
     </section>
     ${installHTML()}
     <section class="sec setrow">
-      <div><h3 class="sub3">Astuces</h3><p class="hint2">Une bulle au premier usage de chaque écran${tipsState().seen.length && !tipsState().off ? ` · <button class="linkbtn" type="button" id="tipsReset">Tout revoir</button>` : ""}</p></div>
-      <div class="seg seg--sm" id="tipsSel" role="group" aria-label="Astuces">${[[1, "Oui"], [0, "Non"]].map(([k, l]) => `<button type="button" data-on="${k}" aria-pressed="${!tipsState().off === !!k}">${l}</button>`).join("")}</div>
+      <div><h3 class="sub3">Guide</h3><p class="hint2">La visite des écrans principaux, pas à pas</p></div>
+      <button class="btn btn--sm" type="button" id="tourGo">Revoir le guide</button>
     </section>
     ${sharedHTML()}
     <section class="sec">
@@ -212,13 +212,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
   const lp = $("#locProf"); if (lp) lp.onclick = openRentSettings;
   bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
-  $$("#tipsSel [data-on]").forEach(b => b.onclick = () => {
-    const on = b.dataset.on === "1"; const st = tipsState();
-    if (on === !st.off) return;
-    st.off = !on; if (on) st.seen = []; else tipHide(false);
-    tipsSave(); renderProfile();
-  });
-  if ($("#tipsReset")) $("#tipsReset").onclick = () => { tipsState().seen = []; tipsSave(); renderProfile(); toast("Les astuces reviendront au fil des écrans"); };
+  const tg = $("#tourGo"); if (tg) tg.onclick = () => { const st = tipsState(); st.off = false; tipsSave(); tourStart(); };
   const ib = $("#installApp"); if (ib) ib.onclick = async () => { const ev = installEvt; installEvt = null; ev.prompt(); try { await ev.userChoice; } catch (e) {} renderProfile(); };
   $$("#langSel [data-lang]").forEach(b => b.onclick = () => {
     if (b.dataset.lang === (window.HEDEN_LANG || "fr")) return;
