@@ -226,6 +226,13 @@ CARTES = [
   text="T3 lumineux 58m2\n560 000 €\nParis 75012", attendu=dict(price=560000, surface=58, rooms=3, postcode="75012", bright=True)),
 ]
 
+CARTES += [
+ dict(nom="Alerte SeLoger, titre trompeur (pièces)", url="https://click.by.seloger.com/?qs=a1",
+  text="2 275 000 € 12 638,89 €/m²\nSplendide appartement neuf de 4 pièces\n5 pièces · 180 m²\nParis 16ème arrondissement\n(75016)\nVoir l'annonce", attendu=dict(price=2275000, rooms=5, surface=180, postcode="75016")),
+ dict(nom="Alerte SeLoger, titre trompeur (surface)", url="https://click.by.seloger.com/?qs=a2",
+  text="252 680 € 3 771,34 €/m²\nAppartement T3 de 68 m² avec extérieur de 12 m²\n3 pièces · 67 m²\nSaint-Denis\n(93200)\nVoir l'annonce", attendu=dict(price=252680, rooms=3, surface=67, postcode="93200")),
+]
+
 # E-mails d'alerte (HTML) : combien de cartes, quels liens, quels prix
 EMAILS = [
  dict(nom="E-mail en tableaux", n=2, html="""<html><body><table><tr><td><img src="https://img.ex.fr/logo.png" width="120" height="40"></td></tr>
@@ -235,6 +242,8 @@ EMAILS = [
 <td><b>Appartement 2 pièces</b><br>40 m² · Paris 17ème<br><span>455 000 €</span><br><a href="https://click.alertes.ex.fr/c/def?u=222">Voir l'annonce</a></td></tr>
 <tr><td>Vous recevez cet e-mail car vous avez créé une alerte. <a href="https://www.ex.fr/desabonnement">Se désabonner</a> · Prix moyen du quartier 10 200 €/m²</td></tr></table></body></html>""",
   prix=[598000, 455000]),
+ dict(nom="E-mail SeLoger (photo en fond de case)", n=3, prix=[610000, 455000, 720000], photos=["https://cdn.ex.io/0.jpg?h=370&w=500", "https://cdn.ex.io/1.jpg?h=370&w=500", "https://cdn.ex.io/2.jpg?h=370&w=500"],
+  html='<html><body><table><tr><td background="https://cdn.ex.io/0.jpg?h=370&w=500" style="background-image: url(\'https://cdn.ex.io/0.jpg?h=370&w=500\')"><a href="https://click.by.seloger.com/?qs=x0"><img src="https://image.by.ex.com/cadre.png" width="270" height="200"></a></td><td><a href="https://click.by.seloger.com/?qs=y0"><strong>610 000 € </strong></a><br><a href="https://click.by.seloger.com/?qs=z0">3 pièces · 58 m²</a><br>Paris 17e arrondissement<br>(75017)</td></tr></table><table><tr><td background="https://cdn.ex.io/1.jpg?h=370&w=500" style="background-image: url(\'https://cdn.ex.io/1.jpg?h=370&w=500\')"><a href="https://click.by.seloger.com/?qs=x1"><img src="https://image.by.ex.com/cadre.png" width="270" height="200"></a></td><td><a href="https://click.by.seloger.com/?qs=y1"><strong>455 000 € </strong></a><br><a href="https://click.by.seloger.com/?qs=z1">3 pièces · 41 m²</a><br>Paris 18e arrondissement<br>(75018)</td></tr></table><table><tr><td background="https://cdn.ex.io/2.jpg?h=370&w=500" style="background-image: url(\'https://cdn.ex.io/2.jpg?h=370&w=500\')"><a href="https://click.by.seloger.com/?qs=x2"><img src="https://image.by.ex.com/cadre.png" width="270" height="200"></a></td><td><a href="https://click.by.seloger.com/?qs=y2"><strong>720 000 € </strong></a><br><a href="https://click.by.seloger.com/?qs=z2">3 pièces · 66 m²</a><br>Paris 11e arrondissement<br>(75011)</td></tr></table></body></html>'),
 ]
 
 # Jeu de contrôle : rédigé après les corrections, sans retouche du code ensuite (mesure honnête de la généralisation)

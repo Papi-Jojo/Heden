@@ -24,8 +24,8 @@ def mesurer(pg):
                 ok = egal(lu, v); t = champs.setdefault(k, [0, 0]); t[0] += ok; t[1] += 1
                 if not ok: erreurs.append(f"{groupe} « {c['nom']} » · {k} : lu {lu!r}, attendu {v!r}")
     for m in EMAILS:
-        r = pg.evaluate("h => __heden.extractCards(new DOMParser().parseFromString(h, 'text/html').body).map(c => [c.url, __heden.parseListing({url: c.url, text: c.text}).price])", m["html"])
-        ok = len(r) == m["n"] and [x[1] for x in r] == m["prix"]; t = champs.setdefault("e-mail", [0, 0]); t[0] += ok; t[1] += 1
+        r = pg.evaluate("h => __heden.extractCards(new DOMParser().parseFromString(h, 'text/html').body).map(c => [c.url, __heden.parseListing({url: c.url, text: c.text}).price, c.img])", m["html"])
+        ok = len(r) == m["n"] and [x[1] for x in r] == m["prix"] and ("photos" not in m or [x[2] for x in r] == m["photos"]); t = champs.setdefault("e-mail", [0, 0]); t[0] += ok; t[1] += 1
         if not ok: erreurs.append(f"e-mail « {m['nom']} » : lu {r}")
     return champs, erreurs
 

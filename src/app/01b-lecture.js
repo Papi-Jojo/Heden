@@ -15,6 +15,9 @@ function parseListing(src) {
   (src.ld || []).forEach(s => { try { (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === "object") { nodes.push(o); Object.values(o).forEach(v => v && typeof v === "object" && walk(v)); } })(JSON.parse(s)); } catch (e) {} });
   const pick = f => { for (const n of nodes) { try { const v = f(n); if (v != null && v !== "") return v; } catch (e) {} } return null; };
   const kv = readTable(raw);
+  // ligne de caractéristiques des cartes et e-mails : « 5 pièces · 1 chambre · 180 m² » l'emporte sur le titre (« appartement de 4 pièces »)
+  const al = raw.match(/(?:^|\n)\s*(\d{1,2})\s?pi[eè]ces?\s*·\s*(?:\d{1,2}\s?chambres?\s*·\s*)?(\d{1,3}(?:[.,]\d{1,2})?)\s?m²/i);
+  if (al) { kv.rooms = kv.rooms || al[1]; kv.surface = kv.surface || al[2]; }
   const f = {}, found = {};
   const set = (k, v) => { if (v != null && v !== "" && !(typeof v === "number" && !isFinite(v))) { f[k] = v; found[k] = true; } };
   // Prix
@@ -345,8 +348,22 @@ function extractCards(root, base) {
       if (w < 90 || hh < 60) continue;
       const u = abs(s); if (u && !seen.has(u)) seen.set(u, w * hh);
     }
+    // e-mails : la photo est souvent le fond de la case (attribut background, style background-image), l'image posée dessus n'est qu'un cadre
+    for (const el of [c, ...c.querySelectorAll("[background],[style*=background]")]) {
+      const st = (el.getAttribute && el.getAttribute("style")) || "", m = st.match(/background(?:-image)?\s*:[^;]*url\(\s*['"]?([^'")]+)/i);
+      for (const b of [el.getAttribute && el.getAttribute("background"), m && m[1]]) {
+        if (!b || /^data:|logo|pixel|spacer|icon/i.test(b)) continue;
+        const u = abs(b), q = (() => { try { const x = new URL(u).searchParams; return (+x.get("w") || 500) * (+x.get("h") || 370); } catch (e) { return 185000; } })();
+        if (u && (!seen.has(u) || seen.get(u) < q)) seen.set(u, q);
+      }
+    }
     const big = [...seen].sort((a, b) => b[1] - a[1])[0], imgs = big ? [big[0], ...[...seen.keys()].filter(u => u !== big[0])].slice(0, 12) : [];
     out.push({url, img: imgs[0] || "", imgs, text: text.slice(0, 900)});
+  }
+  // une même image dans presque toutes les cartes est un décor de l'e-mail (cadre, pastille), pas une photo du bien
+  if (out.length >= 3) {
+    const n = new Map(); out.forEach(o => new Set(o.imgs).forEach(u => n.set(u, (n.get(u) || 0) + 1)));
+    out.forEach(o => { o.imgs = o.imgs.filter(u => n.get(u) < Math.max(3, out.length * 0.6)); o.img = o.imgs[0] || ""; });
   }
   return out;
 }
