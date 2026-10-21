@@ -7,16 +7,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          mkdir -p sonde; cd sonde
+          mkdir -p sonde; cd sonde; rm -f *
           H='-H Origin:https://papi-jojo.github.io'
-          curl -s -D geo.h $H "https://data.geopf.fr/geocodage/search/?q=12+rue+oberkampf&postcode=75011&limit=2" -o geo.json
-          curl -s -D geo2.h $H "https://data.geopf.fr/geocodage/search/?q=rue+caulaincourt&postcode=75018&type=street&limit=2" -o geo2.json
-          curl -s "https://data.ademe.fr/data-fair/api/v1/datasets?q=dpe&size=30&select=id,title" -o ds.json
-          for d in dpe03existant dpe-v2-logements-existants; do
-            curl -s -D $d.h $H "https://data.ademe.fr/data-fair/api/v1/datasets/$d/schema?calculated=false" -o $d.schema.json
-            curl -s "https://data.ademe.fr/data-fair/api/v1/datasets/$d/lines?size=2&qs=code_postal_ban:75011%20AND%20etiquette_dpe:D" -o $d.lines.json
-            curl -s "https://data.ademe.fr/data-fair/api/v1/datasets/$d/lines?size=3&q=rue%20oberkampf&q_fields=adresse_ban&qs=code_postal_ban:75011" -o $d.q.json
-          done
+          D=https://data.ademe.fr/data-fair/api/v1/datasets/meg-83tjwtg8dyz4vv7h1dqe
+          curl -s -D s.h $H "$D/schema?calculated=false" -o schema.json
+          curl -s -D l.h $H "$D/lines?size=2&qs=code_postal_ban:75011%20AND%20etiquette_dpe:D" -o lines.json
+          curl -s $H "$D/lines?size=5&q=oberkampf&q_fields=adresse_ban&qs=code_postal_ban:75011%20AND%20surface_habitable_logement:%5B67%20TO%2069%5D" -o q.json
+          curl -s $H "$D/lines?size=5&qs=code_postal_ban:75011%20AND%20surface_habitable_logement:%5B67.5%20TO%2068.5%5D%20AND%20etiquette_dpe:D&select=numero_dpe,adresse_ban,etiquette_dpe,surface_habitable_logement,conso_5_usages_par_m2_ep,date_etablissement_dpe,numero_etage_appartement,annee_construction,_geopoint" -o q2.json
+          curl -s $H "$D/values_agg?field=code_postal_ban&size=3&qs=code_postal_ban:75011" -o agg.json
           ls -la
       - run: |
           git config user.name sonde; git config user.email sonde@example.com
