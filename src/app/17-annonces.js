@@ -720,7 +720,7 @@ function bindHomeSection() {
     if (items.length >= 3 && !isDetailUrl(safe.url)) return openBatchImport(items, safe.url, (+d.v || 0) < 4);
     const p = Object.assign(parseListing(safe), {fullPage: true}), ex = listings().find(x => sameListing(x, p));
     vivierEnrichir(p);
-    if ((+d.v || 0) < 5) setTimeout(() => toast("Réinstallez le bouton + Heden (Annonces, « Le bouton + Heden ») : il récupère maintenant toute la galerie photos"), 2500);
+    if ((+d.v || 0) < 6) setTimeout(() => toast("Réinstallez le bouton + Heden (Annonces, « Le bouton + Heden ») : il récupère maintenant toute la galerie photos"), 2500);
     if (ex) return refreshFromPage(ex, p);
     if (p.gone) return toast("Cette annonce n’est plus en ligne : rien à ajouter");
     openAddListing(null, p);

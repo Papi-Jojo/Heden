@@ -296,8 +296,16 @@ def bouton_photos(pw):
     site.route("https://www.agence-ex.fr/**", lambda r: r.fulfill(body=f"<html><body><h1>3 pièces 60 m² Paris 11e</h1><div class=gal><div>{gal}</div></div><p>450 000 €</p><img src='https://photos.ex.fr/logo.png' width=40></body></html>", content_type="text/html"))
     site.goto("https://www.agence-ex.fr/annonce/1"); site.wait_for_timeout(800)
     d = site.evaluate("c => { let got = null; window.open = (u) => { got = JSON.parse(decodeURIComponent(u.split('#import=')[1])); return null; }; eval(decodeURIComponent(c.slice(11))); return got; }", code)
-    assert d and d["v"] == 5 and len(d["imgs"]) == 14, (d or {}).get("imgs")
+    assert d and d["v"] == 6 and len(d["imgs"]) == 14, (d or {}).get("imgs")
     assert not any("logo" in u or "vide" in u for u in d["imgs"]), d["imgs"]
+    # galerie complète dans les données de la page (comme SeLoger) : 11 photos et le plan, pas le logo de l'agence affiché en grand
+    etat = {"app": {"data": {"classified": {"medias": {"images": [{"url": f"https://mms.ex.fr/{i}.jpg?ci_seal=x"} for i in range(11)], "floorplans": [{"url": "https://mms.ex.fr/plan.jpg"}]},
+            "contact": {"agencyLogo": {"logoUrl": "https://mms.ex.fr/agence.jpg"}}, "description": "Bel appartement au 3e étage avec ascenseur, entièrement rénové, cave. " * 5}}}}
+    site.route("https://www.agence-deux.fr/**", lambda r: r.fulfill(body=f"<html><body><h1>2 pièces 47 m² Paris 7e</h1><img src='https://photos.ex.fr/agence.jpg'><img src='https://photos.ex.fr/0.jpg'><p>596 850 €</p><p>Bel appartement…</p><script>window.__ETAT__ = {json.dumps(etat)};</script></body></html>", content_type="text/html"))
+    site.goto("https://www.agence-deux.fr/annonce/2"); site.wait_for_timeout(800)
+    d = site.evaluate("c => { let got = null; window.open = (u) => { got = JSON.parse(decodeURIComponent(u.split('#import=')[1])); return null; }; eval(decodeURIComponent(c.slice(11))); return got; }", code)
+    assert len(d["imgs"]) == 12 and d["imgs"][-1].endswith("plan.jpg") and not any("agence" in u for u in d["imgs"]), d["imgs"]
+    assert "entièrement rénové" in d["text"], "description complète absente"
     e.fermer()
 
 
