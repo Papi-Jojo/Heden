@@ -589,7 +589,7 @@ function paintQuiz() {
       <div class="qmap">${map}</div>
       <div class="qmap__foot"><p class="qmap__sel"><b>${n ? plural(n, "arrondissement", "arrondissements") : "Tout Paris"}</b>${n ? ` · <span>${esc(secteursTxt(s))}</span>` : ""}</p>${n ? `<button class="link" type="button" id="qzArrClr">Tout Paris</button>` : ""}</div>
       ${n ? `<div class="chips qchips"><button type="button" class="chip" id="qzBan" aria-pressed="${!!s.banlieue}">Aussi en proche banlieue</button></div>` : ""}` + foot(true, n ? "Continuer" : "Tout Paris me va");
-    if (lieuxCache === undefined) loadLieux().then(d => { lieuxCache = d || null; if (qz && QORDER[qz.step] === "secteurs" && $("#quiz.is-open")) paintQuiz(); });
+    if (lieuxCache === undefined) loadLieux().then(d => { lieuxCache = d || null; const el = $("#quiz"); if (qz && QORDER[qz.step] === "secteurs" && el && !el.hidden) paintQuiz(); });
   }
   else if (key === "trajets") body = head("Vos trajets", "Travail, études : Heden calcule le temps depuis chaque annonce.") + `
       <div class="qplaces">${s.places.map((pl, i) => `<div class="qplace" data-i="${i}">
