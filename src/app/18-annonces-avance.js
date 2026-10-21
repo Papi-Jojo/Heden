@@ -958,4 +958,4 @@ setTab(/profil/.test(location.hash) ? "profile" : /annonces|import=/.test(locati
 cloudInit();
 refreshEstimates();
 maybeAutoQuiz();
-window.__heden = {state: () => state, score: f => scoreListing(f), scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate, map, toast, openQuiz, toastAvoid: TOAST_AVOID};
+window.__heden = {state: () => state, parseListing, extractCards, score: f => scoreListing(f), scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate, map, toast, openQuiz, toastAvoid: TOAST_AVOID};

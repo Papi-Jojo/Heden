@@ -44,12 +44,15 @@ function parseListing(src) {
   const nodes = [];
   (src.ld || []).forEach(s => { try { (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === "object") { nodes.push(o); Object.values(o).forEach(v => v && typeof v === "object" && walk(v)); } })(JSON.parse(s)); } catch (e) {} });
   const pick = f => { for (const n of nodes) { try { const v = f(n); if (v != null && v !== "") return v; } catch (e) {} } return null; };
+  const kv = readTable(raw);
   const f = {}, found = {};
   const set = (k, v) => { if (v != null && v !== "" && !(typeof v === "number" && !isFinite(v))) { f[k] = v; found[k] = true; } };
   // Prix
   let price = numFR(pick(n => n.price ?? (n.offers && (n.offers.price ?? (Array.isArray(n.offers) && n.offers[0] && n.offers[0].price)))));
   if (!(price >= 30000 && price <= 20e6)) {
-    const c = [...raw.matchAll(/(\d{1,3}(?:[ .]\d{3})+|\d{5,8})\s?€(?!\s*(?:\/|par)\s*(?:m|mois))/g)].map(m => numFR(m[1])).filter(v => v >= 30000 && v <= 20e6);
+    const c = [...raw.matchAll(/(\d{1,3}(?:[ .]\d{3})+|\d{5,8})\s?€(?!\s*(?:\/|par)\s*(?:m|mois))/g)]
+      .filter(m => !/(?:ancien prix|au lieu de|prix initial|prix pr[ée]c[ée]dent|frais de notaire[^\n]{0,20}|hors honoraires|soit|valeur v[ée]nale|baiss[ée] de)\s*:?\s*$/i.test(raw.slice(Math.max(0, m.index - 40), m.index)))
+      .map(m => numFR(m[1])).filter(v => v >= 30000 && v <= 20e6);
     price = c.length ? c[0] : null;
   }
   set("price", price);
@@ -64,57 +67,72 @@ function parseListing(src) {
   }
   // Location : loyer par mois, charges, dépôt, honoraires, meublé, disponibilité, encadrement
   const rent = viager ? null : readRent(raw, low, String(src.url || "").toLowerCase(), price, numFR(pick(n => n.price ?? (n.offers && n.offers.price))));
-  if (rent) { delete f.price; delete found.price; for (const [k, v] of Object.entries(rent)) set(k, v); }
+  if (rent) { delete f.price; delete found.price; for (const [k, v] of Object.entries(rent)) set(k, v); if (kv.furnished) set("furnished", !/non/i.test(kv.furnished)); }
   // Surface
-  let surf = numFR(pick(n => n.floorSize && (n.floorSize.value ?? n.floorSize)));
-  if (!(surf >= 9 && surf <= 500)) {
-    surf = null;
-    for (const m of raw.matchAll(/(\d{1,3}(?:[.,]\d{1,2})?)\s?m(?:²|2(?![\d²]))/g)) {
-      const near = low.slice(Math.max(0, m.index - 28), m.index), before = near.split(/[\n·•|\/]/).pop();
+  let surf = numFR(pick(n => n.floorSize && (n.floorSize.value ?? n.floorSize))) ?? numFR((kv.surface || "").match(/[\d.,]+/));
+  // première surface du texte qui n'est pas celle d'une pièce, d'un extérieur ou d'une annexe
+  const surfIn = str => {
+    const lw = str.toLowerCase();
+    for (const m of str.matchAll(/(\d{1,3}(?:[.,]\d{1,2})?)\s?m(?:²|2(?![\d²]))/g)) {
+      const before = lw.slice(Math.max(0, m.index - 28), m.index).split(/[\n·•|\/]/).pop();
       // « 2 chambres 64 m² » : la surface totale suit le nombre de chambres ; « chambre de 12 m² » : surface d'une pièce
       if (!/\d\s*chambres?\s*[,·-]?\s*$/.test(before) && /terrasse|balcon|jardin|cave|parking|terrain|loggia|box|séjour|sejour|chambre|cuisine|€/.test(before)) continue;
-      const v = numFR(m[1]); if (v >= 9 && v <= 500) { surf = v; break; }
+      const v = numFR(m[1]); if (v >= 9 && v <= 500) return v;
     }
-  }
+    return null;
+  };
+  if (!(surf >= 9 && surf <= 500)) surf = surfIn(raw);
   set("surface", surf);
+  // le titre et le texte ne donnent pas la même surface : on garde l'autre valeur pour la signaler
+  const ts = surfIn(String(src.title || "")), bs = surfIn(String(src.text || ""));
+  if (surf && ts && bs && Math.abs(ts - bs) / bs > 0.03) f.alt = {surface: surf === ts ? bs : ts};
   // Pièces, chambres
-  let rooms = numFR(pick(n => n.numberOfRooms && (n.numberOfRooms.value ?? n.numberOfRooms)));
-  if (!(rooms != null && rooms >= 1 && rooms <= 15)) { const m = low.match(/(\d{1,2})\s?pi[eè]ces?\b/) || raw.match(/\b[TF](\d)\b/); rooms = m ? +m[1] : (/\bstudio\b/.test(low) ? 1 : null); }
+  let rooms = numFR(pick(n => n.numberOfRooms && (n.numberOfRooms.value ?? n.numberOfRooms))) ?? numFR(kv.rooms);
+  if (!(rooms != null && rooms >= 1 && rooms <= 15)) { const m = low.match(/(\d{1,2})\s?pi[eè]ces?\b/) || raw.match(/\b[TF](\d)\b/) || low.match(/\b(\d{1,2})\s?p\.(?=\s|$)/); rooms = m ? +m[1] : (/\bstudio\b/.test(low) ? 1 : null); }
   set("rooms", rooms);
-  let beds = numFR(pick(n => n.numberOfBedrooms ?? n.numberOfBedroomsTotal));
+  let beds = numFR(pick(n => n.numberOfBedrooms ?? n.numberOfBedroomsTotal)) ?? numFR(kv.bedrooms);
   if (!(beds != null && beds >= 0 && beds <= 10)) {
     const WN = {une: 1, un: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6};
-    const m = low.match(/(\d{1,2}|une?|deux|trois|quatre|cinq|six)\s(?:belles?\s|grandes?\s|vraies?\s)?chambres?\b/); beds = m ? (WN[m[1]] || +m[1]) : null;
+    const m = low.match(/(\d{1,2}|une?|deux|trois|quatre|cinq|six)[ \u00a0](?:belles?\s|grandes?\s|vraies?\s)?chambres?\b/); beds = m ? (WN[m[1]] || +m[1]) : null;
   }
   set("bedrooms", beds);
   // Étage
   let floor = null, floors = null;
-  if (/\b(rez[- ]de[- ]chauss[ée]e|rdc)\b/.test(low) && !/au-dessus du rez/.test(low)) floor = 0;
-  let m = low.match(/(\d{1,2})\s?(?:er|e|ème|eme|è)\s?(?:et\s)?(?:dernier\s)?[ée]tage/) || low.match(/[ée]tage\s*:?\s*(\d{1,2})(?:\s?\/\s?(\d{1,2}))?/);
+  if (/\b(rez[- ]de[- ](?:chauss[ée]e|jardin)|rdc)\b/.test(low) && !/au-dessus du rez/.test(low)) floor = 0;
+  let m = (kv.floor || "").toLowerCase().match(/^(\d{1,2})(?:\s?(?:er|e|ème))?(?:\s?(?:\/|sur)\s?(\d{1,2}))?/) || low.match(/dernier [ée]tage\s*\((\d{1,2})\s?(?:er|e|ème|eme)?\)/)
+    || low.match(/(\d{1,2})\s?(?:er|e|ème|eme|è)\s?(?:et\s)?(?:dernier\s)?[ée]tage/) || low.match(/[ée]tage\s*:?\s*(\d{1,2})(?:\s?\/\s?(\d{1,2}))?/);
+  if (kv.floor && /rez|rdc/i.test(kv.floor)) { floor = 0; m = null; }
   if (m) { floor = +m[1]; if (m[2]) floors = +m[2]; }
-  const mf = low.match(/sur\s(\d{1,2})\s[ée]tages?/) || low.match(/immeuble de\s(\d{1,2})\s[ée]tages?/); if (mf) floors = +mf[1];
+  const mf = numFR(kv.floors) ? [0, numFR(kv.floors)] : low.match(/[ée]tage\s*:?\s*\d{1,2}\s?\/\s?(\d{1,2})/) || low.match(/[ée]tage\s+sur\s+(\d{1,2})\b/) || low.match(/sur\s(\d{1,2})\s[ée]tages?/) || low.match(/immeuble de\s(\d{1,2})\s[ée]tages?/); if (mf) floors = +mf[1];
   set("floor", floor); set("floors", floors);
   if (/dernier [ée]tage/.test(low)) set("top", true);
-  if (/sans ascenseur|pas d['’]ascenseur/.test(low)) set("elevator", false); else if (/ascenseur/.test(low)) set("elevator", true);
+  if (kv.elevator) set("elevator", /^oui/i.test(kv.elevator));
+  else if (/sans ascenseur|pas d['’]ascenseur/.test(low)) set("elevator", false); else if (/ascenseur/.test(low)) set("elevator", true);
   // Extérieur
-  const ext = /terrasse/.test(low) ? "terrasse" : /jardin privatif|jardin de \d|avec jardin/.test(low) ? "jardin" : /balcon/.test(low) ? "balcon" : /loggia/.test(low) ? "loggia" : null;
+  const no = k => /^non/i.test(kv[k] || ""), yes = k => /^oui/i.test(kv[k] || "") || new RegExp(k).test((kv.outdoor || "").toLowerCase());
+  const ext = ["terrasse", "jardin", "balcon", "loggia"].find(yes) || (/terrasse/.test(low) && !no("terrasse") ? "terrasse" : /jardin privatif|jardin de \d|avec jardin/.test(low) && !no("jardin") ? "jardin" : /balcon/.test(low) && !no("balcon") ? "balcon" : /loggia/.test(low) && !no("loggia") ? "loggia" : null);
   set("outdoor", ext);
   if (ext) { const ma = low.match(new RegExp(ext + "[^.\\n]{0,18}?(\\d{1,3})\\s?m")); if (ma) set("outdoorArea", +ma[1]); }
   // Lumière, exposition
-  const me = low.match(/expos[ée]e?s?\s(?:plein\s)?(sud[- ]ouest|sud[- ]est|nord[- ]ouest|nord[- ]est|sud|nord|est|ouest)/);
+  const me = low.match(/expos(?:[ée]e?s?|ition)\s*:?\s(?:plein\s)?(sud[- ]ouest|sud[- ]est|nord[- ]ouest|nord[- ]est|sud|nord|est|ouest)/);
   if (me) set("exposure", me[1].replace(" ", "-"));
   if (/traversant/.test(low)) set("traversant", true);
   if (/lumineu|tr[eè]s clair|baign[ée] de lumi|ensoleill|lumi[eè]re naturelle/.test(low)) set("bright", true);
   if (/\bsombre\b/.test(low)) set("dark", true);
   // DPE, charges, taxe foncière
   const md = raw.match(/(?:DPE|[Cc]lasse [ée]nergie|[Cc]onsommation [ée]nerg[ée]tique|[Pp]erformance [ée]nerg[ée]tique)[^A-Za-z\n]{0,14}\b([A-G])\b/);
-  if (md) set("dpe", md[1]);
-  const mc = low.match(/charges?(?: de copropri[ée]t[ée])?(?: annuelles| mensuelles| courantes)?\s*:?\s*(?:(?:de|d['’]|environ|env\.|d['’]environ|approx\.?|±)\s*)*(\d[\d .]{0,6}?)\s?(?:€|euros?)\s?(?:\/\s?|par\s)?(an|mois|année)?/);
-  if (mc) { let v = numFR(mc[1]); const unit = mc[2] || (v > 600 ? "an" : "mois"); if (/mois/.test(unit)) v *= 12; if (v > 0 && v < 30000) set("charges", Math.round(v)); }
+  const dk = (kv.dpe || "").match(/^([A-G])\b/), dc = raw.match(/[ée]nerg[^\n]{0,60}?\bclasse\s*:?\s*([A-G])\b/i);
+  if (dk) set("dpe", dk[1]); else if (md) set("dpe", md[1]); else if (dc) set("dpe", dc[1].toUpperCase());
+  const mc = low.match(/charges?(?: de copropri[ée]t[ée])?(?: pr[ée]visionnelles)?(?: annuelles| mensuelles| courantes)?\s*:?\s*(?:(?:de|d['’]|environ|env\.|d['’]environ|approx\.?|±)\s*)*(\d[\d .]{0,6}?)\s?(?:€|euros?)\s?(?:\/\s?|par\s)?(an|mois|année)?/);
+  const mqp = low.match(/quote-part (?:annuelle )?(?:de |des )?charges[^:\n]{0,40}:\s*(\d[\d .]{0,6}?)\s?€/);   // mention légale : montant annuel
+  if (mqp) set("charges", numFR(mqp[1]));
+  else if (mc) { let v = numFR(mc[1]); const unit = mc[2] || (v > 600 ? "an" : "mois"); if (/mois/.test(unit)) v *= 12; if (v > 0 && v < 30000) set("charges", Math.round(v)); }
+  const ml0 = numFR(kv.lots) || +((low.match(/copropri[ée]t[ée] (?:de |d['’])?(\d{1,4}) lots|(?:^|[^\d])(\d{1,4}) lots principaux|nombre de lots\s*:?\s*(\d{1,4})/) || []).slice(1).find(Boolean) || 0);
+  if (ml0 >= 2 && ml0 <= 2000) set("lots", ml0);
   const mt = low.match(/taxe fonci[eè]re\s*:?\s*(?:de\s)?(\d[\d ]{0,6})\s?€/); if (mt) set("taxe", numFR(mt[1]));
   // Annexes, état, ambiance
-  if (/\bcaves?\b/.test(low) && !/sans cave/.test(low)) set("cave", true);
-  if (/\b(parking|box|garage|place de stationnement)\b/.test(low) && !/parking (?:public|à proximité)/.test(low)) set("parking", true);
+  if (kv.cave) set("cave", /^oui/i.test(kv.cave)); else if (/\bcaves?\b/.test(low) && !/sans cave/.test(low)) set("cave", true);
+  if (kv.parking) set("parking", /^oui/i.test(kv.parking)); else if (/\b(parking|box|garage|place de stationnement)\b/.test(low) && !/parking (?:public|à proximité)/.test(low)) set("parking", true);
   const work = /(refait à neuf|entièrement rénové|entierement renove|rénové avec goût|rénovation récente|neuf\b)/.test(low) ? "neuf"
     : /(travaux à prévoir|à rénover|a renover|gros travaux|rénovation complète à prévoir)/.test(low) ? "travaux"
     : /(rafra[iî]chissement|à rafra[iî]chir)/.test(low) ? "rafraichir" : /(bon état|bon etat|très bon état|parfait état)/.test(low) ? "bon" : null;
@@ -126,7 +144,7 @@ function parseListing(src) {
   // Lieu
   const addr = pick(n => n.address && typeof n.address === "object" ? n.address : null) || {};
   let pc = addr.postalCode || (raw.match(/\b(75(?:0[0-1]\d|02[0]|116)|9[234]\d{3})\b/) || [])[1] || null;
-  const ma2 = low.match(/paris\s?(\d{1,2})\s?(?:er|e|ème|eme)\b/) || low.match(/\b(\d{1,2})\s?(?:er|e|ème|eme)\s+arr(?:ondissement|\.|\b)/); if (!pc && ma2 && +ma2[1] >= 1 && +ma2[1] <= 20) pc = "750" + String(ma2[1]).padStart(2, "0");
+  const ma2 = low.match(/paris\s?(\d{1,2})\s?(?:er|e|ème|eme)\b/) || low.match(/paris\s(\d{1,2})(?![\d,.])(?!\s*(?:pi|ch|m²|m2|m\b|€|p\.|-))/) || low.match(/\b(\d{1,2})\s?(?:er|e|ème|eme)\s+arr(?:ondissement|\.|\b)/); if (!pc && ma2 && +ma2[1] >= 1 && +ma2[1] <= 20) pc = "750" + String(ma2[1]).padStart(2, "0");
   set("postcode", pc);
   let city = addr.addressLocality || (pc && pc.startsWith("75") ? "Paris" : null);
   if (!city && dataStore.meta && dataStore.meta.communes) {          // commune de la petite couronne citée dans le texte
@@ -138,9 +156,10 @@ function parseListing(src) {
   if (geo) { set("lat", +geo.latitude); set("lng", +geo.longitude); set("precise", true); }
   // « Métro : Ligne 1 (Reuilly Diderot - 5 mn à pied) et 8 (Faidherbe-Chaligny - 1 mn) » : on garde la station la plus proche
   const ml = raw.match(/[Mm][ée]tro[^\n]{0,160}/), near = ml ? [...ml[0].matchAll(/\(([A-ZÉÈ][^()\n]{2,32}?)\s+[-–]\s+(\d{1,2})\s?(?:mn|min)/g)].sort((a, b) => a[2] - b[2]) : [];
-  const mm = near.length ? null : raw.match(/[Mm][ée]tro\s*:?\s+([A-ZÉÈ][\wÀ-ÿ'’\- ]{2,28}?)(?=[,.\n(]| à | et | - |$)/);
-  if (near.length) set("metro", near[0][1].trim()); else if (mm && !/^Ligne\b/i.test(mm[1])) set("metro", mm[1].trim());
+  const mm = near.length ? null : raw.match(/[Mm][ée]tro\s*:?\s+([A-ZÉÈ][\wÀ-ÿ'’\- ]{2,40}?)(?=\s*[,.\n(]| à | et |\s+-\s+\d|$)/);
+  if (near.length) set("metro", near[0][1].trim()); else if (mm && !/^Ligne\b/i.test(mm[1])) set("metro", mm[1].trim().replace(/\s*-\s*/g, "-"));
   const mq = raw.match(/[Qq]uartier\s(?:de\s|du\s|des\s|d['’])?([A-ZÉÈ][\wÀ-ÿ'’\- ]{2,28}?)(?=[,.\n(/]| à | et |$)/); if (mq) set("quartier", mq[1].trim());
+  else if (/^Paris\s+75\d{3}\s+[A-ZÉÈ]/m.test(raw)) set("quartier", raw.match(/^Paris\s+75\d{3}\s+([A-ZÉÈ][\wÀ-ÿ'’\- ]{2,40}?)\s*$/m)?.[1]);
   else { const mp = raw.match(/\b(?:75\d{3}\s+)?Paris\s+\d{1,2}(?:e|er|ème)?\s*\(([A-ZÉÈ][^()\n]{2,40}?)\)/); if (mp && !/^\d/.test(mp[1])) set("quartier", mp[1].split(/\s+-\s+/)[0].trim()); }
   // Photos
   const photos = [];
@@ -171,6 +190,51 @@ function parseListing(src) {
   ["agencyName", "agencyPhone", "agencyEmail", "agencyUrl", "agencyAddress", "ref", "seller"].forEach(k => { if (f[k]) found[k] = true; else delete f[k]; });
   f.found = found;
   return f;
+}
+/* ---------- Contrôle de cohérence : les valeurs lues qui méritent un coup d'œil (rien n'est modifié) ---------- */
+function checkListing(f) {
+  const o = [], loc = kindOf(f) === "location", paris = String(f.postcode || "").startsWith("75") || f.city === "Paris", fr = v => fmtInt(Math.round(v));
+  if (!f.price) o.push(["price", loc ? "loyer introuvable" : "prix introuvable"]);
+  if (!f.surface) o.push(["surface", "surface introuvable"]);
+  if (!f.postcode && !f.city) o.push(["postcode", "lieu introuvable"]);
+  if (f.alt && f.alt.surface && f.surface) o.push(["surface", `${fr(f.surface)} m² ou ${fr(f.alt.surface)} m² selon les passages de l’annonce`]);
+  if (f.price && f.surface && !f.viager) {
+    const ppm = f.price / f.surface, [lo, hi] = loc ? (paris ? [15, 65] : [9, 40]) : (paris ? [4000, 25000] : [1800, 14000]);
+    if (ppm < lo || ppm > hi) o.push([ppm < lo ? "price" : "surface", `${fr(ppm)} €/m²${loc ? " par mois" : ""}, inhabituel${paris ? " à Paris" : ""} : prix ou surface mal lus ?`]);
+  }
+  if (f.rooms && f.surface && (f.surface / f.rooms < 7 || (f.rooms === 1 && f.surface > 50) || f.surface / f.rooms > 60)) o.push(["rooms", `${f.rooms} pièce${f.rooms > 1 ? "s" : ""} pour ${fr(f.surface)} m²`]);
+  if (f.bedrooms != null && f.rooms > 1 && f.bedrooms >= f.rooms) o.push(["bedrooms", `${f.bedrooms} chambres pour ${f.rooms} pièces`]);
+  if (f.floor != null && f.floors && f.floor > f.floors) o.push(["floor", `${f.floor}e étage d’un immeuble de ${f.floors} étages`]);
+  if (f.floor > 15 && paris) o.push(["floor", `${f.floor}e étage, rare à Paris`]);
+  if (!loc && f.charges && f.surface && (f.charges / f.surface > 110 || f.charges / f.surface < 4)) o.push(["charges", `${fr(f.charges)} € par an pour ${fr(f.surface)} m² : charges par mois lues comme par an, ou l’inverse ?`]);
+  if (loc && f.rentCharges && f.price && f.rentCharges > f.price * 0.35) o.push(["rentCharges", `${fr(f.rentCharges)} € de charges pour ${fr(f.price)} € de loyer`]);
+  return o;
+}
+function checkHTML(f) {
+  // une info vérifiée et enregistrée dans le formulaire n'est plus signalée
+  const c = checkListing(f).filter(([k]) => !(f.checked || []).includes(k)); if (!c.length) return "";
+  return `<div class="trust trust--check"><p><b>Infos à vérifier</b></p><ul class="trust__l">${c.map(x => `<li>${esc(x[1])}</li>`).join("")}</ul><button class="link" type="button" data-checkfix>Corriger les informations</button></div>`;
+}
+/* Tableaux de caractéristiques : « Libellé » puis valeur à la ligne (Leboncoin), « Libellé : valeur », « Libellé Oui » (sites d'agence) */
+const TABLE = [[/^surface(?: habitable)?(?: \(?loi carrez\)?| carrez)?$/, "surface"], [/^(?:nombre de )?pi[eè]ces$/, "rooms"], [/^(?:nombre de )?chambres$/, "bedrooms"],
+  [/^[ée]tage(?: du bien)?$/, "floor"], [/^nombre d['’][ée]tages(?: dans l['’]immeuble| de l['’]immeuble)?$/, "floors"], [/^ascenseur$/, "elevator"],
+  [/^(?:classe [ée]nergie|dpe|consommation [ée]nerg[ée]tique|performance [ée]nerg[ée]tique)$/, "dpe"], [/^meubl[ée](?: \/ non meubl[ée])?$/, "furnished"],
+  [/^ext[ée]rieurs?$/, "outdoor"], [/^(?:nombre de )?lots(?: principaux)?$/, "lots"], [/^(terrasse|jardin|balcon|loggia|parking|cave)s?$/, null]];
+function readTable(raw) {
+  const kv = {}, L = raw.split("\n").map(x => x.trim()).filter(Boolean);
+  const key = l => { const t = l.toLowerCase().replace(/\s+/g, " "); for (const [re, k] of TABLE) { const m = t.match(re); if (m) return k || m[1]; } return null; };
+  const put = (k, v) => { if (k && v != null && v !== "" && !(k in kv)) kv[k] = v.trim(); };
+  for (let i = 0; i < L.length; i++) {
+    const l = L[i], c = l.match(/^([^:]{3,40}?)\s*:\s*(.{1,30})$/), s = l.match(/^(.{3,40}?)\s+(oui|non|\d[\d ,.]*(?:\s?(?:\/|sur)\s?\d{1,2})?(?:\s?(?:m²|m2|€))?|[A-G])$/i);
+    if (c && key(c[1])) put(key(c[1]), c[2]);
+    else if (key(l)) {
+      const k = key(l), nx = L[i + 1] || "", yn = /^(?:elevator|cave|parking|terrasse|jardin|balcon|loggia)$/.test(k);
+      if (yn && !/^(?:oui|non)\b/i.test(nx)) put(k, "oui");                                  // « Cave » seul dans la liste : il y en a une
+      else if (nx && nx.length <= 30 && (!key(nx) || key(nx) === k)) { put(k, nx); i++; }
+    }
+    else if (s && key(s[1])) put(key(s[1]), s[2]);
+  }
+  return kv;
 }
 /* Une annonce de location se reconnaît à son lien, à son vocabulaire et à un montant par mois */
 function readRent(raw, low, url, salePrice, ldPrice) {
@@ -570,6 +634,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
     </div>
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
     ${trustHTML(trustSignals(f, s))}
+    ${checkHTML(f)}
     <div class="feel" role="group" aria-label="Votre avis sur la note"><span>Cette note vous semble</span>${[["juste", "Juste"], ["haut", "Trop haute"], ["bas", "Trop basse"]].map(([k, l]) => `<button class="chip chip--sm" type="button" data-feel="${k}" aria-pressed="${!!(f.feel && f.feel.v === k)}">${l}</button>`).join("")}
       ${f.feel && f.feel.v !== "juste" ? `<p class="feel__next">Noté. Une info mal lue ? <button class="link" type="button" id="feelFix">Corrigez-la</button>.</p>` : ""}</div>
     ${freshHTML(f)}
@@ -592,7 +657,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
       <h2>Le logement</h2>
       <div class="lcrit">${crits.map(([cid]) => `<div class="${s.fixed[cid] ? "fix" : s.known[cid] ? "" : "unk"}" ${s.fixed[cid] ? `title="Corrigé"` : ""}><span>${esc(HOME_LIB[cid].name)}</span><i style="--c:${colorFor(s.values[cid] * 20)}"></i><b class="num">${s.known[cid] ? fmtNote(Math.round(s.values[cid] * 2) / 2) : "?"}</b></div>`).join("")}</div>
       <dl class="meta">${[["Viager", f.viager && [f.viager === "occupe" ? "occupé" : f.viager === "libre" ? "libre" : "", f.price && `bouquet de ${fmtInt(f.price)} €`, f.rente && `rente de ${fmtInt(f.rente)} € par mois`].filter(Boolean).join(", ")], ["Surface", f.surface && fmtInt(f.surface) + " m²"], ["Pièces", f.rooms && `${f.rooms}${f.bedrooms != null ? `, dont ${f.bedrooms} chambre${f.bedrooms > 1 ? "s" : ""}` : ""}`], ["Étage", f.floor != null && (f.floor === 0 ? "rez-de-chaussée" : (f.floor === 1 ? "1er" : f.floor + "e") + (f.floors ? ` sur ${f.floors}` : "")) + (f.elevator ? ", ascenseur" : f.elevator === false ? ", sans ascenseur" : "")],
-        ["DPE", f.dpe], ["Charges", f.charges && fmtInt(f.charges) + " € par an"], ["Taxe foncière", f.taxe && fmtInt(f.taxe) + " €"], ["Lieu", [f.metro && "métro " + f.metro, f.quartier, f.postcode, f.city].filter(Boolean).join(", ") + (f.lat && !f.precise ? " (position approximative)" : "")]]
+        ["DPE", f.dpe], ["Charges", f.charges && fmtInt(f.charges) + " € par an"], ["Taxe foncière", f.taxe && fmtInt(f.taxe) + " €"], ["Copropriété", f.lots && `${fmtInt(f.lots)} lots`], ["Lieu", [f.metro && "métro " + f.metro, f.quartier, f.postcode, f.city].filter(Boolean).join(", ") + (f.lat && !f.precise ? " (position approximative)" : "")]]
         .filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
       ${Object.keys(s.fixed).length ? `<p class="hint2"><span class="fixdot"></span> Corrigé après lecture ou visite.</p>` : ""}
     </section>
@@ -618,6 +683,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
   });
   $("#lnote").oninput = e => { f.note = e.target.value; f.updatedAt = Date.now(); save(); };
   $("#ledit").onclick = () => openAddListing(f);
+  const cf = $("[data-checkfix]", box); if (cf) cf.onclick = () => openAddListing(f);
   $("#lfix").onclick = () => openScoreFix(f);
   $$("[data-feel]", box).forEach(b => b.onclick = () => {
     const k = b.dataset.feel; f.feel = f.feel && f.feel.v === k ? null : {v: k, at: Date.now(), total: s.total}; if (!f.feel) delete f.feel;
@@ -743,7 +809,7 @@ function openScoreFix(f) {
 
 /* ---------- Ajouter ou corriger une annonce ---------- */
 const FIELDS = [["price", "Prix", "num", "€"], ["surface", "Surface", "num", "m²"], ["rooms", "Pièces", "num"], ["bedrooms", "Chambres", "num"], ["floor", "Étage (0 = RDC)", "num"],
-  ["elevator", "Ascenseur", "bool"], ["outdoor", "Extérieur", "sel", ["", "balcon", "loggia", "terrasse", "jardin"]], ["dpe", "DPE", "sel", ["", ..."ABCDEFG"]], ["charges", "Charges par an", "num", "€"],
+  ["elevator", "Ascenseur", "bool"], ["outdoor", "Extérieur", "sel", ["", "balcon", "loggia", "terrasse", "jardin"]], ["dpe", "DPE", "sel", ["", ..."ABCDEFG"]], ["charges", "Charges par an", "num", "€"], ["lots", "Lots de copropriété", "num"],
   ["works", "État", "sel", ["", "neuf", "bon", "rafraichir", "travaux"]], ["quiet", "Au calme, sur cour", "bool"], ["traversant", "Traversant", "bool"], ["bright", "Lumineux", "bool"],
   ["cave", "Cave", "bool"], ["parking", "Parking", "bool"], ["view", "Vue dégagée", "bool"], ["postcode", "Code postal", "txt"], ["metro", "Métro le plus proche", "txt"],
   ["seller", "Vendu par", "sel", ["", "agence", "particulier"]], ["agencyName", "Agence", "txt"], ["agencyPhone", "Téléphone", "txt"], ["agencyEmail", "E-mail", "txt"], ["agencyUrl", "Site de l’agence", "txt"], ["agencyAddress", "Adresse de l’agence", "txt"], ["ref", "Référence de l’annonce", "txt"]];
@@ -753,7 +819,7 @@ const FIELDS_LOC = [["rentHC", "Loyer hors charges", "num", "€ par mois"], ["r
 function fieldsFor(f) {
   const loc = kindOf(f) === "location";
   let F = FIELDS.map(x => x[0] === "price" ? ["price", loc ? "Loyer charges comprises" : "Prix", "num", loc ? "€ par mois" : "€"] : x);
-  if (loc) F = F.filter(x => x[0] !== "charges" && x[0] !== "taxe").concat(FIELDS_LOC);
+  if (loc) F = F.filter(x => !["charges", "taxe", "lots"].includes(x[0])).concat(FIELDS_LOC);
   return [["kind", "Type d’annonce", "sel", ["vente", "location"]], ...F];
 }
 const SEL_LABEL = {vente: "Vente", location: "Location", "true": "Meublé", "false": "Vide", a: "Avant 1946", b: "1946 à 1970", c: "1971 à 1990", d: "Après 1990", agence: "Une agence", particulier: "Un particulier", neuf: "Rénové", bon: "Bon état", rafraichir: "À rafraîchir", travaux: "Travaux", balcon: "Balcon", loggia: "Loggia", terrasse: "Terrasse", jardin: "Jardin", "": "Non précisé"};
@@ -764,11 +830,12 @@ function openAddListing(existing, imported, opts = {}) {
   const closeSheet = () => { el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); };
   const close = `<button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
   const review = f => {
+    const doubt = new Map(checkListing(f).reverse());
     card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">${existing ? "Corriger l’annonce" : "Vérifier l’annonce"}</h2>${close}</div>
-      <p class="auth__txt">${existing ? "Corrigez ce que l’annonce ne disait pas." : `Heden a trouvé ${Object.keys(f.found || {}).filter(k => k !== "kind" && fieldsFor(f).some(x => x[0] === k)).length} informations. Complétez ou corrigez avant d’enregistrer.`}</p>
+      <p class="auth__txt">${existing ? "Corrigez ce que l’annonce ne disait pas." : `Heden a trouvé ${Object.keys(f.found || {}).filter(k => k !== "kind" && fieldsFor(f).some(x => x[0] === k)).length} informations. Complétez ou corrigez avant d’enregistrer.`}${doubt.size ? ` <span class="lf__dtxt">${doubt.size} à vérifier.</span>` : ""}</p>
       <form class="lform" id="lform">
         ${fieldsFor(f).map(([k, label, type, opt]) => {
-          const v = k === "kind" ? (kindOf(f) === "location" ? "location" : "vente") : f[k], tag = f.found && f.found[k] && k !== "kind" ? ` <em>trouvé</em>` : "";
+          const v = k === "kind" ? (kindOf(f) === "location" ? "location" : "vente") : f[k], tag = doubt.has(k) ? ` <em class="lf__doubt" title="${esc(doubt.get(k))}">à vérifier</em>` : f.found && f.found[k] && k !== "kind" ? ` <em>trouvé</em>` : "";
           if (type === "bool") return `<label class="lf lf--bool"><input type="checkbox" name="${k}" ${v ? "checked" : ""}><span>${label}${tag}</span></label>`;
           if (type === "sel") return `<label class="lf"><span>${label}${tag}</span><select name="${k}">${opt.map(o => `<option value="${o}" ${String(v ?? "") === o ? "selected" : ""}>${SEL_LABEL[o] || o}</option>`).join("")}</select></label>`;
           return `<label class="lf"><span>${label}${tag}</span><input name="${k}" ${type === "num" ? `inputmode="decimal"` : ""} value="${v ?? ""}" placeholder="${opt || ""}"></label>`;
@@ -789,6 +856,7 @@ function openAddListing(existing, imported, opts = {}) {
     const ks = $("#lform [name=kind]"); if (ks) ks.onchange = () => { readForm(); const y = card.scrollTop; review(f); card.scrollTop = y; };
     $("#lsave").onclick = async () => {
       readForm();
+      if (existing) { f.checked = checkListing(f).map(x => x[0]); if (!f.checked.length) delete f.checked; }
       if (!existing && !(await kindAllowed(kindOf(f)))) return;
       const b = $("#lsave"); b.disabled = true; b.textContent = "Placement sur la carte…";
       const moved = existing && (existing.postcode !== f.postcode || existing.metro !== f.metro);

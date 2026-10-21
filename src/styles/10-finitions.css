@@ -121,3 +121,10 @@ input,textarea{caret-color:var(--email)}
 .chip--ghost{background:none;border-style:dashed}
 .results .res--pret{background:color-mix(in srgb,var(--bourgeon) 14%,transparent)}
 .results .res--pret small{color:var(--laiton)}
+
+/* Infos à vérifier : encadré neutre sous les signaux de fiabilité ; dans le formulaire, l'étiquette du champ douteux */
+.trust--check{border-style:dashed}
+.trust--check .link{align-self:flex-start}
+.trust__l{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:2px}
+.lf em.lf__doubt{color:var(--laiton);cursor:help}
+.lf__dtxt{color:var(--laiton);font-weight:600}

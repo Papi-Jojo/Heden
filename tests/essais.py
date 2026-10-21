@@ -215,6 +215,24 @@ def hors_connexion(pw):
     b.close()
 
 
+@essai
+def lecture(pw):
+    """Banc de lecture (tests/annonces/fiches.py) : toutes les valeurs attendues sont lues ; une annonce incohérente est signalée."""
+    from lecture import mesurer
+    e = Essai(pw); pg = e.page(); champs, erreurs = mesurer(pg)
+    assert not erreurs, "\n".join(erreurs[:12])
+    importer(pg, {"v": 4, "url": "https://ex.fr/annonce-bizarre.htm", "title": "Studio 85 m² Paris 11e", "meta": {}, "ld": [], "imgs": [],
+                  "text": "Studio 58 m² Paris 11ème, 3 pièces dont 3 chambres, 9e étage sur 6. Prix : 98 000 €."})
+    assert pg.locator(".lf__doubt").count() >= 3, "champs douteux non signalés dans le formulaire"
+    pg.locator("#lsave").click(); pg.wait_for_timeout(900)
+    box = pg.locator(".trust--check")
+    assert box.count() == 1 and box.locator("li").count() >= 3, "pas d’encadré « Infos à vérifier »"
+    box.locator("[data-checkfix]").click(); pg.wait_for_timeout(400)
+    pg.locator("#lsave").click(); pg.wait_for_timeout(900)
+    assert pg.locator(".trust--check").count() == 0, "l’encadré reste après vérification"
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
 if __name__ == "__main__":
     voulus = sys.argv[1:]
     srv = demarrer(); echecs = 0
