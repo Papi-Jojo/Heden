@@ -20,8 +20,9 @@ def mesurer(pg):
             src = {"url": c["url"], "title": c.get("title", ""), "text": c["text"], "meta": {}, "ld": c.get("ld", []), "imgs": [], "hints": c.get("hints", {})}
             f = pg.evaluate("s => __heden.parseListing(s)", src)
             for k, v in c["attendu"].items():
-                ok = egal(f.get(k), v); t = champs.setdefault(k, [0, 0]); t[0] += ok; t[1] += 1
-                if not ok: erreurs.append(f"{groupe} « {c['nom']} » · {k} : lu {f.get(k)!r}, attendu {v!r}")
+                lu = len(f.get("photos") or []) if k == "nphotos" else f.get(k)
+                ok = egal(lu, v); t = champs.setdefault(k, [0, 0]); t[0] += ok; t[1] += 1
+                if not ok: erreurs.append(f"{groupe} « {c['nom']} » · {k} : lu {lu!r}, attendu {v!r}")
     for m in EMAILS:
         r = pg.evaluate("h => __heden.extractCards(new DOMParser().parseFromString(h, 'text/html').body).map(c => [c.url, __heden.parseListing({url: c.url, text: c.text}).price])", m["html"])
         ok = len(r) == m["n"] and [x[1] for x in r] == m["prix"]; t = champs.setdefault("e-mail", [0, 0]); t[0] += ok; t[1] += 1

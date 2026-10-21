@@ -109,19 +109,19 @@ def importer(pg, d):
 @essai
 def annonces(pw):
     e = Essai(pw); pg = e.page()
-    importer(pg, {"v": 4, "url": "https://ex.fr/annonce-viager-1.htm", "title": "Viager occupé 3 pièces 65 m² Paris 15e", "meta": {}, "ld": [], "imgs": [],
+    importer(pg, {"v": 5, "url": "https://ex.fr/annonce-viager-1.htm", "title": "Viager occupé 3 pièces 65 m² Paris 15e", "meta": {}, "ld": [], "imgs": [],
                   "text": "Viager occupé, 3 pièces de 65 m², Paris 15ème. Bouquet de 180 000 € et rente mensuelle de 1 150 €."})
     pg.locator("#lsave").click(); pg.wait_for_timeout(800)
     f = pg.evaluate("__heden.state().listings[0]")
     assert (f["viager"], f["price"], f["rente"]) == ("occupe", 180000, 1150), f
-    importer(pg, {"v": 4, "url": "https://ex.fr/annonce-2.htm", "title": "2 pièces 45 m² Paris 7e", "meta": {}, "ld": [], "imgs": [],
+    importer(pg, {"v": 5, "url": "https://ex.fr/annonce-2.htm", "title": "2 pièces 45 m² Paris 7e", "meta": {}, "ld": [], "imgs": [],
                   "text": "Vente 2 pièces 45 m² Paris 7ème, 590 000 €. Je suis actuellement à l'étranger, les clés vous seront envoyées par la poste. Home staging virtuel."})
     pg.locator("#lsave").click(); pg.wait_for_timeout(800)
     s = pg.evaluate("__heden.state().listings.find(f => f.url.includes('annonce-2'))")
     assert "clés envoyées par la poste" in s["scam"] and s["aiPhoto"] == ["home staging virtuel"], s
     cards = [{"url": f"https://ex.fr/annonce-l{i}.htm", "img": f"https://img.ex.fr/{i}-a.jpg", "imgs": [f"https://img.ex.fr/{i}-{k}.jpg" for k in "abc"],
               "text": f"{2 + i % 3} pièces {40 + i * 5} m² {'Paris 17ème' if i % 2 else '18e arrondissement'} {500000 + i * 20000} €"} for i in range(4)]
-    importer(pg, {"v": 4, "url": "https://ex.fr/liste?page=1", "title": "Résultats", "meta": {}, "ld": [], "imgs": [], "text": "", "items": cards})
+    importer(pg, {"v": 5, "url": "https://ex.fr/liste?page=1", "title": "Résultats", "meta": {}, "ld": [], "imgs": [], "text": "", "items": cards})
     pg.click("#bgo"); pg.wait_for_timeout(7000)
     lot = pg.evaluate("__heden.state().listings.filter(f => /annonce-l/.test(f.url)).map(f => [f.postcode, !!f.lat, (f.photos || []).length])")
     assert len(lot) == 4 and all(x[1] and x[2] == 3 for x in lot), lot
@@ -221,7 +221,7 @@ def lecture(pw):
     from lecture import mesurer
     e = Essai(pw); pg = e.page(); champs, erreurs = mesurer(pg)
     assert not erreurs, "\n".join(erreurs[:12])
-    importer(pg, {"v": 4, "url": "https://ex.fr/annonce-bizarre.htm", "title": "Studio 85 m² Paris 11e", "meta": {}, "ld": [], "imgs": [],
+    importer(pg, {"v": 5, "url": "https://ex.fr/annonce-bizarre.htm", "title": "Studio 85 m² Paris 11e", "meta": {}, "ld": [], "imgs": [],
                   "text": "Studio 58 m² Paris 11ème, 3 pièces dont 3 chambres, 9e étage sur 6. Prix : 98 000 €."})
     assert pg.locator(".lf__doubt").count() >= 3, "champs douteux non signalés dans le formulaire"
     pg.locator("#lsave").click(); pg.wait_for_timeout(900)
@@ -237,14 +237,14 @@ def lecture(pw):
 def dpe_officiel(pw):
     """Rue lue → Base Adresse Nationale ; consommation lue → DPE officiel retrouvé (position de l'immeuble) ; sinon choix parmi les logements possibles."""
     e = Essai(pw); pg = e.page()
-    importer(pg, {"v": 4, "url": "https://ex.fr/annonce-dpe-1.htm", "title": "3 pièces 68 m² Paris 11e", "meta": {}, "ld": [], "imgs": [],
+    importer(pg, {"v": 5, "url": "https://ex.fr/annonce-dpe-1.htm", "title": "3 pièces 68 m² Paris 11e", "meta": {}, "ld": [], "imgs": [],
                   "text": "Appartement 3 pièces 68 m², Paris 11ème (75011), 725 000 €. Rue Oberkampf, 4e étage. DPE : C (212 kWh/m²/an)."})
     pg.locator("#lsave").click(); pg.wait_for_timeout(1500)
     f = pg.evaluate("__heden.state().listings.find(x => x.url.includes('dpe-1'))")
     assert f["street"] == "rue Oberkampf" and f["dpeKwh"] == 212, f
     assert f.get("ademe", {}).get("sure") and f["precise"] and abs(f["lat"] - 48.8667) < 1e-4, f
     assert "DPE annoncé C, DPE officiel D" in pg.locator(".trust--check").inner_text(), "écart de DPE non signalé"
-    importer(pg, {"v": 4, "url": "https://ex.fr/annonce-dpe-2.htm", "title": "2 pièces 41 m² Paris 18e", "meta": {}, "ld": [], "imgs": [],
+    importer(pg, {"v": 5, "url": "https://ex.fr/annonce-dpe-2.htm", "title": "2 pièces 41 m² Paris 18e", "meta": {}, "ld": [], "imgs": [],
                   "text": "2 pièces 41 m², Paris 18ème, 389 000 €, rue Caulaincourt, DPE D."})
     pg.locator("#lsave").click(); pg.wait_for_timeout(1500)
     assert pg.locator("[data-ademe]").count() == 2, "pas de choix parmi les DPE possibles"
@@ -273,11 +273,32 @@ def vivier(pw):
     assert len(got) == 3 and all(s == "SeLoger" for s, _ in got), got
     assert "nouvelle" not in pg.locator("#vivier").inner_text(), "le bandeau annonce encore des nouveautés"
     # un membre ouvre l'une d'elles avec le bouton + Heden : la copie du vivier reçoit toutes les photos et la fiche complète
-    importer(pg, {"v": 4, "url": "https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/1.htm", "title": "Appartement 3 pièces 46 m² Paris 11e", "meta": {}, "ld": [],
+    importer(pg, {"v": 5, "url": "https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/1.htm", "title": "Appartement 3 pièces 46 m² Paris 11e", "meta": {}, "ld": [],
                   "imgs": [f"https://img.ex.fr/1-{k}.jpg" for k in range(8)], "text": "Appartement 3 pièces 46 m², Paris 11ème (75011), 510 000 €. 5e étage avec ascenseur, DPE C."})
     v1 = next(x for x in pg.evaluate(DBQ)["vivier"] if x["surface"] == 46)
     assert v1["data"].get("complet") and v1["data"].get("floor") == 5 and len(v1["carte"]["imgs"]) == 8, v1
     assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
+def bouton_photos(pw):
+    """Le bouton + Heden récupère toute la galerie : photos affichées et photos pas encore chargées du carrousel."""
+    import struct, zlib
+    def png(w, h):
+        raw = b"".join(b"\x00" + b"\x80\x80\x80" * w for _ in range(h))
+        ch = lambda t, d: struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+        return b"\x89PNG\r\n\x1a\n" + ch(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + ch(b"IDAT", zlib.compress(raw)) + ch(b"IEND", b"")
+    e = Essai(pw, largeur=1280); pg = e.page()
+    code = pg.evaluate("__heden.bookmarkletCode()")
+    gal = "".join(f'<img src="https://photos.ex.fr/{i}.jpg">' for i in range(2)) + "".join(f'<img data-src="https://photos.ex.fr/{i}.jpg" src="https://photos.ex.fr/vide.gif">' for i in range(2, 14))
+    site = e.ctx.new_page()
+    site.route("https://photos.ex.fr/**", lambda r: r.fulfill(body=png(1, 1) if "vide" in r.request.url else png(800, 600), content_type="image/png"))
+    site.route("https://www.agence-ex.fr/**", lambda r: r.fulfill(body=f"<html><body><h1>3 pièces 60 m² Paris 11e</h1><div class=gal><div>{gal}</div></div><p>450 000 €</p><img src='https://photos.ex.fr/logo.png' width=40></body></html>", content_type="text/html"))
+    site.goto("https://www.agence-ex.fr/annonce/1"); site.wait_for_timeout(800)
+    d = site.evaluate("c => { let got = null; window.open = (u) => { got = JSON.parse(decodeURIComponent(u.split('#import=')[1])); return null; }; eval(decodeURIComponent(c.slice(11))); return got; }", code)
+    assert d and d["v"] == 5 and len(d["imgs"]) == 14, (d or {}).get("imgs")
+    assert not any("logo" in u or "vide" in u for u in d["imgs"]), d["imgs"]
+    e.fermer()
 
 
 if __name__ == "__main__":

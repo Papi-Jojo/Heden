@@ -137,9 +137,12 @@ function parseListing(src) {
   const mk = raw.match(/(\d{2,3}(?:[.,]\d)?)\s?kWh\s?(?:EP\s?|ep\s?)?(?:\/|par)\s?m(?:²|2)/i); if (mk) { const v = numFR(mk[1]); if (v >= 10 && v <= 800) set("dpeKwh", v); }
   // Photos
   const photos = [];
-  const addP = u => { if (typeof u === "string" && /^https?:/.test(u) && !photos.includes(u) && photos.length < 12) photos.push(u); };
-  addP(meta["og:image"]); (src.imgs || []).forEach(addP);
-  const ldi = pick(n => n.image); (Array.isArray(ldi) ? ldi : [ldi]).forEach(x => addP(typeof x === "object" && x ? x.url : x));
+  const addP = u => { if (typeof u === "string" && /^https?:/.test(u) && !/logo|avatar|icon|sprite|placeholder/i.test(u) && !photos.includes(u) && photos.length < 40) photos.push(u); };
+  // la galerie entière : les photos de la page (chargées ou non), puis celles des données structurées du bien (pas le logo de l'agence)
+  (src.imgs || []).forEach(addP);
+  nodes.filter(n => !/Organization|Agent|Agency|Person|Brand|WebSite|WebPage|Breadcrumb/i.test([].concat(n["@type"] || []).join(" ")))
+    .forEach(n => [].concat(n.image || [], n.photo || []).forEach(x => addP(typeof x === "object" && x ? x.url || x.contentUrl : x)));
+  addP(meta["og:image"]);
   f.photos = photos;
   f.url = src.url || ""; f.source = hostOf(src.url);
   // Signaux d'alerte lus dans le texte et les adresses des photos (les pixels ne sont pas analysés)

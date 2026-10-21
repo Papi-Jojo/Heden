@@ -146,7 +146,7 @@ begin
   if v is null then return false; end if;
   update vivier set data = data || coalesce(p_data, '{}'::jsonb) || jsonb_build_object('url', left(p_url, 2000), 'complet', true),
     carte = case when jsonb_array_length(coalesce(p_imgs, '[]'::jsonb)) > jsonb_array_length(coalesce(carte->'imgs', '[]'::jsonb))
-                 then jsonb_set(carte, '{imgs}', (select coalesce(jsonb_agg(x.value), '[]'::jsonb) from (select value from jsonb_array_elements(p_imgs) limit 12) x)) else carte end
+                 then jsonb_set(carte, '{imgs}', (select coalesce(jsonb_agg(x.value), '[]'::jsonb) from (select value from jsonb_array_elements(p_imgs) limit 40) x)) else carte end
   where id = v;
   return true;
 end $$;
