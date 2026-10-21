@@ -24,6 +24,8 @@ async function rpc(nom, args) {
   return r.json();
 }
 
+const jours = +process.env.RETRAITER || 0;
+if (jours) console.log(`Relecture : ${await rpc("vivier_retraiter", {p_cle: CLE, p_jours: jours})} e-mail(s) des ${jours} derniers jours.`);
 const t0 = Date.now(); let mails = 0, annonces = 0, situees = 0, dpe = 0;
 while (Date.now() - t0 < 7 * 60e3) {                          // le workflow est coupé à 9 minutes
   const lot = await rpc("vivier_prendre", {n: 10, p_cle: CLE});

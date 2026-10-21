@@ -24,6 +24,9 @@ create table if not exists public.vivier_courrier (
   essais      int not null default 0
 );
 create index if not exists vivier_courrier_idx on public.vivier_courrier(received_at);
+-- un e-mail lu est gardé dix jours (traite_le) : on peut le relire avec un lecteur amélioré (vivier_retraiter)
+alter table public.vivier_courrier add column if not exists traite_le timestamptz;
+alter table public.vivier_courrier add column if not exists retraite boolean not null default false;
 alter table public.vivier_courrier enable row level security;      -- lu seulement par vivier_prendre()
 
 create table if not exists public.vivier (
@@ -56,7 +59,7 @@ begin
   if p_cle is null or not exists (select 1 from vivier_cles where cle = p_cle) then return false; end if;
   -- garde-fous : 3 000 e-mails par jour, 5 000 en attente, 1 Mo par e-mail
   if (select count(*) from vivier_courrier where received_at > now() - interval '1 day') >= 3000 then return false; end if;
-  if (select count(*) from vivier_courrier) >= 5000 then return false; end if;
+  if (select count(*) from vivier_courrier where traite_le is null) >= 5000 then return false; end if;
   insert into vivier_courrier(sender, subject, html)
   values (left(coalesce(p_from, ''), 300), left(coalesce(p_subject, ''), 500), left(coalesce(p_html, ''), 1000000));
   return true;
@@ -77,10 +80,10 @@ create or replace function public.vivier_prendre(n int default 5, p_cle text def
 language plpgsql security definer set search_path = public as $$
 begin
   if not vivier_autorise(p_cle) then raise exception 'non autorisé'; end if;
-  delete from vivier_courrier where essais >= 3;                    -- illisible après trois essais : abandonné
+  delete from vivier_courrier where essais >= 3 and traite_le is null;   -- illisible après trois essais : abandonné
   return query
     update vivier_courrier set pris_le = now(), essais = essais + 1
-    where id in (select id from vivier_courrier where pris_le is null or pris_le < now() - interval '10 minutes'
+    where id in (select id from vivier_courrier where traite_le is null and (pris_le is null or pris_le < now() - interval '10 minutes')
                  order by received_at limit least(greatest(n, 1), 20) for update skip locked)
     returning *;
 end $$;
@@ -91,10 +94,10 @@ grant execute on function public.vivier_prendre(int, text) to anon, authenticate
 drop function if exists public.vivier_poser(uuid, jsonb, jsonb);
 create or replace function public.vivier_poser(p_courrier uuid, p_annonces jsonb, p_retirees jsonb default '[]'::jsonb, p_cle text default null) returns int
 language plpgsql security definer set search_path = public as $$
-declare a jsonb; v uuid; n int := 0; prix numeric; surf numeric; pc text; nb int; k text; u text; recu timestamptz;
+declare a jsonb; v uuid; n int := 0; prix numeric; surf numeric; pc text; nb int; k text; u text; recu timestamptz; refaire boolean;
 begin
   if not vivier_autorise(p_cle) then raise exception 'non autorisé'; end if;
-  select received_at into recu from vivier_courrier where id = p_courrier;
+  select received_at, retraite into recu, refaire from vivier_courrier where id = p_courrier and traite_le is null;
   if recu is null then return 0; end if;                              -- déjà traité par un autre appareil
   for a in select x.value from jsonb_array_elements(coalesce(p_annonces, '[]'::jsonb)) as x limit 80 loop
     u := left(coalesce(a->>'url', ''), 2000); k := case when a->>'kind' = 'location' then 'location' else 'achat' end;
@@ -114,7 +117,8 @@ begin
       update vivier set
         prix_hist = case when recu >= last_seen and price <> prix then prix_hist || jsonb_build_object('price', price, 'at', last_seen) else prix_hist end,
         price     = case when recu >= last_seen then prix else price end,      -- un e-mail plus ancien ne remet pas un vieux prix
-        carte     = case when jsonb_array_length(coalesce(a->'carte'->'imgs', '[]'::jsonb)) > jsonb_array_length(coalesce(carte->'imgs', '[]'::jsonb)) then a->'carte' else carte end,
+        carte     = case when jsonb_array_length(coalesce(a->'carte'->'imgs', '[]'::jsonb)) > jsonb_array_length(coalesce(carte->'imgs', '[]'::jsonb))
+                           or (refaire and jsonb_array_length(coalesce(a->'carte'->'imgs', '[]'::jsonb)) > 0 and not coalesce((data->>'complet')::boolean, false)) then a->'carte' else carte end,
         data      = coalesce(a->'data', '{}'::jsonb) || data,                -- ce qui était déjà connu (fiche complète d'un membre) l'emporte
         last_seen = greatest(last_seen, recu), gone_at = null
       where id = v;
@@ -123,7 +127,8 @@ begin
   end loop;
   update vivier set gone_at = recu
     where gone_at is null and url in (select left(x.value, 2000) from jsonb_array_elements_text(coalesce(p_retirees, '[]'::jsonb)) as x);
-  delete from vivier_courrier where id = p_courrier;
+  update vivier_courrier set traite_le = now(), html = case when length(html) > 400000 then '' else html end where id = p_courrier;
+  delete from vivier_courrier where traite_le < now() - interval '10 days';
   delete from vivier where last_seen < now() - interval '120 days';   -- plus vue depuis quatre mois : sans doute vendue
   return n;
 end $$;
@@ -152,3 +157,17 @@ begin
 end $$;
 revoke all on function public.vivier_enrichir(text, jsonb, jsonb, jsonb) from public, anon;
 grant execute on function public.vivier_enrichir(text, jsonb, jsonb, jsonb) to authenticated;
+
+-- Relire les e-mails des derniers jours avec le lecteur du moment (après une amélioration) : photos et infos remplacées
+create or replace function public.vivier_retraiter(p_cle text, p_jours int default 3) returns int
+language plpgsql security definer set search_path = public as $$
+declare n int;
+begin
+  if not vivier_autorise(p_cle) then raise exception 'non autorisé'; end if;
+  update vivier_courrier set traite_le = null, pris_le = null, essais = 0, retraite = true
+    where traite_le is not null and html <> '' and received_at > now() - make_interval(days => least(greatest(p_jours, 1), 10));
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.vivier_retraiter(text, int) from public;
+grant execute on function public.vivier_retraiter(text, int) to anon, authenticated;

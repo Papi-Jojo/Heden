@@ -4,8 +4,12 @@ name: Vivier (alertes → annonces)
 # GitHub décale parfois les tâches planifiées de quelques minutes aux heures chargées.
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "7-59/10 * * * *"   # pas sur les minutes rondes : GitHub y retarde ou saute les tâches planifiées
   workflow_dispatch:
+    inputs:
+      retraiter:
+        description: "Relire les e-mails des N derniers jours avec le lecteur actuel (0 = non)"
+        default: "0"
 concurrency: {group: vivier, cancel-in-progress: false}
 permissions: {contents: read}
 jobs:
@@ -20,3 +24,4 @@ jobs:
       - run: node scripts/vivier/traiter.mjs
         env:
           VIVIER_CLE: ${{ secrets.VIVIER_CLE }}
+          RETRAITER: ${{ inputs.retraiter || '0' }}

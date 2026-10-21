@@ -15,10 +15,16 @@ function installer() {
   envoyerAHeden();
 }
 
-function envoyerAHeden() {
+// À lancer à la main si besoin : renvoie à Heden les alertes des 7 derniers jours (Heden ignore ce qu'il connaît déjà)
+function renvoyerTout() {
+  PropertiesService.getScriptProperties().deleteProperty("heden_vus");
+  envoyerAHeden(7);
+}
+
+function envoyerAHeden(jours) {
   const props = PropertiesService.getScriptProperties();
   const vus = JSON.parse(props.getProperty("heden_vus") || "[]");
-  GmailApp.search("from:(" + EXPEDITEURS + ") newer_than:2d", 0, 60).forEach(fil => fil.getMessages().forEach(m => {
+  GmailApp.search("from:(" + EXPEDITEURS + ") newer_than:" + (typeof jours === "number" ? jours : 2) + "d", 0, 100).forEach(fil => fil.getMessages().forEach(m => {
     if (vus.indexOf(m.getId()) >= 0) return;
     const r = UrlFetchApp.fetch(HEDEN_URL, {method: "post", contentType: "application/json", muteHttpExceptions: true,
       headers: {apikey: HEDEN_CLE_PUBLIQUE},
