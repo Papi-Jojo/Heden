@@ -20,7 +20,7 @@
 2 ter. **Garde-fous** : de la même façon, `limites.sql` (taille maximale des noms et des données, nombre de cartes et de membres).
 2 quater. **Vivier d'annonces commun** (adresse d'alertes de Heden) :
    - coller et exécuter `vivier.sql` ;
-   - créer la clé du vivier, dans une nouvelle requête : `insert into vivier_cles(cle, nom) values (encode(gen_random_bytes(24), 'hex'), 'gmail') returning cle;` et copier la valeur affichée (elle reste secrète : ne la mettez ni dans le dépôt ni dans `config.js`) ;
+   - créer la clé du vivier, dans une nouvelle requête : `insert into vivier_cles(cle, nom) values (replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''), 'gmail') returning cle;` et copier la valeur affichée (elle reste secrète : ne la mettez ni dans le dépôt ni dans `config.js`) ;
    - créer un compte Gmail dédié (par exemple heden.alertes@gmail.com), y installer `scripts/vivier/gmail.gs` en y collant la clé ;
    - avec cette adresse, créer des alertes larges sur les sites (Paris, achat et location) : chaque e-mail reçu nourrit le vivier, que tous les membres connectés voient dans Annonces.
    - pour que le vivier se remplisse toutes les 10 minutes sans qu'un membre ait l'app ouverte : GitHub > Settings > Secrets and variables > Actions > New repository secret, nom `VIVIER_CLE`, valeur : la même clé. Le workflow « Vivier (alertes → annonces) » lit alors les e-mails, situe les rues (Base Adresse Nationale) et retrouve les DPE officiels (ADEME).
