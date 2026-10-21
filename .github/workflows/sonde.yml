@@ -8,13 +8,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           mkdir -p sonde; cd sonde; rm -f *
-          H='-H Origin:https://papi-jojo.github.io'
-          D=https://data.ademe.fr/data-fair/api/v1/datasets/meg-83tjwtg8dyz4vv7h1dqe
-          curl -s -D s.h $H "$D/schema?calculated=false" -o schema.json
-          curl -s -D l.h $H "$D/lines?size=2&qs=code_postal_ban:75011%20AND%20etiquette_dpe:D" -o lines.json
-          curl -s $H "$D/lines?size=5&q=oberkampf&q_fields=adresse_ban&qs=code_postal_ban:75011%20AND%20surface_habitable_logement:%5B67%20TO%2069%5D" -o q.json
-          curl -s $H "$D/lines?size=5&qs=code_postal_ban:75011%20AND%20surface_habitable_logement:%5B67.5%20TO%2068.5%5D%20AND%20etiquette_dpe:D&select=numero_dpe,adresse_ban,etiquette_dpe,surface_habitable_logement,conso_5_usages_par_m2_ep,date_etablissement_dpe,numero_etage_appartement,annee_construction,_geopoint" -o q2.json
-          curl -s $H "$D/values_agg?field=code_postal_ban&size=3&qs=code_postal_ban:75011" -o agg.json
+          curl -s "https://data.ademe.fr/data-fair/api/v1/datasets/meg-83tjwtg8dyz4vv7h1dqe/lines?size=30&select=numero_dpe,adresse_ban,nom_rue_ban,etiquette_dpe,surface_habitable_logement,conso_5_usages_par_m2_ep,date_etablissement_dpe,numero_etage_appartement,annee_construction,_geopoint&sort=-date_etablissement_dpe&qs=code_postal_ban%3A75011%20AND%20surface_habitable_logement%3A%5B66.0%20TO%2070.0%5D%20AND%20conso_5_usages_par_m2_ep%3A%5B186%20TO%20188%5D" -o k.json; curl -s "https://data.ademe.fr/data-fair/api/v1/datasets/meg-83tjwtg8dyz4vv7h1dqe/lines?size=30&select=numero_dpe,adresse_ban,nom_rue_ban,etiquette_dpe,surface_habitable_logement,conso_5_usages_par_m2_ep,date_etablissement_dpe,numero_etage_appartement,annee_construction,_geopoint&sort=-date_etablissement_dpe&qs=code_postal_ban%3A75011%20AND%20surface_habitable_logement%3A%5B66.0%20TO%2070.0%5D&q=oberkampf&q_fields=nom_rue_ban" -o r.json; curl -s "https://data.geopf.fr/geocodage/search/?q=rue%20du%20Faubourg%20Saint-Antoine&postcode=75012&limit=1" -o g.json
           ls -la
       - run: |
           git config user.name sonde; git config user.email sonde@example.com
