@@ -1,0 +1,23 @@
+name: Sonde API (temporaire)
+on: {push: {branches: [sonde]}}
+permissions: {contents: write}
+jobs:
+  sonde:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p sonde; cd sonde
+          H='-H Origin:https://papi-jojo.github.io'
+          curl -s -D geo.h $H "https://data.geopf.fr/geocodage/search/?q=12+rue+oberkampf&postcode=75011&limit=2" -o geo.json
+          curl -s -D geo2.h $H "https://data.geopf.fr/geocodage/search/?q=rue+caulaincourt&postcode=75018&type=street&limit=2" -o geo2.json
+          curl -s "https://data.ademe.fr/data-fair/api/v1/datasets?q=dpe&size=30&select=id,title" -o ds.json
+          for d in dpe03existant dpe-v2-logements-existants; do
+            curl -s -D $d.h $H "https://data.ademe.fr/data-fair/api/v1/datasets/$d/schema?calculated=false" -o $d.schema.json
+            curl -s "https://data.ademe.fr/data-fair/api/v1/datasets/$d/lines?size=2&qs=code_postal_ban:75011%20AND%20etiquette_dpe:D" -o $d.lines.json
+            curl -s "https://data.ademe.fr/data-fair/api/v1/datasets/$d/lines?size=3&q=rue%20oberkampf&q_fields=adresse_ban&qs=code_postal_ban:75011" -o $d.q.json
+          done
+          ls -la
+      - run: |
+          git config user.name sonde; git config user.email sonde@example.com
+          git add sonde; git commit -qm "sonde"; git push origin HEAD:sonde
