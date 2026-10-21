@@ -165,6 +165,7 @@ async function syncNow() {
     cloud.synced = cur; cloud.lastSync = new Date();
     try { localStorage.setItem("heden.cache." + cloud.user.id, JSON.stringify({state, synced: cloud.synced, mapId: cloud.mapId})); } catch (e) {}
     setCloudStatus("ok");
+    setTimeout(autoShare, 0);
   } catch (err) {
     console.warn("Heden : synchronisation", err);
     setCloudStatus("error", err);
@@ -547,6 +548,39 @@ function setupRealtime() {
     cloud.channel = ch.subscribe();
   } catch (e) { console.warn("Heden : temps réel", e); }
 }
+/* Zones perso → carte commune : toute zone de la carte perso y apparaît aussi, jumelle (même note, commentaire, photos),
+   sans rien ressaisir. Une zone qui ressemble à une zone déjà sur la carte commune lui est reliée au lieu d'être recopiée. */
+const shareSkip = new Set();
+async function shareZones(zs, mapId) {
+  const {data: rows, error} = await cloud.client.from("zones").select("id, name, points").eq("map_id", mapId);
+  if (error) return 0;
+  const twinned = new Set(Object.keys(cloud.twins || {})); let n = 0;
+  for (const z of zs) {
+    const same = (rows || []).find(r => Array.isArray(r.points) && r.points.length >= 3 && ressemblance(r.points, z.points) >= (normName(r.name) === normName(z.name) ? .35 : .6));
+    if (same && twinned.has(same.id)) { shareSkip.add(z.id); continue; }   // déjà sur la carte commune, jumelle d'une autre zone perso
+    if (same ? await linkToTwin(z, same.id) : await copyToMap(z, mapId, null, true)) { n++; if (same) twinned.add(same.id); }
+  }
+  return n;
+}
+async function linkToTwin(z, id) {
+  const c = cloud.client;
+  const {error} = await c.from("zones").update({link_zone: id}).eq("id", z.id); if (error) return false;
+  if (hasRated(z)) await c.from("ratings").upsert(Object.assign(ratingRow(z), {zone_id: id, updated_at: new Date().toISOString()}));
+  const mine = (z.photos || []).filter(p => p.userId === cloud.user.id && (p.zoneId || z.id) === z.id);
+  if (mine.length) { const r = await c.from("zone_photos").update({zone_id: id}).in("id", mine.map(p => p.id)); if (!r.error) mine.forEach(p => p.zoneId = id); }
+  z.link = id; cloud.twins[id] = z.id; save();
+  return true;
+}
+let autoShareP = null;
+function autoShare() {
+  if (autoShareP || !cloud.user || !cloud.personalMapId || cloud.mapId !== cloud.personalMapId) return autoShareP;
+  const sh = cloud.maps.find(m => m.kind === "partagee"); if (!sh) return null;
+  const todo = state.zones.filter(z => !z.example && !z.link && !shareSkip.has(z.id) && Array.isArray(z.points) && z.points.length >= 3 && cloud.synced && cloud.synced.zones[z.id]);
+  if (!todo.length) return null;
+  autoShareP = shareZones(todo, sh.id).then(n => { if (n && ui.mode === "detail") renderPanel(); return n; })
+    .catch(e => { console.warn("Heden : partage des zones", e); return 0; }).finally(() => { autoShareP = null; });
+  return autoShareP;
+}
 async function copyToMap(z, mapId, btn, quiet) {
   const m = cloud.maps.find(x => x.id === mapId); if (!m) return;
   if (btn) btn.disabled = true;
@@ -575,6 +609,7 @@ async function createSharedMap(name) {
   const row = Array.isArray(data) ? data[0] : data;
   await loadMaps();
   cloud.invite = {mapId: row.map_id, code: row.code};
+  autoShare();
   return row;
 }
 async function newInvite(mapId) {
@@ -589,18 +624,13 @@ async function joinWithCode(code) {
   if (error) { toast(/invalide|expir/i.test(error.message || "") ? "Ce code est invalide ou a expiré : demandez-en un nouveau" : "Impossible de rejoindre la carte pour le moment"); return false; }
   await loadMaps();
   const m = cloud.maps.find(x => x.id === data), nm = m ? m.name : "la carte";
-  // les zones perso ne suivent pas toutes seules : on propose de les apporter (elles restent aussi sur la carte perso)
-  const mine = cloud.mapId === cloud.personalMapId ? state.zones.filter(z => !z.example && !z.link && Array.isArray(z.points)) : [];
+  // les zones perso suivent : elles apparaissent sur la carte commune (et restent sur la carte perso, avec les mêmes notes)
+  const mine = cloud.mapId === cloud.personalMapId ? state.zones.filter(z => !z.example && !z.link && Array.isArray(z.points) && z.points.length >= 3) : [];
   await switchMap(data);
   if (cloud.mapId !== data) return false;
-  if (mine.length && await askConfirm({title: `Ajouter ${mine.length > 1 ? `vos ${mine.length} zones` : "votre zone"} à « ${nm} » ?`,
-      text: "Elles restent aussi sur votre carte perso, avec vos notes. Les autres membres les verront et pourront les noter.",
-      ok: mine.length > 1 ? "Ajouter mes zones" : "Ajouter ma zone", cancel: "Plus tard"})) {
-    let n = 0;
-    for (const z of mine) if (await copyToMap(z, data, null, true)) n++;
-    await cloudRefresh(true);
-    toast(n === mine.length ? `Vous avez rejoint « ${nm} » avec ${plural(n, "zone", "zones")}` : `${n} zone${n > 1 ? "s" : ""} sur ${mine.length} ajoutée${n > 1 ? "s" : ""} : réessayez pour les autres depuis leur fiche`);
-  } else toast(`Vous avez rejoint « ${nm} »`);
+  const n = mine.length ? await shareZones(mine, data) : 0;
+  if (n) await cloudRefresh(true);
+  toast(n ? `Vous avez rejoint « ${nm} » avec ${plural(n, "zone", "zones")}` : `Vous avez rejoint « ${nm} »`);
   return true;
 }
 async function unlinkMap(mapId) {
@@ -651,7 +681,7 @@ function sharedHTML() {
   const shared = cloud.maps.filter(m => m.kind === "partagee");
   return `<section class="sec" id="duoSec">
     <h2>Carte de groupe</h2>
-    <p class="hint2">À deux, en colocation ou en famille : chacun note avec son profil, plus des critères communs.</p>
+    <p class="hint2">À deux, en colocation ou en famille : chacun note avec son profil, plus des critères communs. Vos zones perso y apparaissent d’elles-mêmes, avec les mêmes notes.</p>
     ${shared.map(m => `<div class="mapcard" data-m="${m.id}">
       <div><b>${esc(m.name)}</b><p class="hint2">${esc(membersLabel(m))}</p></div>
       ${cloud.invite && cloud.invite.mapId === m.id ? inviteHTML(cloud.invite) : ""}
@@ -769,7 +799,7 @@ async function cloudRefresh(force) {
   save();
   setCloudStatus("ok");
   rerenderAll();
-  processInbox(); processVivier();
+  processInbox(); processVivier(); autoShare();
 }
 
 function rerenderAll() {

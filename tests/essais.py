@@ -94,11 +94,30 @@ def apporter_ses_zones(pw):
     code = J.locator(".invite__code").inner_text().strip()
     M = e.page(); e.connexion(M, "max@x.fr", "Max"); e.onglet(M, "map"); e.zone(M, "Bastille", 48.855, 2.37)
     e.onglet(M, "profile"); M.click("[data-ptab='compte']"); M.wait_for_timeout(200)
-    M.fill("#joinCode", code); M.click("#joinForm button"); M.wait_for_timeout(2500)
-    assert "votre zone" in M.locator(".ask h2").inner_text(), "pas de proposition d'apporter ses zones"
-    M.locator(".ask [data-yes]").click(); M.wait_for_timeout(2000)
+    M.fill("#joinCode", code); M.click("#joinForm button"); M.wait_for_timeout(3500)
+    assert not M.locator(".ask").count(), "rejoindre ne doit plus demander : les zones suivent"
     db = M.evaluate(DBQ); shared = next(m["id"] for m in db["maps"] if m["kind"] == "partagee")
     assert [z["name"] for z in db["zones"] if z["map_id"] == shared] == ["Bastille"], db["zones"]
+    # de retour sur la carte perso : une nouvelle zone apparaît aussi sur la carte commune, sans rien ressaisir
+    perso = M.evaluate("__heden.cloud().personalMapId")
+    e.onglet(M, "map"); M.click(f".mapsw [data-map='{perso}']"); M.wait_for_timeout(2500)
+    e.zone(M, "Nation", 48.848, 2.396); M.wait_for_timeout(3000)
+    db = M.evaluate(DBQ)
+    assert sorted(z["name"] for z in db["zones"] if z["map_id"] == shared) == ["Bastille", "Nation"], [z["name"] for z in db["zones"] if z["map_id"] == shared]
+    nation = next(z for z in db["zones"] if z["map_id"] == perso and z["name"] == "Nation")
+    assert nation.get("link_zone"), "la zone perso n'est pas reliée à sa jumelle"
+    # Johan trace sur sa carte perso la même zone que Nation : elle est reliée à celle de la carte commune, pas recopiée
+    J.reload(); J.wait_for_timeout(2500)
+    jperso = J.evaluate("__heden.cloud().personalMapId")
+    assert J.evaluate("__heden.cloud().mapId") == jperso
+    e.onglet(J, "map"); e.zone(J, "Nation", 48.848, 2.396); J.wait_for_timeout(3000)
+    db = J.evaluate(DBQ); sh = [z for z in db["zones"] if z["map_id"] == shared]
+    assert sorted(z["name"] for z in sh) == ["Bastille", "Nation"], [z["name"] for z in sh]
+    jn = next(z for z in db["zones"] if z["map_id"] == jperso and z["name"] == "Nation")
+    assert jn.get("link_zone") == next(z["id"] for z in sh if z["name"] == "Nation"), jn
+    # Max retrace Bastille sur sa carte perso : elle est déjà sur la carte commune, rien n'est recopié
+    e.zone(M, "Bastille", 48.855, 2.37); M.wait_for_timeout(3000)
+    assert len([z for z in M.evaluate(DBQ)["zones"] if z["map_id"] == shared]) == 2
     assert not e.erreurs, e.erreurs; e.fermer()
 
 
