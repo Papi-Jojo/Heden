@@ -58,14 +58,14 @@ def zones_pretes(pw):
     assert pg.evaluate("__heden.state && document.body.dataset.mode") == "placing" and pg.locator(".leaflet-marker-icon").count() >= 3
     pg.click("#cancel"); pg.wait_for_timeout(300)
     if pg.locator(".ask [data-yes]").count(): pg.locator(".ask [data-yes]").click(); pg.wait_for_timeout(300)
-    pg.fill("#q", "Abbes"); pg.wait_for_timeout(1500)
+    pg.fill("#q", "Batignol"); pg.wait_for_timeout(1500)
     assert pg.locator("#results .res--pret").count() >= 1, "la recherche ne propose pas la zone prête"
     pg.locator("#results .res--pret").first.click(); pg.wait_for_timeout(600)
     assert pg.evaluate("document.body.dataset.mode") == "placing"
     pts = pg.evaluate("(async () => { const r = await fetch('data/lieux.json').then(r => r.json()); return r.arr['18'].find(x => x.k === 'lieu').p; })()")
     pg.click("#cancel"); pg.wait_for_timeout(300)
     if pg.locator(".ask [data-yes]").count(): pg.locator(".ask [data-yes]").click(); pg.wait_for_timeout(300)
-    pg.evaluate("p => { __heden.startNew(); p.filter((_, i) => i % 2 === 0).forEach(q => __heden.addPoint(L.latLng(q[0], q[1]))); }", pts); pg.wait_for_timeout(900)
+    pg.evaluate("p => { __heden.startNew(); p.forEach((q, i) => __heden.addPoint(L.latLng(q[0] + (i % 2 ? 1 : -1) * 1e-4, q[1] + 1e-4))); }", pts); pg.wait_for_timeout(900)
     assert "Utiliser" in pg.locator("#prets").inner_text(), "pas de suggestion pour un tracé qui ressemble à une zone prête"
     assert not e.erreurs, e.erreurs; e.fermer()
 
