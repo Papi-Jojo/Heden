@@ -40,6 +40,11 @@ CONNUS = {1: ["Les Halles", "Palais-Royal", "Place Vendôme", "Île de la Cité"
 ARR_DE = {n: a for a, ns in CONNUS.items() for n in ns}
 norm = lambda s: s.lower().replace("’", "'").replace("-", " ").replace("  ", " ").strip()
 # « Quartier de l'Odéon » et « Odéon » sont le même lieu
+def joli(s):   # « Quartier de la Goutte-d'Or » → « La Goutte-d'Or », « Le Quartier Dupleix » → « Dupleix »
+    m = re.match(r"^(?:le\s+)?quartier\s+(de la\s+|des\s+|du\s+|de l['’]|d['’]|de\s+)?(.+)$", s.strip(), re.I)
+    if not m: return s.strip()
+    art = {"de la": "La ", "des": "Les "}.get((m.group(1) or "").strip().lower(), "")
+    r = m.group(2).strip(); return art + (r[:1].upper() + r[1:] if not art else r)
 base = lambda s: re.sub(r"^(?:quartier (?:de la |de l'|du |des |de )?|le |la |les |l')", "", norm(s))
 LAT0 = 48.8566
 KX, KY = 111320 * math.cos(math.radians(LAT0)), 110540  # mètres par degré, à la latitude de Paris
@@ -148,18 +153,20 @@ def build(raw, connus=None, rues=None, bois=None):
         elif r == cur[0] and r >= 3: cur[1].append((c["lat"], c["lon"]))
     cands = [(k, Point(*xy(sum(c[0] for c in cs) / len(cs), sum(c[1] for c in cs) / len(cs)))) for k, (r, cs) in best.items()]
     cands += places
+    exclus = unary_union([g for g in (poly_of(el) for el in (bois or {}).get("elements", []) if el["type"] != "node") if g is not None]) if bois else Polygon()
     seeds = []
     def ajoute(name, pt):
-        if not paris.contains(pt) or any(base(n) in base(name) or base(name) in base(n) for n, p in seeds if p.distance(pt) < 900): return   # « Square des Batignolles » près de « Batignolles »
+        name = joli(name)
+        if not paris.contains(pt) or exclus.contains(pt) or any(base(n) in base(name) or base(name) in base(n) for n, p in seeds if p.distance(pt) < 900): return   # « Square des Batignolles » près de « Batignolles »
         if any(p.distance(pt) < ECART for _, p in seeds): return   # deux lieux trop proches : une seule zone
         seeds.append((name, pt))
     for name, pt in cands: ajoute(name, pt)
     for name, g in quartiers:
-        if not any(g.contains(p) for _, p in seeds): ajoute(name, g.representative_point())
+        habite = g.difference(exclus)   # Bel-Air : le point de départ hors du bois de Vincennes
+        if not habite.is_empty and not any(g.contains(p) for _, p in seeds): ajoute(name, habite.representative_point())
     # 2. les îlots : Paris découpé par ses grands axes, ses voies ferrées et les limites d'arrondissement
     lines = [LineString([xy(p["lat"], p["lon"]) for p in w["geometry"]]) for w in (rues or {}).get("elements", []) if len(w.get("geometry") or []) >= 2]
     lines += [g.exterior if isinstance(g, Polygon) else unary_union([x.exterior for x in g.geoms]) for g in arrs.values()]
-    exclus = unary_union([g for g in (poly_of(el) for el in (bois or {}).get("elements", []) if el["type"] != "node") if g is not None]) if bois else Polygon()
     ilots = [f for f in polygonize(unary_union(lines)) if f.area > 50]
     print(f"{len(ilots)} îlots, {len(seeds)} lieux")
     # 3. chaque îlot rejoint le lieu le plus proche de son arrondissement ; la zone est la réunion de ses îlots
@@ -170,12 +177,23 @@ def build(raw, connus=None, rues=None, bois=None):
         if not paris.contains(c) or exclus.contains(c): continue
         n = arr_of(c); cand = by_arr.get(n) or list(range(len(seeds)))
         parts[min(cand, key=lambda i: seeds[i][1].distance(c))].append(f)
-    zones = []
+    geo, orph = {}, []
     for i, fs in parts.items():
         if not fs: continue
         g = unary_union(fs).buffer(4).buffer(-4)   # referme les fentes laissées par les voies à double sens
+        ps = sorted(g.geoms if isinstance(g, MultiPolygon) else [g], key=lambda x: -x.area)
+        if ps[0].area < MIN_HA * 1e4: orph += ps; continue
+        geo[i] = [ps[0]]; orph += ps[1:]
+    # morceaux détachés ou trop petits : rattachés au voisin du même arrondissement qui les borde le plus (sinon, un trou)
+    for o in sorted(orph, key=lambda x: -x.area):
+        n = arr_of(o.representative_point()); b = o.buffer(8)
+        cand = [i for i in geo if arr_of(seeds[i][1]) == n] or list(geo)
+        j = max(cand, key=lambda i: b.intersection(geo[i][0]).area if b.intersects(geo[i][0]) else -seeds[i][1].distance(o.centroid))
+        geo[j].append(o)
+    zones = []
+    for i, gs in geo.items():
+        g = unary_union(gs).buffer(6).buffer(-6)
         if isinstance(g, MultiPolygon): g = max(g.geoms, key=lambda x: x.area)
-        if g.area < MIN_HA * 1e4: continue
         zones.append((seeds[i][0], arr_of(seeds[i][1]), Polygon(g.exterior)))
     # bords communs simplifiés ensemble : les zones voisines restent jointives
     simp = list(shapely.coverage_simplify([z[2] for z in zones], 10)) if hasattr(shapely, "coverage_simplify") else [z[2].simplify(10) for z in zones]
