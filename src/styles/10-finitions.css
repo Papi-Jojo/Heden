@@ -137,3 +137,8 @@ input,textarea{caret-color:var(--email)}
 .ademe__r small{color:var(--zinc);font-size:12.5px}
 .ademe__r .chip{flex:none}
 .ademe .link{align-self:flex-start;font-size:13px}
+
+/* Le vivier Heden : bandeau discret en tête des annonces */
+.vivier{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;border-radius:var(--rayon-m);background:color-mix(in srgb,var(--bourgeon) 16%,var(--calcaire));border:1px solid color-mix(in srgb,var(--bourgeon) 45%,transparent);animation:vue-in .22s var(--ease-sortie) both}
+.vivier p{margin:0;font-size:14px;line-height:1.4}
+.vivier__a{display:flex;align-items:center;gap:14px;flex:none}

@@ -25,6 +25,8 @@ window.supabase = { createClient() {
       select(cols) { q.cols = cols; return api; },
       eq(k, v) { q.filters.push(r => r[k] === v); return api; },
       in(k, vs) { q.filters.push(r => vs.includes(r[k])); return api; },
+      is(k, v) { q.filters.push(r => (r[k] ?? null) === v); return api; },
+      gt(k, v) { q.filters.push(r => r[k] > v); return api; },
       maybeSingle() { q.single = true; return api; },
       order() { return api; },
       limit(n) { q.limit = n; return api; },
@@ -80,6 +82,12 @@ window.supabase = { createClient() {
       db.ingest_tokens.push({user_id: me, token: out, last_at: null, received: 0});
     } else if (name === "set_map_criteria") {
       const m = db.maps.find(x => x.id === args.m); if (m) m.criteria = args.c;
+    } else if (name === "vivier_prendre") {   // le vivier : e-mails en attente, puis annonces déposées
+      out = (db.vivier_courrier || []).splice(0, args.n || 5);
+    } else if (name === "vivier_poser") {
+      const at = new Date().toISOString(); db.vivier = db.vivier || [];
+      for (const a of args.p_annonces || []) db.vivier.push({id: uuid(), url: a.url, source: a.source, kind: a.kind, postcode: a.postcode, price: a.price, surface: a.surface, rooms: a.rooms, carte: a.carte, first_seen: at, last_seen: at, gone_at: null});
+      out = (args.p_annonces || []).length;
     } else if (name === "leave_map") {
       db.map_members = db.map_members.filter(x => !(x.map_id === args.m && x.user_id === me));
     }

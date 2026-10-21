@@ -18,6 +18,12 @@
    Faire de même pour le modèle **Confirm signup** (premier envoi à une nouvelle adresse).
 2 bis. **Cartes de groupe** : de la même façon, coller et exécuter `groupe.sql` (critères communs des cartes partagées).
 2 ter. **Garde-fous** : de la même façon, `limites.sql` (taille maximale des noms et des données, nombre de cartes et de membres).
+2 quater. **Vivier d'annonces commun** (adresse d'alertes de Heden) :
+   - coller et exécuter `vivier.sql` ;
+   - créer la clé du vivier, dans une nouvelle requête : `insert into vivier_cles(cle, nom) values (encode(gen_random_bytes(24), 'hex'), 'gmail') returning cle;` et copier la valeur affichée (elle reste secrète : ne la mettez ni dans le dépôt ni dans `config.js`) ;
+   - créer un compte Gmail dédié (par exemple heden.alertes@gmail.com), y installer `scripts/vivier/gmail.gs` en y collant la clé ;
+   - avec cette adresse, créer des alertes larges sur les sites (Paris, achat et location) : chaque e-mail reçu nourrit le vivier, que tous les membres connectés voient dans Annonces.
+   Pour changer de clé : `delete from vivier_cles;` puis recréer.
 5. **Récupérer les clés** : Project Settings → API (ou Data API / API Keys) :
    - Project URL (`https://xxxx.supabase.co`)
    - clé publique `anon` ou `publishable`

@@ -210,6 +210,7 @@ function sameListing(a, b) {
 const cardImgs = c => Array.isArray(c.imgs) && c.imgs.length ? c.imgs : c.img ? [c.img] : [];
 function mergeCard(card, opts = {}) {
   const f = parseListing({url: card.url, text: card.text, imgs: cardImgs(card)});
+  if (card.price > 0) f.price = card.price;                       // vivier : le dernier prix vu, pas celui du premier e-mail
   if (!f.price || !(f.surface || f.rooms)) return {kind: "skip"};
   if (opts.onlyProject && projet() !== "deux" && kindOf(f) !== projet()) return {kind: "skip"};
   const ex = listings().find(x => sameListing(x, f));
@@ -276,9 +277,9 @@ async function kindAllowed(k) {
   save(); setMode(k); toast(loc ? "Location ajoutée à votre projet" : "Achat ajouté à votre projet");
   return true;
 }
-async function openBatchImport(items, pageUrl, oldBtn) {
+async function openBatchImport(items, pageUrl, oldBtn, title) {
   const src = siteName(hostOf(pageUrl));
-  let rows = items.map(c => { const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)}); if (!(f.photos || []).length) f.photos = cardImgs(c); return {c, f}; })
+  let rows = items.map(c => { const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)}); if (c.price > 0) f.price = c.price; if (!(f.photos || []).length) f.photos = cardImgs(c); return {c, f}; })
     .filter(r => r.f.price && (r.f.surface || r.f.rooms));
   const nLoc = rows.filter(r => kindOf(r.f) === "location").length, major = nLoc * 2 >= rows.length ? "location" : "achat";
   if (rows.length && !(await kindAllowed(major))) return;
@@ -292,7 +293,7 @@ async function openBatchImport(items, pageUrl, oldBtn) {
   el.onclick = e => { if (e.target.closest("[data-lclose]")) closeSheet(); };
   const paint = () => {
     const nOn = rows.filter(r => r.on).length, nNew = rows.filter(r => !r.ex).length;
-    card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">${rows.length} annonce${rows.length > 1 ? "s" : ""} sur ${esc(src || "cette page")}</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">${title ? esc(title(rows.length)) : `${rows.length} annonce${rows.length > 1 ? "s" : ""} sur ${esc(src || "cette page")}`}</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p class="auth__txt">${rows.length ? `${nNew} nouvelle${nNew > 1 ? "s" : ""} pour Heden. Celles hors critères sont décochées.` : "Heden n’a pas trouvé d’annonce lisible sur cette page. Ouvrez une annonce et réessayez, ou collez son texte."}</p>${oldBtn && rows.length ? `<p class="hint2">Votre bouton + Heden est une ancienne version : réinstallez-le depuis Annonces, « Le bouton + Heden », pour récupérer toutes les photos de chaque annonce.</p>` : ""}
       <div class="blist">${rows.map((r, i) => `<label class="brow${r.ex ? " brow--ex" : ""}">
           <input type="checkbox" data-i="${i}" ${r.on ? "checked" : ""} ${r.ex ? "disabled" : ""}>
@@ -305,9 +306,9 @@ async function openBatchImport(items, pageUrl, oldBtn) {
     $("#bgo").onclick = () => {
       let n = 0, up = 0; const fresh = [];
       rows.forEach(r => {
-        if (r.ex) { const m = mergeCard(r.c, {source: src}); if (m.kind === "drop" || m.kind === "change") up++; return; }
+        if (r.ex) { const m = mergeCard(r.c, {source: r.c.source || src}); if (m.kind === "drop" || m.kind === "change") up++; return; }
         if (!r.on) return;
-        const m = mergeCard(r.c, {origin: "page", source: src}); if (m.kind === "new") { n++; fresh.push(m.f); }
+        const m = mergeCard(r.c, {origin: r.c.origin || "page", source: r.c.source || src}); if (m.kind === "new") { n++; fresh.push(m.f); }
       });
       save(); closeSheet(); lui.openId = null; lui.filter = "atrier"; lui.sort = "reco";
       if (currentTab !== "annonces") setTab("annonces"); else renderListings();
@@ -355,6 +356,67 @@ async function processInbox() {
     if (data.length === 20) setTimeout(processInbox, 500);
   } catch (e) { console.warn("Heden : alertes", e); }
   finally { cloud.inboxBusy = false; }
+}
+/* ---------- Le vivier : annonces reçues par l'adresse d'alertes de Heden, communes à tous les membres ----------
+   Chaque appareil connecté lit quelques e-mails en attente et dépose les annonces ; chacun voit celles qui lui correspondent. */
+async function processVivier() {
+  if (!cloud.user || !cloud.client || cloud.vivierBusy || cloud.noVivier) return;
+  cloud.vivierBusy = true; let done = 0;
+  try {
+    while (done < 40) {
+      const {data, error} = await cloud.client.rpc("vivier_prendre", {n: 5});
+      if (error) { if (schemaMissing(error) || /function|PGRST202/i.test((error.code || "") + error.message)) cloud.noVivier = true; break; }
+      if (!data || !data.length) break;
+      for (const m of data) {
+        let doc = null; try { doc = new DOMParser().parseFromString(m.html || "", "text/html"); } catch (e) {}
+        const src = siteName((String(m.sender).match(/@([\w.-]+)/) || [])[1]), head = doc ? (doc.body.textContent || "").replace(/\s+/g, " ").slice(0, 400) : "";
+        const gone = GONE_RE.test((m.subject || "") + " " + head);
+        let cards = []; try { if (doc && !gone) cards = extractCards(doc.body); } catch (e) {}
+        const ann = cards.map(c => {
+          const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)});
+          return f.price && (f.surface || f.rooms) ? {url: normUrl(c.url), source: src, kind: kindOf(f), postcode: f.postcode || null, price: f.price, surface: f.surface || null, rooms: f.rooms || null,
+            carte: {url: c.url, text: c.text.slice(0, 400), imgs: cardImgs(c).slice(0, 6)}} : null;
+        }).filter(Boolean);
+        const ret = gone && doc ? [...doc.querySelectorAll("a[href]")].map(a => normUrl(a.getAttribute("href"))).filter(u => /^https?:/.test(u)).slice(0, 40) : [];
+        await cloud.client.rpc("vivier_poser", {p_courrier: m.id, p_annonces: ann, p_retirees: ret});
+        done++;
+      }
+    }
+  } catch (e) { console.warn("Heden : vivier", e); }
+  finally { cloud.vivierBusy = false; }
+  if (done) { cloud.vivierAt = 0; paintVivier(); }
+}
+/* annonces du vivier vues depuis 30 jours, encore en ligne ; relues au plus toutes les 5 minutes */
+async function loadVivier() {
+  if (!cloud.user || !cloud.client || cloud.noVivier) return null;
+  if (cloud.vivierRows && Date.now() - (cloud.vivierAt || 0) < 300000) return cloud.vivierRows;
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  const {data, error} = await cloud.client.from("vivier").select("id, url, source, kind, postcode, price, surface, rooms, carte, first_seen, last_seen")
+    .is("gone_at", null).gt("last_seen", since).order("first_seen", {ascending: false}).limit(400);
+  if (error) { if (schemaMissing(error)) cloud.noVivier = true; return null; }
+  cloud.vivierAt = Date.now();
+  return (cloud.vivierRows = (data || []).map(r => {
+    const c = r.carte || {}, item = {url: c.url || r.url, text: c.text || "", imgs: c.imgs || [], price: +r.price, source: r.source, origin: "vivier", first: Date.parse(r.first_seen) || 0};
+    const f = parseListing({url: item.url, text: item.text, imgs: item.imgs}); f.price = item.price;
+    return {item, f};
+  }));
+}
+async function paintVivier() {
+  const el = $("#vivier"); if (!el) return;
+  const rows = await loadVivier(); if (!rows || $("#vivier") !== el) return;
+  const h = homeProfile(), mine = rows.filter(r => kindOf(r.f) === curMode()), seen = h.vivierVu || 0;
+  // une annonce déjà dans Heden dont le prix a changé dans le vivier : mise à jour (baisse signalée)
+  let up = 0;
+  for (const r of mine) { const ex = listings().find(x => sameListing(x, r.f)); if (ex && r.item.price && ex.price !== r.item.price && r.item.first >= (ex.firstSeen || 0) - 864e5) { const m = mergeCard(r.item, {source: r.item.source}); if (m.kind === "drop" || m.kind === "change") up++; } }
+  if (up) { save(); renderListingPins(); }
+  const fresh = mine.filter(r => !listings().some(x => sameListing(x, r.f)) && !listingFilters(r.f, h).length);
+  const neu = fresh.filter(r => r.item.first > seen);
+  if (!mine.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `<p>${neu.length ? `<b>${plural(neu.length, "nouvelle annonce", "nouvelles annonces")}</b> du vivier Heden ${neu.length > 1 ? "correspondent" : "correspond"} à vos critères.` : `Le vivier Heden : ${plural(mine.length, "annonce reçue", "annonces reçues")} ces 30 derniers jours.`}</p>
+    <div class="vivier__a">${neu.length ? `<button class="btn btn--sm btn--primary" type="button" data-viv="neuf">Voir</button>` : ""}<button class="link" type="button" data-viv="tout">Parcourir le vivier</button></div>`;
+  const open = list => { h.vivierVu = Date.now(); save(); openBatchImport(list.map(r => r.item), "https://heden", false, n => `${plural(n, "annonce", "annonces")} du vivier Heden`); };
+  $$("[data-viv]", el).forEach(b => b.onclick = () => open(b.dataset.viv === "neuf" ? neu : mine));
 }
 async function loadAlertState() {
   if (!cloud.user || !cloud.client) return null;

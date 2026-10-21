@@ -544,6 +544,7 @@ function renderListingsView() {
       <div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1><p class="lead">${all.length ? (counts.atrier ? `${plural(counts.atrier, "annonce à trier", "annonces à trier")}.` : "Tout est trié.") : ""}</p></div>
       <button class="btn btn--primary" type="button" id="addListing">+ Ajouter une annonce</button>
     </div>
+    <div class="vivier" id="vivier" hidden></div>
     ${all.length ? `<div class="ann__bar">
       <div class="seg seg--sm" role="group" aria-label="Filtrer">${[["atrier", "À trier"], ["gardees", "Gardées"], ["ecartees", "Écartées"]].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${lui.filter === k}">${l}<span class="num">${counts[k]}</span></button>`).join("")}</div>
       <label class="ann__sort">Trier par <select id="lsort">${[["reco", "Recommandé"], ["match", "Note"], ["prix", "Prix"], ["recent", "Ajout récent"]].map(([v, l]) => `<option value="${v}" ${lui.sort === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
@@ -572,6 +573,7 @@ function renderListingsView() {
     });
   });
   const first = $(".hero", box); if (first) countUp(first);
+  paintVivier();
   bindModeSel(box);
   const ao = $("#addOther", box); if (ao) ao.onclick = () => { const h = homeProfile(), k = curMode() === "achat" ? "location" : "achat"; h.projet = "deux"; if (h.setup) h.setup.projet = "deux"; save(); setMode(k); toast(k === "location" ? "Location ajoutée à votre projet" : "Achat ajouté à votre projet"); };
   if (cloud.user && cloud.alert === undefined && !cloud.noInbox) { cloud.alert = null; loadAlertState().then(() => { if (currentTab === "annonces" && !lui.openId) renderListings(); }); }

@@ -769,7 +769,7 @@ async function cloudRefresh(force) {
   save();
   setCloudStatus("ok");
   rerenderAll();
-  processInbox();
+  processInbox(); processVivier();
 }
 
 function rerenderAll() {

@@ -254,6 +254,27 @@ def dpe_officiel(pw):
     assert not e.erreurs, e.erreurs; e.fermer()
 
 
+@essai
+def vivier(pw):
+    """Un e-mail d'alerte arrivé dans le vivier est lu par l'appareil connecté ; ses annonces sont proposées à chacun selon ses critères."""
+    e = Essai(pw); pg = e.page()
+    html = "<table>" + "".join(f'<tr><td><a href="https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/{i}.htm"><img src="https://img.ex.fr/{i}.jpg" width="280" height="180"></a></td><td>Appartement {2 + i % 2} pièces<br>{40 + i * 6} m² · Paris 11ème<br>{480000 + i * 30000} €</td></tr>' for i in range(3)) + "</table>"
+    pg.evaluate("h => { const db = JSON.parse(localStorage.getItem('__mockdb2') || JSON.stringify({profiles: [], maps: [], map_members: [], map_invites: [], zones: [], ratings: [], zone_photos: [], calls: []})); db.vivier_courrier = [{id: 'c1', sender: 'alertes@seloger.com', subject: 'Nouvelles annonces', html: h}]; localStorage.setItem('__mockdb2', JSON.stringify(db)); }", html)
+    e.connexion(pg, "johan@x.fr", "Johan"); pg.wait_for_timeout(1500)
+    db = pg.evaluate(DBQ)
+    assert len(db.get("vivier", [])) == 3 and not db.get("vivier_courrier"), [c for c in db["calls"] if "vivier" in c or "rpc" in c][-8:]
+    e.onglet(pg, "annonces"); pg.wait_for_timeout(800)
+    v = pg.locator("#vivier")
+    assert v.is_visible() and "3 nouvelles annonces" in v.inner_text(), v.inner_text() if v.count() else "pas de bandeau"
+    v.locator("[data-viv=neuf]").click(); pg.wait_for_timeout(600)
+    assert "du vivier Heden" in pg.locator("#lsTitle").inner_text()
+    pg.click("#bgo"); pg.wait_for_timeout(1500)
+    got = pg.evaluate("__heden.state().listings.filter(f => f.origin === 'vivier').map(f => [f.source, f.price])")
+    assert len(got) == 3 and all(s == "SeLoger" for s, _ in got), got
+    assert "nouvelle" not in pg.locator("#vivier").inner_text(), "le bandeau annonce encore des nouveautés"
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
 if __name__ == "__main__":
     voulus = sys.argv[1:]
     srv = demarrer(); echecs = 0
