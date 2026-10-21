@@ -47,6 +47,30 @@ def lieux(pw):
 
 
 @essai
+def zones_pretes(pw):
+    """« + Zone » propose des zones prêtes ; la recherche les trouve ; un tracé à la main qui leur ressemble se voit proposer leur forme."""
+    e = Essai(pw); pg = e.page()
+    pg.evaluate("__heden.map.setView([48.8848, 2.3387], 15, {animate: false})")
+    pg.click("#newZone"); pg.wait_for_timeout(600)
+    chips = pg.locator("#prets [data-pret]")
+    assert chips.count() >= 2, "pas de zone prête proposée au départ du tracé"
+    chips.first.click(); pg.wait_for_timeout(600)
+    assert pg.evaluate("__heden.state && document.body.dataset.mode") == "placing" and pg.locator(".leaflet-marker-icon").count() >= 3
+    pg.click("#cancel"); pg.wait_for_timeout(300)
+    if pg.locator(".ask [data-yes]").count(): pg.locator(".ask [data-yes]").click(); pg.wait_for_timeout(300)
+    pg.fill("#q", "Abbes"); pg.wait_for_timeout(1500)
+    assert pg.locator("#results .res--pret").count() >= 1, "la recherche ne propose pas la zone prête"
+    pg.locator("#results .res--pret").first.click(); pg.wait_for_timeout(600)
+    assert pg.evaluate("document.body.dataset.mode") == "placing"
+    pts = pg.evaluate("(async () => { const r = await fetch('data/lieux.json').then(r => r.json()); return r.arr['18'].find(x => x.k === 'lieu').p; })()")
+    pg.click("#cancel"); pg.wait_for_timeout(300)
+    if pg.locator(".ask [data-yes]").count(): pg.locator(".ask [data-yes]").click(); pg.wait_for_timeout(300)
+    pg.evaluate("p => { __heden.startNew(); p.filter((_, i) => i % 2 === 0).forEach(q => __heden.addPoint(L.latLng(q[0], q[1]))); }", pts); pg.wait_for_timeout(900)
+    assert "Utiliser" in pg.locator("#prets").inner_text(), "pas de suggestion pour un tracé qui ressemble à une zone prête"
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
 def groupe(pw):
     e = Essai(pw); J = e.page()
     e.connexion(J, "johan@x.fr", "Johan"); e.onglet(J, "map"); e.zone(J, "Abbesses")

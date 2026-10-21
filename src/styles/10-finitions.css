@@ -112,3 +112,12 @@ input,textarea{caret-color:var(--email)}
 
 /* Épingles regroupées : une pastille ronde avec le nombre, liseré à la couleur de la meilleure note. */
 .lpin--grp{min-width:30px;height:30px;padding:0 8px;justify-content:center;border-radius:var(--pilule);box-shadow:0 0 0 3px var(--c),0 2px 8px rgba(38,35,31,.35);font:700 13px/1 var(--sans);cursor:pointer}
+
+/* Zones toutes prêtes dans le panneau de tracé : discret, sous les compteurs. */
+.prets{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:var(--rayon-m);background:color-mix(in srgb,var(--bourgeon) 16%,var(--calcaire));border:1px solid color-mix(in srgb,var(--bourgeon) 45%,transparent);animation:vue-in .22s var(--ease-sortie) both}
+.prets__t{margin:0;font-size:13px;color:var(--ardoise-2)}
+.prets__l{display:flex;flex-wrap:wrap;gap:6px}
+.prets__l .chip{min-height:36px}
+.chip--ghost{background:none;border-style:dashed}
+.results .res--pret{background:color-mix(in srgb,var(--bourgeon) 14%,transparent)}
+.results .res--pret small{color:var(--laiton)}

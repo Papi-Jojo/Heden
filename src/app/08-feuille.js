@@ -192,6 +192,7 @@ function renderPlacing() {
         <div><b class="num">${n >= 2 ? "≈ " + walkAround(per) + " min" : "–"}</b><span>pour en faire le tour</span></div>
       </div>
       ${draft.walk ? `<p class="hint2 num">Tracée d’après ${draft.walk.len < 1000 ? fmtInt(Math.round(draft.walk.len / 10) * 10) + " m" : (draft.walk.len / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1}) + " km"} de marche en ${draft.walk.min} min${draft.pendingPhotos && draft.pendingPhotos.length ? `, avec ${draft.pendingPhotos.length} photo${draft.pendingPhotos.length > 1 ? "s" : ""} qui seront ajoutées à la zone` : ""}${draft.walk.rec ? ", dont une partie reconstituée (tirets gris) pendant une coupure du suivi" : ""}. Le parcours reste affiché pour vous aider à ajuster.</p>` : ""}
+      <div class="prets" id="prets" hidden></div>
       <div class="liveprice" id="livePrice" hidden></div>
       <div class="draw-actions">
         ${closed
@@ -221,7 +222,7 @@ function renderPlacing() {
     renderPanel();
     requestAnimationFrame(fitDraft);
   };
-  paintLivePrice();
+  paintLivePrice(); paintPrets();
   if (n >= 3) ensureEstimate(draft, () => { if (ui.mode === "placing") paintLivePrice(); });
 }
 function paintLivePrice() {

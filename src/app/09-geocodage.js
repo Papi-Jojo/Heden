@@ -30,25 +30,31 @@ $("#q").addEventListener("input", e => {
   searchTimer = setTimeout(() => doSearch(q), 450);
 });
 $("#search").addEventListener("submit", e => { e.preventDefault(); const q = $("#q").value.trim(); if (q) doSearch(q); });
+const sansAccent = s => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 async function doSearch(q) {
   const box = $("#results");
+  const d = await loadLieux(), k = sansAccent(q);
+  const prets = d && k.length >= 3 ? lieuxListe(d).filter(x => sansAccent(x.n).includes(k)).sort((a, b) => (a.k !== "lieu") - (b.k !== "lieu")).slice(0, 3) : [];
+  const pretsHTML = prets.map((x, i) => `<button type="button" class="res--pret" data-p="${i}">${esc(x.n)}<small>Zone toute prête · Paris ${arrNom(x.arr)}</small></button>`).join("");
+  const bindPrets = () => $$("[data-p]", box).forEach(b => b.onclick = () => { box.hidden = true; $("#q").blur(); adoptLieu(prets[+b.dataset.p]); });
   try {
     const vb = `${BOUNDS[0][1]},${BOUNDS[1][0]},${BOUNDS[1][1]},${BOUNDS[0][0]}`;
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&viewbox=${vb}&bounded=1&limit=5&countrycodes=fr&accept-language=fr`);
     const list = r.ok ? await r.json() : [];
-    if (!list.length) { box.innerHTML = `<button type="button" disabled>Aucun résultat dans Paris et la petite couronne</button>`; box.hidden = false; return; }
-    box.innerHTML = list.map((x, i) => {
+    if (!list.length) { box.innerHTML = pretsHTML || `<button type="button" disabled>Aucun résultat dans Paris et la petite couronne</button>`; box.hidden = false; bindPrets(); return; }
+    box.innerHTML = pretsHTML + list.map((x, i) => {
       const parts = x.display_name.split(", ");
       return `<button type="button" data-i="${i}">${esc(parts.slice(0, 2).join(", "))}<small>${esc(parts.slice(2, 5).join(", "))}</small></button>`;
     }).join("");
     box.hidden = false;
-    $$("button", box).forEach(b => b.onclick = () => {
+    bindPrets();
+    $$("button[data-i]", box).forEach(b => b.onclick = () => {
       const x = list[+b.dataset.i];
       map.flyTo([+x.lat, +x.lon], 16, {duration: .6});
       box.hidden = true; $("#q").blur();
     });
   } catch (e) {
-    box.innerHTML = `<button type="button" disabled>Recherche indisponible pour le moment</button>`; box.hidden = false;
+    box.innerHTML = pretsHTML || `<button type="button" disabled>Recherche indisponible pour le moment</button>`; box.hidden = false; bindPrets();
   }
 }
 document.addEventListener("click", e => { if (!e.target.closest("#search")) $("#results").hidden = true; });
@@ -82,16 +88,65 @@ async function openLieux() {
     if (e.target.closest("[data-back]")) return step(0);
     const a = e.target.closest("[data-arr]"); if (a) return step(+a.dataset.arr);
     const b = e.target.closest("[data-i]"); if (!b) return;
-    const arr = +card.querySelector("#lieuxT").dataset.arrN, x = data.arr[arr][+b.dataset.i];
-    close();
-    if (currentTab !== "map") setTab("map");
-    startNew();
-    draft.points = x.p.map(q => q.slice()); draft.closed = true; draft.name = x.n; draft.nameTouched = true; draft.place = `Paris ${arrNom(arr)}`;
-    finishZoneGeometry(draft);
-    setHint("Zone proposée d’après le lieu : ajustez les points, puis validez");
-    drawDraft(); renderPanel();
-    requestAnimationFrame(fitDraft);
+    const arr = +card.querySelector("#lieuxT").dataset.arrN;
+    close(); adoptLieu(Object.assign({arr}, data.arr[arr][+b.dataset.i]));
   };
   el.onkeydown = e => { if (e.key === "Escape") close(); };
   step(0); el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
+}
+
+/* Une zone toute prête devient le tracé en cours (depuis la liste, la recherche ou la suggestion pendant le tracé) */
+function adoptLieu(x) {
+  if (currentTab !== "map") setTab("map");
+  if (!draft || ui.mode !== "placing" || draft.id) startNew();
+  Object.assign(draft, {points: x.p.map(q => q.slice()), closed: true, fromLieu: x.n, place: `Paris ${arrNom(x.arr)}`});
+  if (!draft.nameTouched) { draft.name = x.n; draft.nameTouched = true; }
+  selVertex = null; finishZoneGeometry(draft);
+  setHint("Zone proposée d’après le lieu : ajustez les points, puis validez");
+  drawDraft(); renderPanel();
+  requestAnimationFrame(fitDraft);
+}
+// toutes les zones prêtes à plat : [{n, k, p, arr}]
+const lieuxListe = d => Object.entries(d.arr).flatMap(([a, v]) => v.map(x => Object.assign({arr: +a}, x)));
+// les zones prêtes qui contiennent ce point, puis les plus proches
+function lieuxPres(d, lat, lng, n = 3) {
+  return lieuxListe(d).filter(x => x.k === "lieu").map(x => { const c = polyCenter(x.p); return [x, inPoly(lat, lng, x.p) ? -1 : (c[0] - lat) ** 2 + ((c[1] - lng) * .66) ** 2]; })
+    .sort((a, b) => a[1] - b[1]).slice(0, n).map(([x]) => x);
+}
+// ressemblance entre deux contours : part commune / réunion, estimée sur une grille de 28 × 28 points
+function ressemblance(a, b) {
+  const all = a.concat(b), la = all.map(p => p[0]), lo = all.map(p => p[1]);
+  const y0 = Math.min(...la), y1 = Math.max(...la), x0 = Math.min(...lo), x1 = Math.max(...lo);
+  let inter = 0, uni = 0;
+  for (let i = 0; i < 28; i++) for (let j = 0; j < 28; j++) {
+    const y = y0 + (y1 - y0) * (i + .5) / 28, x = x0 + (x1 - x0) * (j + .5) / 28, ia = inPoly(y, x, a), ib = inPoly(y, x, b);
+    if (ia || ib) uni++; if (ia && ib) inter++;
+  }
+  return uni ? inter / uni : 0;
+}
+// pendant un tracé à la main : la zone prête qui lui ressemble le plus (au moins à moitié)
+function lieuRessemblant(d, pts) {
+  if (pts.length < 3) return null;
+  const c = polyCenter(pts);
+  return lieuxPres(d, c[0], c[1], 6).map(x => [x, ressemblance(pts, x.p)]).filter(([, r]) => r >= .5).sort((a, b) => b[1] - a[1]).map(([x]) => x)[0] || null;
+}
+// encart du panneau de tracé : au départ, les zones prêtes autour de la carte ; en cours de tracé, la zone prête qui ressemble
+async function paintPrets() {
+  const el = $("#prets"); if (!el || !draft) return;
+  const d = await loadLieux(); if (!d || $("#prets") !== el || !draft) return;
+  const chip = x => `<button class="chip" type="button" data-pret="${esc(x.arr + "|" + x.n)}">${esc(x.n)}</button>`;
+  if (!draft.points.length) {
+    const c = map.getCenter(), near = lieuxPres(d, c.lat, c.lng);
+    el.innerHTML = `<p class="prets__t">Ou partez d’une zone toute prête, délimitée par les rues :</p><div class="prets__l">${near.map(chip).join("")}<button class="chip chip--ghost" type="button" data-tous>Tous les quartiers…</button></div>`;
+  } else if (!draft.fromLieu && !draft.walk) {
+    const x = lieuRessemblant(d, draft.points);
+    el.innerHTML = x ? `<p class="prets__t">Ressemble à « ${esc(x.n)} » :</p><div class="prets__l">${chip(x).replace(esc(x.n) + "</button>", "Utiliser son tracé</button>")}</div>` : "";
+  } else el.innerHTML = "";
+  el.hidden = !el.innerHTML;
+  el.onclick = e => {
+    if (e.target.closest("[data-tous]")) return openLieux();
+    const b = e.target.closest("[data-pret]"); if (!b) return;
+    const [a, n] = b.dataset.pret.split("|"), x = lieuxListe(d).find(y => y.arr === +a && y.n === n);
+    if (x) adoptLieu(x);
+  };
 }
