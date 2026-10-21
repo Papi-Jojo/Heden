@@ -24,6 +24,7 @@
    - créer un compte Gmail dédié (par exemple heden.alertes@gmail.com), y installer `scripts/vivier/gmail.gs` en y collant la clé ;
    - avec cette adresse, créer des alertes larges sur les sites (Paris, achat et location) : chaque e-mail reçu nourrit le vivier, que tous les membres connectés voient dans Annonces.
    - pour que le vivier se remplisse toutes les 10 minutes sans qu'un membre ait l'app ouverte : GitHub > Settings > Secrets and variables > Actions > New repository secret, nom `VIVIER_CLE`, valeur : la même clé. Le workflow « Vivier (alertes → annonces) » lit alors les e-mails, situe les rues (Base Adresse Nationale) et retrouve les DPE officiels (ADEME).
+   - GitHub retarde souvent ses tâches planifiées de plusieurs heures : pour une lecture immédiate, créer un jeton GitHub (Settings > Developer settings > Fine-grained tokens, dépôt Heden seulement, permission « Actions : Read and write ») et le coller dans `GITHUB_JETON` du script Gmail. Chaque nouvelle alerte lance alors le workflow aussitôt.
    Pour changer de clé : `delete from vivier_cles;` puis recréer (et mettre à jour le script Gmail et le secret GitHub).
 5. **Récupérer les clés** : Project Settings → API (ou Data API / API Keys) :
    - Project URL (`https://xxxx.supabase.co`)

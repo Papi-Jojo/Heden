@@ -8,7 +8,8 @@ et les îlots IRIS de l'INSEE sont délimités par des voies ; on fait de même 
   3. la zone d'un lieu est la réunion de ses îlots : ses bords suivent des rues, et les zones voisines se touchent
      sans se chevaucher, sur tout Paris (hors bois de Boulogne et de Vincennes).
 Les quartiers administratifs sont gardés tels quels, comme choix plus larges.
-Sortie : data/lieux.json = {"v": date, "arr": {"1": [{"n": nom, "k": "lieu"|"quartier", "p": [[lat, lng], ...]}, ...], ...}}
+Sortie : data/lieux.json = {"v": date, "arr": {"1": [{"n": nom, "k": "lieu"|"quartier", "p": [[lat, lng], ...]}, ...], ...},
+                             "c": {"1": [[lat, lng], ...], ...}}   (contours des arrondissements)
 
 Usage : python scripts/donnees/lieux.py data   (ou : data brut.json connus.json rues.json bois.json pour rejouer)
 """
@@ -205,7 +206,15 @@ def build(raw, connus=None, rues=None, bois=None):
         n = arr_of(g.representative_point()); p = small(g)
         if n and p and name: out[str(n)].append({"n": name, "k": "quartier", "p": p})
     for k in out: out[k].sort(key=lambda x: (x["k"] != "lieu", x["n"].lower()))
-    return {"v": datetime.date.today().isoformat(), "arr": out}
+    return {"v": datetime.date.today().isoformat(), "arr": out, "c": contours(arrs)}
+
+
+def contours(arrs):
+    """Contour de chaque arrondissement, pour la carte du questionnaire : bords communs simplifiés ensemble (à 25 m près)."""
+    ns = sorted(arrs)
+    geos = [Polygon((max(g.geoms, key=lambda x: x.area) if isinstance(g, MultiPolygon) else g).exterior) for g in (arrs[n] for n in ns)]
+    simp = list(shapely.coverage_simplify(geos, 25)) if hasattr(shapely, "coverage_simplify") else [g.simplify(25) for g in geos]
+    return {str(n): [ll(x, y) for x, y in list(g.exterior.coords)[:-1]] for n, g in zip(ns, simp)}
 
 
 if __name__ == "__main__":

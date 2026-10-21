@@ -10,7 +10,7 @@ const TOUR = [
   {tab: "annonces", sel: [".feeds"], titre: "Deux flux d’annonces", txt: "Mes annonces : celles que vous ajoutez. Explorer : celles que Heden reçoit chaque jour des sites immobiliers."},
   {tab: "annonces", sel: ["#addListing"], titre: "Ajouter une annonce", txt: "Collez son texte, ou installez le bouton + Heden : sur la page d’une annonce, un clic suffit, photos comprises."},
   {tab: "favoris", sel: [".tabbar [data-tab=favoris]", ".tabs [data-tab=favoris]"], titre: "Vos favoris", txt: "Touchez le cœur d’une annonce : elle se range ici et apparaît sur la carte, avec sa note."},
-  {tab: "profile", sel: [".ptabs"], titre: "Vos critères", txt: "Ce qui compte pour vous se règle ici. Le compte, la langue et ce guide sont dans Compte."}
+  {tab: "profile", sel: [".ptabs"], titre: "Vos critères", txt: "Ce qui compte pour vous se règle ici : quelques questions, et Heden note chaque annonce selon vous. Le compte, la langue et ce guide sont dans Compte."}
 ];
 function tipsState() {
   if (tipsSt) return tipsSt;
@@ -49,7 +49,7 @@ async function tourShow() {
   const el = document.createElement("div"); el.className = "tip tip--tour"; el.setAttribute("role", "dialog"); el.setAttribute("aria-labelledby", "tipT"); el.setAttribute("aria-describedby", "tipX");
   const last = tourI === TOUR.length - 1;
   el.innerHTML = `<p class="tip__titre" id="tipT">${esc(step.titre)}</p><p class="tip__txt" id="tipX">${esc(step.txt)}</p>
-    <div class="tip__acts"><button type="button" class="tip__skip">Passer le guide</button><span class="tip__n num">${tourI + 1} / ${TOUR.length}</span><button type="button" class="tip__ok">${last ? "C’est parti" : "Suivant"}</button></div>`;
+    <div class="tip__acts"><button type="button" class="tip__skip">Passer le guide</button><span class="tip__n num">${tourI + 1} / ${TOUR.length}</span><button type="button" class="tip__ok">${last ? (quizDue() ? "Définir mon profil" : "C’est parti") : "Suivant"}</button></div>`;
   document.body.append(veil, halo, el);
   tipCur = {tip: {when: () => true, sel: step.sel[0]}, target, el, halo, veil};
   tipPlace();
@@ -63,6 +63,7 @@ function tourEnd(fini) {
   tourI = -1; tipHide();
   const st = tipsState(); st.done = true; tipsSave();
   if (currentTab !== "map") setTab("map");
+  if (quizDue()) return setTimeout(() => openQuiz(), 260);   // le profil d'abord : sans lui, les notes sont celles d'un inconnu
   toast(fini ? "Bonne recherche ! Le guide reste dans Profil, Compte." : "Guide passé : il reste dans Profil, Compte.");
 }
 function tipPlace() {

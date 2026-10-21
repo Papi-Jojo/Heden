@@ -463,6 +463,27 @@ const PRIOS = [
 ];
 const NOS = [["rdc", "Rez-de-chaussée"], ["ascenseur", "Étage élevé sans ascenseur"], ["passoire", "Passoire thermique (F, G)"], ["sansext", "Pas d’extérieur"], ["travaux", "Gros travaux"]];
 const ROOM_SURF = {1: 25, 2: 40, 3: 58, 4: 75, 5: 95};
+/* Arbitrages : deux biens possibles, lequel visiteriez-vous ? La réponse règle le poids du logement, du quartier et du prix */
+const ARBS = [
+  {k: "lq", q: "La surface ou le quartier ?", a: ["logement", "Plus grand", "Dans un quartier qui vous plaît moins"], b: ["quartier", "Mieux placé", "Plus petit, dans un quartier que vous aimez"]},
+  {k: "px", q: "Le confort ou le prix ?", a: ["pret", "Prêt à vivre", "Au prix du marché"], b: ["affaire", "Moins cher", "Quitte à faire des travaux"], bLoc: ["affaire", "Moins cher", "Quitte à ce qu’il soit un peu daté"]},
+  {k: "vie", q: "Le calme ou l’animation ?", a: ["calme", "Au calme", "Une rue tranquille, un peu à l’écart"], b: ["anime", "En plein cœur", "Cafés et métro au pied, plus de bruit"]}
+];
+const QORDER = ["projet", "who", "budget", "taille", "secteurs", "trajets", "prios", "arb", "refus"], QSTEPS = QORDER.length;
+/* Carte des arrondissements du questionnaire (contours de data/lieux.json, sinon les quartiers administratifs réunis) */
+let lieuxCache;   // undefined : pas encore chargé ; null : indisponible
+function arrMapHTML(d, sel) {
+  if (!arrMapHTML.m) {
+    const k = Math.cos(48.8566 * Math.PI / 180), polys = d.c ? Object.entries(d.c).map(([n, p]) => [+n, [p]])
+      : Object.entries(d.arr).map(([n, v]) => [+n, v.filter(x => x.k === "quartier").map(x => x.p)]);
+    const pts = polys.flatMap(([, ps]) => ps.flat()), x0 = Math.min(...pts.map(q => q[1])), x1 = Math.max(...pts.map(q => q[1])), y0 = Math.min(...pts.map(q => q[0])), y1 = Math.max(...pts.map(q => q[0]));
+    const W = 600, sc = W / ((x1 - x0) * k), H = Math.round((y1 - y0) * sc), P = q => `${((q[1] - x0) * k * sc).toFixed(1)},${((y1 - q[0]) * sc).toFixed(1)}`;
+    arrMapHTML.m = {W, H, arrs: polys.sort((a, b) => a[0] - b[0]).map(([n, ps]) => { const [lx, ly] = P(ARR_CENTRE[n - 1]).split(","); return [n, ps.map(p => "M" + p.map(P).join("L") + "Z").join(""), lx, ly]; })};
+  }
+  const {W, H, arrs} = arrMapHTML.m;
+  return `<svg class="qmap__svg" viewBox="0 0 ${W} ${H}" role="group" aria-label="Arrondissements de Paris">${arrs.map(([n, dd, lx, ly]) => `<g class="qarr" data-arr="${n}" role="button" tabindex="0" aria-pressed="${sel.includes(n)}" aria-label="Paris ${arrNom(n)}"><path d="${dd}"/><text x="${lx}" y="${ly}" dy=".35em">${n}</text></g>`).join("")}</svg>`;
+}
+const secteursTxt = s => (s.arrs || []).length ? (s.arrs || []).slice().sort((a, b) => a - b).map(arrNom).concat(s.banlieue ? ["proche banlieue"] : []).join(", ") : "Tout Paris";
 function normWeights(obj, keep) {
   let e = Object.entries(obj).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]); if (keep) e = e.slice(0, keep);
   const s = e.reduce((a, [, w]) => a + w, 0) || 1;
@@ -485,6 +506,11 @@ function applySetup(s) {
   });
   mix.quartier += (nz - nh) * 3; mix.logement += (nh - nz) * 3;
   if (s.who === "invest") mix.prix += 10;
+  const arb = s.arb || {};
+  if (arb.lq === "logement") mix.logement += 15; else if (arb.lq === "quartier") mix.quartier += 15;
+  if (arb.px === "pret") { hw.etat = (hw.etat || 0) + 10; hw.energie = (hw.energie || 0) + 5; } else if (arb.px === "affaire") { mix.prix += 12; hw.etat = (hw.etat || 0) / 2; }
+  if (arb.vie === "calme") { zw.nuisances = (zw.nuisances || 0) + 10; hw.calme = (hw.calme || 0) + 8; }
+  else if (arb.vie === "anime") { zw.vie_sociale = (zw.vie_sociale || 0) + 10; zw.transports = (zw.transports || 0) + 5; zw.commerces = (zw.commerces || 0) + 5; }
   const places = (s.places || []).filter(x => x.lat);
   hw.trajets = places.length ? 18 : 0;
   p.criteria = normWeights(zw, 8).map(([id, w]) => ({id, name: LIB[id].name, desc: LIB[id].desc, weight: w}));
@@ -493,6 +519,7 @@ function applySetup(s) {
   normWeights(hw).forEach(([k, w]) => h.weights[k] = w);
   const ms = mix.logement + mix.quartier + mix.prix;
   h.mix = {logement: Math.round(mix.logement / ms * 20) * 5, quartier: Math.round(mix.quartier / ms * 20) * 5, prix: Math.round(mix.prix / ms * 20) * 5};
+  const dm = 100 - h.mix.logement - h.mix.quartier - h.mix.prix; if (dm) h.mix[Object.keys(h.mix).sort((a, b) => h.mix[b] - h.mix[a])[0]] += dm;   // les arrondis font toujours 100 %
   h.budgetMax = s.budget || null; h.roomsMin = s.rooms || null; h.surfaceMin = s.surface || null;
   const coloc = s.who === "coloc" && s.projet === "location", n = coloc ? Math.max(2, s.colocs || 2) : 1;
   h.bedroomsMin = coloc ? n : s.who === "famille" && s.rooms >= 3 ? s.rooms - 1 : null;
@@ -500,16 +527,24 @@ function applySetup(s) {
   h.noGround = no.has("rdc"); h.elevatorFrom = no.has("ascenseur") ? 3 : 0; h.dpeMax = no.has("passoire") ? "E" : "G"; h.outdoorReq = no.has("sansext"); h.noWorks = no.has("travaux");
   h.fin = Object.assign({}, h.fin || {}, {apport: s.apport ?? (h.fin && h.fin.apport) ?? null});
   h.projet = s.projet || "achat";
+  h.arrs = (s.arrs || []).filter(n => n >= 1 && n <= 20).sort((a, b) => a - b); h.banlieue = !!(s.banlieue && h.arrs.length);
   h.loc = {loyerMax: s.loyer ? s.loyer * n : null, revenus: s.revenus ? s.revenus * n : null, meuble: s.meuble || "indiff", colocs: n};
   if (h.projet === "location" && s.who === "invest") s.who = "seul";
   if (s.budget) { const surf = s.surface || ROOM_SURF[Math.min(5, s.rooms || 3)]; p.budget = Math.round(s.budget / surf / 100) * 100; }
   h.setup = Object.assign({}, s, {at: Date.now()}); h.custom = false;
   save(); learnMemo.key = null;
 }
+/* Une seule réponse modifiée depuis le profil : les réglages faits à la main (poids, critères) restent, sauf si la question les règle */
+function saveOnly(s, key) {
+  const p = state.profile, h = homeProfile(), keep = !["prios", "arb"].includes(key) && (p.modified || h.custom);
+  const snap = keep && {criteria: clone(p.criteria), presetId: p.presetId, modified: p.modified, weights: clone(h.weights), mix: clone(h.mix), custom: h.custom};
+  applySetup(s);
+  if (snap) { Object.assign(p, {criteria: snap.criteria, presetId: snap.presetId, modified: snap.modified}); Object.assign(h, {weights: snap.weights, mix: snap.mix, custom: snap.custom}); save(); learnMemo.key = null; }
+}
 let qz = null;
-function openQuiz() {
+function openQuiz(opt = {}) {
   const prev = homeProfile().setup || {};
-  qz = {step: 0, s: Object.assign({projet: null, who: null, colocs: null, budget: null, apport: null, loyer: null, revenus: null, meuble: "indiff", rooms: null, surface: null, places: [], prios: [], nos: []}, clone(prev))};
+  qz = {step: Math.max(0, QORDER.indexOf(opt.step)), only: !!opt.step && !!prev.at, s: Object.assign({projet: null, who: null, colocs: null, budget: null, apport: null, loyer: null, revenus: null, meuble: "indiff", rooms: null, surface: null, places: [], prios: [], nos: [], arb: {}}, clone(prev))};
   if (!qz.s.projet && prev.at) qz.s.projet = "achat";
   if (!qz.s.places.length) qz.s.places = [{label: "", q: "", mode: "tc"}];
   let el = $("#quiz");
@@ -522,19 +557,18 @@ function openQuiz() {
   paintQuiz();
 }
 function closeQuiz() { const el = $("#quiz"); if (!el) return; setTimeout(() => tipsKick(1200), 0); el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); }
-const QSTEPS = 7;
 function paintQuiz() {
-  const card = $("#quiz .quiz"), s = qz.s, st = qz.step;
+  const card = $("#quiz .quiz"), s = qz.s, st = qz.step, key = QORDER[st], only = qz.only;
   const chips = (items, sel, multi, attr) => items.map(([v, l, d]) => `<button type="button" class="qopt${d ? "" : " qopt--sm"}" data-${attr}="${v}" aria-pressed="${multi ? sel.includes(v) : sel === v}"><b>${l}</b>${d ? `<span>${d}</span>` : ""}</button>`).join("");
-  const head = (t, sub) => `<div class="quiz__top"><span class="quiz__n num">${st + 1} / ${QSTEPS}</span><button class="link" type="button" id="qzLater">${homeProfile().setup ? "Fermer" : "Plus tard"}</button></div>
-    <div class="quiz__bar"><i style="width:${(st + 1) / QSTEPS * 100}%"></i></div><h2 id="qzTitle">${t}</h2>${sub ? `<p class="auth__txt">${sub}</p>` : ""}`;
-  const foot = (ok, label = "Continuer", skip) => `<div class="quiz__foot">${st ? `<button class="btn btn--clair" type="button" id="qzBack">Retour</button>` : "<span></span>"}<span class="quiz__go">${skip ? `<button class="link" type="button" id="qzSkip">Passer</button>` : ""}<button class="btn btn--primary" type="button" id="qzNext" ${ok ? "" : "disabled"}>${label}</button></span></div>`;
+  const head = (t, sub) => `<div class="quiz__top"><span class="quiz__n num">${only ? "Votre profil" : `${st + 1} / ${QSTEPS}`}</span><button class="link" type="button" id="qzLater">${homeProfile().setup ? "Fermer" : "Plus tard"}</button></div>
+    ${only ? "" : `<div class="quiz__bar"><i style="width:${(st + 1) / QSTEPS * 100}%"></i></div>`}<h2 id="qzTitle">${t}</h2>${sub ? `<p class="auth__txt">${sub}</p>` : ""}`;
+  const foot = (ok, label = "Continuer", skip) => `<div class="quiz__foot">${st && !only ? `<button class="btn btn--clair" type="button" id="qzBack">Retour</button>` : "<span></span>"}<span class="quiz__go">${skip && !only ? `<button class="link" type="button" id="qzSkip">Passer</button>` : ""}<button class="btn btn--primary" type="button" id="qzNext" ${ok ? "" : "disabled"}>${only ? "Enregistrer" : label}</button></span></div>`;
   let body = "";
   const replaces = !homeProfile().setup && (state.profile.modified || homeProfile().custom || state.zones.some(z => !z.example));
   const buy = s.projet !== "location", rent = s.projet === "location" || s.projet === "deux", coloc = s.who === "coloc" && s.projet === "location";
-  if (st === 0) body = head("Votre projet", replaces ? "Vos réglages actuels seront remplacés ; vos notes de zones restent." : "") + `<div class="qgrid qgrid--3">${chips(QUIZ_PROJ, s.projet, false, "pj")}</div>` + foot(!!s.projet);
-  else if (st === 1) body = head("Vous cherchez…", s.projet === "deux" ? "Pour l’achat comme pour la location." : "") + `<div class="qgrid">${chips(s.projet === "location" ? QUIZ_WHO_LOC : QUIZ_WHO, s.who, false, "who")}</div>` + foot(!!s.who);
-  else if (st === 2) body = head("Votre budget", buy && rent ? "Pour l’achat et pour la location." : rent ? "Le loyer que vous pouvez payer chaque mois." : "Le prix affiché maximum, hors frais de notaire.") + (buy ? `
+  if (key === "projet") body = head("Votre projet", replaces ? "Vos réglages actuels seront remplacés ; vos notes de zones restent." : "") + `<div class="qgrid qgrid--3">${chips(QUIZ_PROJ, s.projet, false, "pj")}</div>` + foot(!!s.projet);
+  else if (key === "who") body = head("Vous cherchez…", s.projet === "deux" ? "Pour l’achat comme pour la location." : "") + `<div class="qgrid">${chips(s.projet === "location" ? QUIZ_WHO_LOC : QUIZ_WHO, s.who, false, "who")}</div>` + foot(!!s.who);
+  else if (key === "budget") body = head("Votre budget", buy && rent ? "Pour l’achat et pour la location." : rent ? "Le loyer que vous pouvez payer chaque mois." : "Le prix affiché maximum, hors frais de notaire.") + (buy ? `
       ${rent ? `<h3 class="qsub">Achat</h3>` : ""}<div class="field"><label class="label" for="qzBudget">Prix maximum</label><input type="number" id="qzBudget" inputmode="numeric" step="5000" min="0" value="${s.budget ?? ""}" placeholder="Ex. 600 000 €"></div>
       <div class="chips qchips">${[350000, 500000, 650000, 800000, 1000000].map(v => `<button type="button" class="chip" data-bud="${v}" aria-pressed="${s.budget === v}">${v >= 1e6 ? "1 M€" : v / 1000 + " k€"}</button>`).join("")}</div>
       <div class="field"><label class="label" for="qzApport">Apport <span class="opt">facultatif, pour le coût par mois</span></label><input type="number" id="qzApport" inputmode="numeric" step="5000" min="0" value="${s.apport ?? ""}" placeholder="Ex. 80 000 €"></div>` : "") + (rent ? `
@@ -544,24 +578,42 @@ function paintQuiz() {
       ${coloc ? `<p class="hint2" id="qzTot"${s.loyer ? "" : " hidden"}>Soit ${fmtInt((s.loyer || 0) * (s.colocs || 2))} € par mois pour le logement entier.</p>` : ""}
       <div class="field"><label class="label" for="qzRev">${coloc ? "Revenus nets par personne" : "Revenus nets du foyer"} <span class="opt">facultatif, pour savoir si votre dossier passe</span></label><input type="number" id="qzRev" inputmode="numeric" step="100" min="0" value="${s.revenus ?? ""}" placeholder="€ par mois"></div>
       <div class="field"><span class="label">Meublé ou vide</span><div class="chips qchips">${[["indiff", "Peu importe"], ["vide", "Vide"], ["meuble", "Meublé"]].map(([v, l]) => `<button type="button" class="chip" data-meu="${v}" aria-pressed="${(s.meuble || "indiff") === v}">${l}</button>`).join("")}</div></div>` : "") + foot(true, s.budget || s.loyer ? "Continuer" : "Je ne sais pas encore");
-  else if (st === 3) body = head("La taille", coloc ? `Une chambre par colocataire, plus une pièce commune&nbsp;: ${(s.colocs || 2) + 1} pièces au moins.` : "Le minimum en dessous duquel vous ne visiterez pas.") + `
+  else if (key === "taille") body = head("La taille", coloc ? `Une chambre par colocataire, plus une pièce commune&nbsp;: ${(s.colocs || 2) + 1} pièces au moins.` : "Le minimum en dessous duquel vous ne visiterez pas.") + `
       <div class="qgrid qgrid--5">${chips([[1, "Studio"], [2, "2 p."], [3, "3 p."], [4, "4 p."], [5, "5 p. +"]], s.rooms, false, "rooms")}</div>
       <div class="field"><label class="label" for="qzSurf">Surface minimum <span class="opt">facultatif</span></label><input type="number" id="qzSurf" inputmode="numeric" min="0" value="${s.surface ?? ""}" placeholder="m²"></div>` + foot(!!s.rooms, "Continuer", true);
-  else if (st === 4) body = head("Vos trajets", "Travail, études : Heden calcule le temps depuis chaque annonce.") + `
+  else if (key === "secteurs") {
+    const n = (s.arrs || []).length, map = lieuxCache ? arrMapHTML(lieuxCache, s.arrs || [])
+      : lieuxCache === null ? `<div class="qmap__grid">${Array.from({length: 20}, (_, i) => `<button type="button" class="qopt qopt--sm" data-arr="${i + 1}" aria-pressed="${(s.arrs || []).includes(i + 1)}"><b>${arrNom(i + 1)}</b></button>`).join("")}</div>`
+      : `<div class="qmap__wait" aria-hidden="true"></div>`;
+    body = head("Où cherchez-vous ?", "Touchez les arrondissements qui vous intéressent. Sans choix, Heden cherche dans tout Paris.") + `
+      <div class="qmap">${map}</div>
+      <div class="qmap__foot"><p class="qmap__sel"><b>${n ? plural(n, "arrondissement", "arrondissements") : "Tout Paris"}</b>${n ? ` · <span>${esc(secteursTxt(s))}</span>` : ""}</p>${n ? `<button class="link" type="button" id="qzArrClr">Tout Paris</button>` : ""}</div>
+      ${n ? `<div class="chips qchips"><button type="button" class="chip" id="qzBan" aria-pressed="${!!s.banlieue}">Aussi en proche banlieue</button></div>` : ""}` + foot(true, n ? "Continuer" : "Tout Paris me va");
+    if (lieuxCache === undefined) loadLieux().then(d => { lieuxCache = d || null; if (qz && QORDER[qz.step] === "secteurs" && $("#quiz.is-open")) paintQuiz(); });
+  }
+  else if (key === "trajets") body = head("Vos trajets", "Travail, études : Heden calcule le temps depuis chaque annonce.") + `
       <div class="qplaces">${s.places.map((pl, i) => `<div class="qplace" data-i="${i}">
         <div class="row2"><div class="field"><label class="label">Lieu ${i + 1}</label><input type="text" class="qpl-l" value="${esc(pl.label || "")}" placeholder="Ex. Bureau, école" maxlength="30"></div>
           <div class="field"><label class="label">Trajet en</label><select class="qpl-m">${Object.entries(MODES).map(([k, [l]]) => `<option value="${k}" ${pl.mode === k ? "selected" : ""}>${l}</option>`).join("")}</select></div></div>
         <div class="field qsearch"><input type="text" class="qpl-q" value="${esc(pl.q || "")}" placeholder="Adresse, station, entreprise…" autocomplete="off">${pl.lat ? `<span class="qok">✓</span>` : ""}<div class="qsugg" hidden></div></div>
       </div>`).join("")}</div>
       ${s.places.length < 2 ? `<button class="link" type="button" id="qzAddPl">+ Un deuxième lieu</button>` : ""}` + foot(true, "Continuer", true);
-  else if (st === 5) body = head("Ce qui compte le plus", `Jusqu’à 5 choix. <span class="num">${s.prios.length} / 5</span>`) + `<div class="qgrid qgrid--3">${chips(PRIOS.map(q => [q.id, q.name, q.desc]), s.prios, true, "prio")}</div>` + foot(s.prios.length > 0);
-  else if (st === 6) body = head("Vos refus", "Ce que vous ne voulez pas voir. Ces annonces restent visibles, avec une note plafonnée.") + `<div class="qgrid qgrid--2">${chips(NOS, s.nos, true, "no")}</div>` + foot(true, "Voir mon profil");
+  else if (key === "prios") body = head("Ce qui compte le plus", `Jusqu’à 5 choix. <span class="num">${s.prios.length} / 5</span>`) + `<div class="qgrid qgrid--3">${chips(PRIOS.map(q => [q.id, q.name, q.desc]), s.prios, true, "prio")}</div>` + foot(s.prios.length > 0);
+  else if (key === "arb") body = head("Vos arbitrages", "Entre deux biens, lequel visiteriez-vous ? Sans choix, les deux se valent.") + `<div class="qarbs">${ARBS.map(x => { const b = s.projet === "location" && x.bLoc ? x.bLoc : x.b, cur = (s.arb || {})[x.k];
+      return `<div class="qarb" role="group" aria-label="${esc(x.q)}"><h3 class="qsub">${esc(x.q)}</h3><div class="qarb__row">${[x.a, b].map(([v, l, d]) => `<button type="button" class="qopt" data-arb="${x.k}" data-v="${v}" aria-pressed="${cur === v}"><b>${l}</b><span>${d}</span></button>`).join(`<span class="qarb__ou" aria-hidden="true">ou</span>`)}</div></div>`; }).join("")}</div>` + foot(true, Object.values(s.arb || {}).some(Boolean) ? "Continuer" : "Les deux se valent", true);
+  else if (key === "refus") body = head("Vos refus", "Ce que vous ne voulez pas voir. Ces annonces restent visibles, avec une note plafonnée.") + `<div class="qgrid qgrid--2">${chips(NOS, s.nos, true, "no")}</div>` + foot(true, "Voir mon profil");
   else body = quizResultHTML();
   card.innerHTML = body;
   const later = $("#qzLater"); if (later) later.onclick = () => { try { localStorage.setItem("heden.quiz.later", "1"); } catch (e) {} closeQuiz(); };
-  const next = () => { qz.step++; paintQuiz(); }, back = $("#qzBack"); if (back) back.onclick = () => { qz.step--; paintQuiz(); };
-  const nx = $("#qzNext"); if (nx) nx.onclick = () => { if (st === 6) applySetup(s); next(); };
-  const sk = $("#qzSkip"); if (sk) sk.onclick = () => { if (st === 3) { s.rooms = null; s.surface = null; } if (st === 4) s.places = [{label: "", q: "", mode: "tc"}]; next(); };
+  // une seule question (depuis le profil) : on enregistre et on ferme
+  const next = () => { if (only) { saveOnly(s, key); closeQuiz(); rerenderAll(); renderProfile(); toast("Profil mis à jour : les notes suivent"); return; } qz.step++; paintQuiz(); }, back = $("#qzBack"); if (back) back.onclick = () => { qz.step--; paintQuiz(); };
+  const nx = $("#qzNext"); if (nx) nx.onclick = () => { if (key === "secteurs") s.arrs = s.arrs || []; if (key === "arb") s.arbVu = true; if (key === "refus" && !only) applySetup(s); next(); };
+  const sk = $("#qzSkip"); if (sk) sk.onclick = () => { if (key === "taille") { s.rooms = null; s.surface = null; } if (key === "trajets") s.places = [{label: "", q: "", mode: "tc"}]; if (key === "arb") { s.arb = {}; s.arbVu = true; } next(); };
+  const togArr = n => { const a = s.arrs = (s.arrs || []).slice(), i = a.indexOf(n); if (i >= 0) a.splice(i, 1); else a.push(n); paintQuiz(); const g = $(`#quiz [data-arr="${n}"]`); if (g) g.focus({preventScroll: true}); };
+  $$("[data-arr]", card).forEach(g => { g.onclick = () => togArr(+g.dataset.arr); g.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togArr(+g.dataset.arr); } }; });
+  const ac = $("#qzArrClr"); if (ac) ac.onclick = () => { s.arrs = []; s.banlieue = false; paintQuiz(); };
+  const bn = $("#qzBan"); if (bn) bn.onclick = () => { s.banlieue = !s.banlieue; paintQuiz(); };
+  $$("[data-arb]", card).forEach(b => b.onclick = () => { s.arb = Object.assign({}, s.arb); s.arb[b.dataset.arb] = s.arb[b.dataset.arb] === b.dataset.v ? null : b.dataset.v; paintQuiz(); });
   $$("[data-pj]", card).forEach(b => b.onclick = () => { s.projet = b.dataset.pj; if ((s.projet === "location" && s.who === "invest") || (s.projet !== "location" && s.who === "coloc")) s.who = null; next(); });
   $$("[data-who]", card).forEach(b => b.onclick = () => { s.who = b.dataset.who; if (s.who === "coloc") { s.colocs = s.colocs || 2; if (!s.rooms) s.rooms = Math.min(5, s.colocs + 1); } next(); });
   $$("[data-coc]", card).forEach(b => b.onclick = () => { s.colocs = +b.dataset.coc; s.rooms = Math.min(5, s.colocs + 1); paintQuiz(); });
@@ -593,7 +645,8 @@ function paintQuiz() {
       }, 400);
     };
   });
-  const go = $("#qzDone"); if (go) go.onclick = () => { closeQuiz(); lui.openId = null; rerenderAll(); renderProfile(); };
+  const go = $("#qzDone"); if (go) go.onclick = () => { closeQuiz(); lui.openId = null; lui.feed = cloud.user ? "explorer" : "mes"; lui.exf = "pour"; rerenderAll(); setTab("annonces"); };
+  const zo = $("#qzZones"); if (zo) zo.onclick = () => { closeQuiz(); rerenderAll(); openLieux(); };
   const adv = $("#qzAdv"); if (adv) adv.onclick = () => { closeQuiz(); rerenderAll(); ptab = "quartier"; setTab("profile"); showPtab("quartier"); };
 }
 function quizResultHTML() {
@@ -601,13 +654,23 @@ function quizResultHTML() {
   const zs = p.criteria.slice().sort((a, b) => b.weight - a.weight).slice(0, 4), hs = Object.entries(h.weights).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]).slice(0, 4);
   const tot = arr => arr.reduce((a, [, w]) => a + w, 0) || 1;
   const bars = (rows, all) => { const mx = Math.max(...rows.map(r => r[1]), 1); return rows.map(([n, w]) => `<div class="qbar"><span>${esc(n)}</span><i style="--w:${Math.round(w / mx * 100)}%"></i><em class="num">${Math.round(w / all * 100)} %</em></div>`).join(""); };
-  const zAll = p.criteria.reduce((a, c) => a + c.weight, 0), hAll = tot(Object.entries(h.weights));
+  const zAll = p.criteria.reduce((a, c) => a + c.weight, 0), hAll = tot(Object.entries(h.weights)), mx = h.mix;
+  // ce que Heden peut noter tout de suite parmi les annonces reçues
+  const ex = cloud.user && cloud.vivierRows ? explorerItems().map(x => scoreListing(x.f)).filter(x => !x.fails.length) : null;
+  const ok = ex ? ex.filter(x => x.reliable).length : 0, mb = ex ? ex.filter(x => x.maybe).length : 0;
+  const cell = (n, one, many) => `<span><b class="num">${n}</b>${n > 1 ? many : one}</span>`;
+  const exLine = ex && ex.length ? `<p class="qready__h">Dans Explorer, déjà</p><div class="qready__n">${cell(ex.length, "dans vos critères", "dans vos critères")}${cell(ok, "notée pour vous", "notées pour vous")}${cell(mb, "peut vous plaire, à compléter", "peuvent vous plaire, à compléter")}</div>` : "";
   return `<div class="quiz__top"><span class="quiz__n">C’est prêt</span><span></span></div><div class="quiz__bar"><i style="width:100%"></i></div>
     <h2 id="qzTitle">Votre profil Heden</h2>
-    <p class="auth__txt">${esc(profileLine(s))}</p>
+    <p class="auth__txt">${esc(profileLine(s))}${(s.arrs || []).length ? ` · <span>${esc(secteursTxt(s))}</span>` : ""}</p>
+    <div class="qmix"><h3>Ce qui fait la note</h3><div class="qmix__bar" aria-hidden="true"><i style="flex:${mx.logement}"></i><i style="flex:${mx.quartier}"></i><i style="flex:${mx.prix}"></i></div>
+      <p class="qmix__leg"><span><b class="num">${mx.logement} %</b> le logement</span><span><b class="num">${mx.quartier} %</b> le quartier</span><span><b class="num">${mx.prix} %</b> le prix</span></p></div>
     <div class="qres"><div><h3>Dans un quartier</h3>${bars(zs.map(c => [c.name, c.weight]), zAll)}</div>
       <div><h3>Dans un logement</h3>${bars(hs.map(([id, w]) => [HOME_LIB[id].name, w]), hAll)}</div></div>
-    <div class="quiz__foot"><button class="btn btn--ghost" type="button" id="qzAdv">Ajuster en détail</button><button class="btn btn--primary" type="button" id="qzDone">C’est parti</button></div>`;
+    ${exLine ? `<div class="qready">${exLine}</div>` : ""}
+    ${zonesRated() < 2 ? `<div class="qtip"><p><b>Des notes de quartier plus justes</b>Notez deux ou trois coins que vous connaissez : Heden s’en sert pour toutes les annonces autour.</p><button class="btn btn--sm" type="button" id="qzZones">Noter un quartier</button></div>` : ""}
+    <p class="hint2">Ensuite, Heden affine vos priorités d’après vos favoris et les annonces que vous masquez.</p>
+    <div class="quiz__foot"><button class="btn btn--ghost" type="button" id="qzAdv">Ajuster en détail</button><button class="btn btn--primary" type="button" id="qzDone">Voir les annonces</button></div>`;
 }
 function profileLine(s) {
   if (!s) return "";
@@ -615,11 +678,24 @@ function profileLine(s) {
   const who = nC ? `En colocation à ${nC}` : ([...QUIZ_WHO, ...QUIZ_WHO_LOC].find(x => x[0] === s.who) || [, ""])[1];
   return [PROJ_LABEL[pj], who, pj !== "achat" && (lo.loyerMax || s.loyer) ? `loyer max. ${fmtInt(lo.loyerMax || s.loyer)} €/mois${nC && lo.loyerMax ? ` (${fmtInt(lo.loyerMax / nC)} € par personne)` : ""}` : null, s.rooms ? (s.rooms === 1 ? "studio" : `${s.rooms} pièces${s.rooms >= 5 ? " et plus" : ""} min.`) : null, s.surface ? `${s.surface} m² min.` : null, pj !== "location" && s.budget ? `jusqu’à ${fmtInt(s.budget)} €` : null].filter(Boolean).join(" · ");
 }
+const zonesRated = () => state.zones.filter(z => !z.example && scoreOf(z).rated > 0).length;
+/* Ce qu'il manque au profil pour que Heden note bien : chaque ligne ouvre la question qui la règle */
+function readiness() {
+  const h = homeProfile(), s = h.setup || {}, rent = (s.projet || h.projet) === "location", zr = zonesRated();
+  return [
+    {k: "budget", ok: !!(rent ? (h.loc || {}).loyerMax : h.budgetMax), t: rent ? "Votre loyer maximum" : "Votre budget", d: "Les annonces trop chères passent en hors critères."},
+    {k: "taille", ok: !!h.roomsMin, t: "La taille minimum", d: "Pièces et surface en dessous desquelles vous ne visitez pas."},
+    {k: "secteurs", ok: Array.isArray(s.arrs), t: "Vos secteurs", d: "Les arrondissements où vous cherchez."},
+    {k: "prios", ok: (s.prios || []).length > 0, t: "Ce qui compte le plus", d: "Le poids de chaque critère dans la note."},
+    {k: "arb", ok: !!s.arbVu, t: "Vos arbitrages", d: "La part du logement, du quartier et du prix."},
+    {k: "zones", ok: zr >= 2, t: "Des quartiers notés", d: zr ? `${plural(zr, "zone notée", "zones notées")} : deux ou trois suffisent pour juger les annonces autour.` : "Notez deux ou trois coins que vous connaissez : Heden juge mieux les annonces autour."}
+  ];
+}
 function profileSummaryHTML() {
   const h = homeProfile(), s = h.setup, L = learning();
   if (!s) return `<section class="sec psum psum--new">
-      <h2>Réglez Heden en une minute</h2>
-      <p class="hint2">Sept questions, une minute : Heden règle le reste.</p>
+      <h2>Réglez Heden en deux minutes</h2>
+      <p class="hint2">Neuf questions : Heden règle le reste et note chaque annonce selon vous.</p>
       <div><button class="btn btn--primary" type="button" id="quizGo">Répondre aux questions</button></div>
     </section>`;
   const prios = (s.prios || []).map(id => (PRIOS.find(q => q.id === id) || {}).name).filter(Boolean);
@@ -628,20 +704,27 @@ function profileSummaryHTML() {
   return `<section class="sec psum">
       <div class="psum__head"><div><h2>Votre recherche</h2><p class="psum__line">${esc(profileLine(s))}</p></div><button class="btn btn--sm" type="button" id="quizGo">Refaire le questionnaire</button></div>
       ${prios.length ? `<div class="chips">${prios.map(n => `<span class="tag">${esc(n)}</span>`).join("")}</div>` : ""}
-      <dl class="meta">${nos.length ? `<dt>Refus</dt><dd>${esc(nos.join(", "))}</dd>` : ""}${pl.length ? `<dt>Trajets</dt><dd>${esc(pl.map(p => `${p.label || p.q} (${MODES[p.mode || "tc"][0].toLowerCase()})`).join(", "))}</dd>` : ""}</dl>
+      <dl class="meta">${Array.isArray(s.arrs) ? `<dt>Secteurs</dt><dd>${esc(secteursTxt(s))}</dd>` : ""}${nos.length ? `<dt>Refus</dt><dd>${esc(nos.join(", "))}</dd>` : ""}${pl.length ? `<dt>Trajets</dt><dd>${esc(pl.map(p => `${p.label || p.q} (${MODES[p.mode || "tc"][0].toLowerCase()})`).join(", "))}</dd>` : ""}</dl>
+      ${(() => { const miss = readiness().filter(x => !x.ok); return miss.length ? `<div class="pready"><b>Pour des notes plus fiables</b><ul>${miss.map(x => `<li><span><b>${esc(x.t)}</b><small>${esc(x.d)}</small></span><button class="btn btn--sm btn--clair" type="button" data-ready="${x.k}">${x.k === "zones" ? "Noter un quartier" : "Répondre"}</button></li>`).join("")}</ul></div>` : ""; })()}
       ${L.n < 4 ? "" : `<div class="plearn">${L.notes.length ? `<b>Appris de vos ${L.n} choix</b><ul>${L.notes.map(n => `<li class="${n.up ? "up" : "down"}">${esc(n.txt)}</li>`).join("")}</ul>` : `<p class="hint2">Vos ${L.n} choix confirment vos priorités : rien à ajuster pour l’instant.</p>`}
         <button class="chip" type="button" id="learnTg" aria-pressed="${h.learn !== false}">Apprendre de mes choix</button></div>`}
 
     </section>`;
 }
 function bindProfileSummary() {
-  const q = $("#quizGo"); if (q) q.onclick = openQuiz;
+  const q = $("#quizGo"); if (q) q.onclick = () => openQuiz();
+  $$("[data-ready]").forEach(b => b.onclick = () => b.dataset.ready === "zones" ? openLieux() : openQuiz({step: b.dataset.ready}));
   const t = $("#learnTg"); if (t) t.onclick = () => { const h = homeProfile(); h.learn = h.learn === false; save(); learnMemo.key = null; renderProfile(); rerenderAll(); };
 }
+/* Premier lancement : le guide d'abord, puis le questionnaire (proposé à sa dernière étape, ou dès qu'on le passe) */
+function quizDue() {
+  try { if (localStorage.getItem("heden.quiz.later")) return false; } catch (e) {}
+  return !(homeProfile().setup || state.profile.modified || state.zones.some(z => !z.example) || listings().length);
+}
 function maybeAutoQuiz() {
-  try { if (localStorage.getItem("heden.quiz.later")) return; } catch (e) {}
-  if (homeProfile().setup || state.profile.modified || state.zones.some(z => !z.example) || listings().length) return;
-  setTimeout(() => { if (!homeProfile().setup && !$("#auth.is-open")) openQuiz(); }, 900);
+  if (!quizDue()) return;
+  const st = tipsState(); if (!st.off && !st.done) return;   // le guide le proposera
+  setTimeout(() => { if (quizDue() && !$("#auth.is-open")) openQuiz(); }, 900);
 }
 
 /* ---------- Sources d'annonces : alertes e-mail et bouton + Heden ---------- */
@@ -952,7 +1035,7 @@ function renderListingPins() {
   for (const [, g] of near) {
     const lat = g.reduce((a, f) => a + f.lat, 0) / g.length, lng = g.reduce((a, f) => a + f.lng, 0) / g.length;
     if (g.length > 1) {
-      const best = Math.max(...g.map(f => scoreListing(f).total ?? 0));
+      const rel = g.map(f => scoreListing(f)).filter(x => x.reliable), best = rel.length ? Math.max(...rel.map(x => x.total)) : null;
       const mk = L.marker([lat, lng], {zIndexOffset: 600, keyboard: true, title: `${g.length} favoris`,
         icon: L.divIcon({className: "", iconSize: null, html: `<span class="lpin lpin--grp" style="--c:${colorFor(best)}"><b class="num">${g.length}</b></span>`})});
       mk.on("click", () => {
@@ -965,7 +1048,7 @@ function renderListingPins() {
     } else {
       const f = g[0], s = scoreListing(f);
       const mk = L.marker([f.lat, f.lng], {zIndexOffset: 500, keyboard: true, title: f.title || listingTitle(f), icon: L.divIcon({className: "", iconSize: null,
-        html: `<span class="lpin${f.precise ? "" : " lpin--approx"}" style="--c:${colorFor(s.total)}" data-pin="${f.id}"><b class="lpin__s num">${s.total ?? "–"}</b><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : f.price >= 1e6 ? String(Math.round(f.price / 1e5) / 10).replace(".", ",") + "&#8239;M€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`})});
+        html: `<span class="lpin${f.precise ? "" : " lpin--approx"}" style="--c:${noteCol(s)}" data-pin="${f.id}"><b class="lpin__s num">${noteTxt(s)}</b><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : f.price >= 1e6 ? String(Math.round(f.price / 1e5) / 10).replace(".", ",") + "&#8239;M€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`})});
       mk.on("click", () => openPinPopup([f.lat, f.lng], [f], mk));
       mk.addTo(listingLayer);
     }
@@ -973,11 +1056,11 @@ function renderListingPins() {
 }
 /* Popup d'une pastille : les photos et la note ; pour un groupe, la liste des favoris à cet endroit */
 function pinCardHTML(f, back) {
-  const s = scoreListing(f), ph = (f.photos || []).slice(0, 12), why = s.fails.length ? ["Hors critères : " + s.fails[0]] : s.plus.slice(0, 2);
+  const s = scoreListing(f), ph = (f.photos || []).slice(0, 12), why = s.fails.length ? ["Hors critères : " + s.fails[0]] : !s.reliable && s.need.length ? [`À compléter : ${s.need.join(", ")}`] : s.plus.slice(0, 2);
   return `<div class="mpop" data-id="${f.id}">
     ${back ? `<button class="mpop__back" type="button" data-back>‹ ${esc(back)}</button>` : ""}
     <div class="mpop__ph">${ph.length ? `<div class="mpop__track">${ph.map((u, i) => `<img src="${esc(u)}" alt="" ${i > 1 ? 'loading="lazy"' : ""} referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : `<div class="mpop__none">${GALETS}</div>`}
-      <b class="mpop__s num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</b>
+      <b class="mpop__s num" style="--c:${noteCol(s)}"${s.reliable ? "" : ` title="Pas assez d’infos pour une note fiable"`}>${noteTxt(s)}</b>
       ${ph.length > 1 ? `<span class="mpop__n num"><span data-i>1</span>/${ph.length}</span><button class="mpop__nav mpop__nav--p" type="button" data-nav="-1" aria-label="Photo précédente">‹</button><button class="mpop__nav mpop__nav--n" type="button" data-nav="1" aria-label="Photo suivante">›</button>` : ""}
     </div>
     <div class="mpop__b">
@@ -990,7 +1073,7 @@ function pinCardHTML(f, back) {
 }
 function pinListHTML(fs) {
   return `<div class="mpop mpop--grp"><p class="mpop__h">${plural(fs.length, "favori à cet endroit", "favoris à cet endroit")}</p><ul class="mpop__list">${fs.map(f => { const s = scoreListing(f), ph = (f.photos || [])[0];
-    return `<li><button type="button" data-pick="${f.id}"><span class="mpop__th">${ph ? `<img src="${esc(ph)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span><span class="mpop__lt"><b>${esc(f.title || listingTitle(f))}</b><small class="num">${f.price ? priceTxt(f) : ""}</small></span><i class="num" style="--c:${colorFor(s.total)}">${s.total ?? "–"}</i></button></li>`; }).join("")}</ul></div>`;
+    return `<li><button type="button" data-pick="${f.id}"><span class="mpop__th">${ph ? `<img src="${esc(ph)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span><span class="mpop__lt"><b>${esc(f.title || listingTitle(f))}</b><small class="num">${f.price ? priceTxt(f) : ""}</small></span><i class="num" style="--c:${noteCol(s)}">${noteTxt(s)}</i></button></li>`; }).join("")}</ul></div>`;
 }
 function openPinPopup(ll, fs, mk) {
   $$(".lpin.is-on").forEach(x => x.classList.remove("is-on"));

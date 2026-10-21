@@ -106,3 +106,13 @@
 .adv>summary span{display:flex;flex-direction:column;gap:2px}
 .adv>summary b{font-size:15px;font-weight:650}
 .adv>summary small{font-size:12.5px;color:var(--ardoise-2)}
+/* Profil : ce qu'il manque pour des notes fiables */
+.pready{display:flex;flex-direction:column;gap:6px;padding:12px 14px 4px;border-radius:var(--rayon-m);border:1px solid var(--trait);background:color-mix(in srgb,var(--enduit) 26%,var(--calcaire))}
+.pready>b{font-size:14px}
+.pready ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.pready li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--trait)}
+.pready li span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pready li b{font-size:14px;font-weight:650}
+.pready li small{font-size:12.5px;line-height:16px;color:var(--zinc)}
+.pready li .btn{flex:none}
+@media (max-width:520px){.pready li{flex-wrap:wrap;gap:8px}.pready li span{flex-basis:100%}}

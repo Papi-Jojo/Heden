@@ -351,6 +351,58 @@ def guide(pw):
     assert not e.erreurs, e.erreurs; e.fermer()
 
 
+
+@essai
+def questionnaire(pw):
+    """Après le guide, le questionnaire (secteurs, arbitrages) ; une annonce mal renseignée n'est pas notée mais invitée à l'être."""
+    e = Essai(pw); e.ctx.add_init_script("localStorage.setItem('__tips', '1'); localStorage.setItem('__allowquiz', '1'); if (!localStorage.getItem('__q')) { localStorage.removeItem('heden.quiz.later'); localStorage.setItem('__q', '1'); }")
+    pg = e.page(); pg.wait_for_timeout(2600)
+    assert pg.locator(".tip--tour").count() == 1 and not pg.locator("#quiz.is-open").count(), "le questionnaire passe avant le guide"
+    for _ in range(6): pg.locator(".tip__ok").click(); pg.wait_for_timeout(700)
+    assert pg.locator(".tip__ok").inner_text() == "Définir mon profil", pg.locator(".tip__ok").inner_text()
+    pg.locator(".tip__ok").click(); pg.wait_for_timeout(900)
+    assert pg.locator("#quiz.is-open").count() == 1 and "1 / 9" in pg.locator(".quiz__n").inner_text(), "la fin du guide n'ouvre pas le questionnaire"
+    pg.click("[data-pj=achat]"); pg.click("[data-who=deux]"); pg.click("[data-bud='650000']"); pg.click("#qzNext")
+    pg.click("[data-rooms='3']"); pg.click("#qzNext"); pg.wait_for_timeout(900)
+    assert pg.locator("#quiz .qarr").count() == 20, "carte des arrondissements absente"
+    pg.click("#quiz [data-arr='11']"); pg.click("#quiz [data-arr='18']")
+    assert "11e, 18e" in pg.locator(".qmap__sel").inner_text()
+    pg.click("#qzNext"); pg.click("#qzSkip")
+    pg.click("[data-prio=anime]"); pg.click("[data-prio=lumiere]"); pg.click("#qzNext")
+    pg.click("[data-arb=lq][data-v=quartier]"); pg.click("#qzNext"); pg.click("#qzNext"); pg.wait_for_timeout(400)
+    h = pg.evaluate("__heden.state().profile.home")
+    assert h["arrs"] == [11, 18] and sum(h["mix"].values()) == 100 and h["mix"]["quartier"] > h["mix"]["logement"], (h["arrs"], h["mix"])
+    pg.click("#qzDone"); pg.wait_for_timeout(600)
+    assert pg.evaluate("document.body.dataset.tab") == "annonces"
+    # une annonce complète dans un secteur choisi est notée ; une annonce ailleurs est hors critères ; une annonce vague attend des infos
+    for i, txt in enumerate(["Appartement 3 pièces 68 m², 12 rue Oberkampf, Paris 11ème (75011), 615 000 €. 4e étage avec ascenseur, traversant, lumineux, balcon, parquet. Bon état. DPE C. Charges 2 400 € par an. Cave.",
+                             "3 pièces 60 m², Paris 15ème (75015), 600 000 €.", "3 pièces 64 m², Paris 18ème (75018), 590 000 €."]):
+        importer(pg, {"v": 6, "url": f"https://ex.fr/q-{i}.htm", "title": f"Annonce {i}", "meta": {}, "ld": [], "imgs": [], "text": txt})
+        pg.locator("#lsave").click(); pg.wait_for_timeout(1500)
+    s = pg.evaluate("__heden.state().listings.map(f => { const s = __heden.score(f); return [f.url.slice(-6, -4), s.reliable, s.fails, s.need]; })")
+    d = {x[0]: x for x in s}
+    assert d["-0"][1] is True, d["-0"]
+    assert "dans le 15e" in d["-1"][2], d["-1"]
+    assert d["-2"][1] is False and d["-2"][3], d["-2"]
+    e.onglet(pg, "annonces")
+    if pg.locator("#lback").count(): pg.click("#lback"); pg.wait_for_timeout(500)
+    card = pg.locator(f".hero[data-id='{pg.evaluate("__heden.state().listings.find(f => f.url.includes('q-2')).id")}']")
+    assert card.locator(".hero__s").inner_text() == "?", card.locator(".hero__s").inner_text()
+    card.click(); pg.wait_for_timeout(700)
+    assert pg.locator(".lask").count() == 1 and pg.locator(".ldet__score b").inner_text() == "?"
+    pg.click("#laskRate"); pg.wait_for_timeout(500)
+    assert pg.locator("#lsTitle").inner_text() == "Noter l’annonce"
+    pg.click("#fxT"); pg.click("#fxSave"); pg.wait_for_timeout(500)
+    assert pg.locator(".lask").count() == 0 and pg.locator(".ldet__score b").inner_text() != "?", "la note donnée ne remplace pas le « ? »"
+    # une seule question depuis le profil : les secteurs, sans refaire tout le questionnaire
+    pg.evaluate("__heden.openQuiz({step: 'secteurs'})"); pg.wait_for_timeout(600)
+    assert pg.locator("#qzNext").inner_text() == "Enregistrer" and not pg.locator("#qzBack").count()
+    pg.click("#quiz [data-arr='15']"); pg.click("#qzNext"); pg.wait_for_timeout(500)
+    assert pg.evaluate("__heden.state().profile.home.arrs") == [11, 15, 18]
+    assert not pg.evaluate("__heden.score(__heden.state().listings.find(f => f.url.includes('q-1'))).fails.length"), "le 15e reste hors critères"
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
 if __name__ == "__main__":
     voulus = sys.argv[1:]
     srv = demarrer(); echecs = 0

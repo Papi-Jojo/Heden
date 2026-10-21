@@ -154,7 +154,10 @@ function parseListing(src) {
     [/envo(?:i|yer|yé)[^.\n]{0,12}cl[ée]s|cl[ée]s[^.\n]{0,40}par (?:la )?poste|par (?:dhl|fedex|ups|chronopost)/, "clés envoyées par la poste"],
     [/(?:payer|paiement|régler|versement|virement|caution|dépôt)[^.\n]{0,40}avant (?:la |toute |votre )?visite/, "paiement demandé avant la visite"],
     [/whats ?app|(?:uniquement|seulement|exclusivement) par (?:e-?mail|mail|sms)/, "contact seulement par messagerie ou e-mail"],
-    [/(?:via|par) (?:la |une )?plateforme (?:sécurisée|de paiement)|airbnb[^.\n]{0,40}(?:paiement|garantie)/, "paiement par une « plateforme » tierce"]];
+    [/(?:via|par) (?:la |une )?plateforme (?:sécurisée|de paiement)|airbnb[^.\n]{0,40}(?:paiement|garantie)/, "paiement par une « plateforme » tierce"],
+    [/bitcoin|crypto-?monnaie|\busdt\b|\bbinance\b/, "paiement en cryptomonnaie"],
+    [/frais de réservation|(?:réserver|bloquer) (?:le |l['’])(?:appartement|logement|bien)[^.\n]{0,30}(?:virement|versement|acompte)/, "frais demandés pour réserver"],
+    [/visites? (?:impossible|non possible)s?|sans visite préalable|lou[ée]e? sans visite|(?:aucune|pas de) visite (?:possible|n['’]est possible)/, "pas de visite possible"]];
   const PHOTO = [[/home[- ]?staging virtuel|mise en sc[eè]ne virtuelle|meubl[ée]e? virtuellement|d[ée]coration virtuelle|ameublement virtuel/, "home staging virtuel"],
     [/(?:images?|photos?|visuels?)[^.\n]{0,20}(?:g[ée]n[ée]r[ée]e?s?|cr[ée]{1,2}e?s?|retouch[ée]e?s?) (?:par|avec|grâce à) (?:l['’]|une )?(?:ia\b|intelligence artificielle)/, "images générées ou retouchées par IA"],
     [/photos? non contractuelles?|visuels? non contractuels?|(?:image|photo|visuel)s? d['’](?:illustration|ambiance)|perspectives? 3d|rendu 3d|images? de synth[eè]se/, "photos d’illustration ou de synthèse"]];
