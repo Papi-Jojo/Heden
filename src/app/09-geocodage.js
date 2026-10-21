@@ -35,7 +35,7 @@ async function doSearch(q) {
   const box = $("#results");
   const d = await loadLieux(), k = sansAccent(q);
   const prets = d && k.length >= 3 ? lieuxListe(d).filter(x => sansAccent(x.n).includes(k)).sort((a, b) => (a.k !== "lieu") - (b.k !== "lieu")).slice(0, 3) : [];
-  const pretsHTML = prets.map((x, i) => `<button type="button" class="res--pret" data-p="${i}">${esc(x.n)}<small>Zone toute prête · Paris ${arrNom(x.arr)}</small></button>`).join("");
+  const pretsHTML = prets.map((x, i) => `<button type="button" class="res--pret" data-p="${i}">${esc(x.n)}<small>Zone prédéfinie · Paris ${arrNom(x.arr)}</small></button>`).join("");
   const bindPrets = () => $$("[data-p]", box).forEach(b => b.onclick = () => { box.hidden = true; $("#q").blur(); adoptLieu(prets[+b.dataset.p]); });
   try {
     const vb = `${BOUNDS[0][1]},${BOUNDS[1][0]},${BOUNDS[1][1]},${BOUNDS[0][0]}`;
@@ -74,12 +74,12 @@ async function openLieux() {
   const step = arr => {
     const L_ = arr ? data.arr[arr] || [] : [], grp = k => L_.map((x, i) => [x, i]).filter(([x]) => x.k === k).map(([x, i]) => `<button class="chip" type="button" data-i="${i}">${esc(x.n)}</button>`).join("");
     card.innerHTML = arr ? `<div class="auth__head"><h2 id="lieuxT" data-arr-n="${arr}">Paris ${arrNom(arr)}</h2>${X}</div>
-        <p class="auth__txt">Chaque lieu a sa forme, d’après OpenStreetMap : ajustez ensuite les points sur la carte.</p>
-        ${grp("lieu") ? `<h3 class="lieux__h">Lieux connus</h3><div class="lieux__l">${grp("lieu")}</div>` : ""}
+        <p class="auth__txt">Chaque zone suit les rues qui la bordent, d’après OpenStreetMap. Vous pourrez ajuster ses points sur la carte.</p>
+        ${grp("lieu") ? `<h3 class="lieux__h">Quartiers</h3><div class="lieux__l">${grp("lieu")}</div>` : ""}
         ${grp("quartier") ? `<h3 class="lieux__h">Quartiers administratifs</h3><div class="lieux__l">${grp("quartier")}</div>` : ""}
         <button class="link" type="button" data-back>‹ Tous les arrondissements</button>`
-      : `<div class="auth__head"><h2 id="lieuxT">Choisir un lieu</h2>${X}</div>
-        <p class="auth__txt">Un arrondissement, puis un lieu connu : la zone se trace toute seule.</p>
+      : `<div class="auth__head"><h2 id="lieuxT">Zones prédéfinies</h2>${X}</div>
+        <p class="auth__txt">Choisissez un arrondissement, puis un quartier : la zone prédéfinie, délimitée par les rues, s’affiche sur la carte.</p>
         <div class="lieux__a">${Array.from({length: 20}, (_, i) => { const l = (data.arr[i + 1] || [])[0]; return `<button type="button" data-arr="${i + 1}"><b>${arrNom(i + 1)}</b><span>${esc(l ? l.n : "")}</span></button>`; }).join("")}</div>`;
     const f = card.querySelector("[data-i], [data-arr]"); if (f) f.focus({preventScroll: true});
   };
@@ -95,14 +95,14 @@ async function openLieux() {
   step(0); el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
 }
 
-/* Une zone toute prête devient le tracé en cours (depuis la liste, la recherche ou la suggestion pendant le tracé) */
+/* Une zone prédéfinie devient le tracé en cours (depuis la liste, la recherche ou la suggestion pendant le tracé) */
 function adoptLieu(x) {
   if (currentTab !== "map") setTab("map");
   if (!draft || ui.mode !== "placing" || draft.id) startNew();
   Object.assign(draft, {points: x.p.map(q => q.slice()), closed: true, fromLieu: x.n, place: `Paris ${arrNom(x.arr)}`});
   if (!draft.nameTouched) { draft.name = x.n; draft.nameTouched = true; }
   selVertex = null; finishZoneGeometry(draft);
-  setHint("Zone proposée d’après le lieu : ajustez les points, puis validez");
+  setHint("Zone prédéfinie : ajustez les points si besoin, puis validez");
   drawDraft(); renderPanel();
   requestAnimationFrame(fitDraft);
 }
@@ -137,7 +137,7 @@ async function paintPrets() {
   const chip = x => `<button class="chip" type="button" data-pret="${esc(x.arr + "|" + x.n)}">${esc(x.n)}</button>`;
   if (!draft.points.length) {
     const c = map.getCenter(), near = lieuxPres(d, c.lat, c.lng);
-    el.innerHTML = `<p class="prets__t">Ou partez d’une zone toute prête, délimitée par les rues :</p><div class="prets__l">${near.map(chip).join("")}<button class="chip chip--ghost" type="button" data-tous>Tous les quartiers…</button></div>`;
+    el.innerHTML = `<p class="prets__t">Ou partez d’une zone prédéfinie, délimitée par les rues :</p><div class="prets__l">${near.map(chip).join("")}<button class="chip chip--ghost" type="button" data-tous>Tous les quartiers…</button></div>`;
   } else if (!draft.fromLieu && !draft.walk) {
     const x = lieuRessemblant(d, draft.points);
     el.innerHTML = x ? `<p class="prets__t">Ressemble à « ${esc(x.n)} » :</p><div class="prets__l">${chip(x).replace(esc(x.n) + "</button>", "Utiliser son tracé</button>")}</div>` : "";
