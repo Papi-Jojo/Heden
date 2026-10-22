@@ -1,4 +1,4 @@
-const HEDEN = "__HEDEN__";
+const HEDEN = "__HEDEN__", HEDENM = __HEDENM__;
 const EN = {tA: "Automatic reading", tAs: "Every listings page you open goes to Explore.", tJ: "Today", lN: "new", lR: "seen again", lF: "full listings", relire: "Read page again", ouvrir: "Open Heden", tP: "Heden only reads the pages you open."};
 chrome.storage.local.get({auto: true, stats: {}, lang: "fr"}, ({auto, stats, lang}) => {
   if (lang === "en") { document.documentElement.lang = "en"; Object.entries(EN).forEach(([id, t]) => { const e = document.getElementById(id); if (e) e.textContent = t; }); }
@@ -8,7 +8,7 @@ chrome.storage.local.get({auto: true, stats: {}, lang: "fr"}, ({auto, stats, lan
   document.getElementById("nN").textContent = s.nouvelles || 0; document.getElementById("nR").textContent = s.revues || 0; document.getElementById("nF").textContent = s.fiches || 0;
 });
 document.getElementById("ouvrir").onclick = async () => {
-  const ts = await chrome.tabs.query({url: HEDEN + "*"});
+  const ts = await chrome.tabs.query({url: HEDENM});
   if (ts.length) { await chrome.tabs.update(ts[0].id, {active: true}); await chrome.windows.update(ts[0].windowId, {focused: true}); }
   else await chrome.tabs.create({url: HEDEN + "#annonces"});
   window.close();

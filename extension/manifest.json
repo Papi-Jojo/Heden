@@ -6,10 +6,10 @@
   "icons": {"16": "icone.png", "32": "icone.png", "48": "icone.png", "128": "icone.png"},
   "action": {"default_popup": "popup.html", "default_title": "Heden", "default_icon": {"16": "icone.png", "32": "icone.png"}},
   "background": {"service_worker": "fond.js"},
-  "permissions": ["storage"],
-  "host_permissions": ["__HEDEN__*"],
+  "permissions": ["storage", "scripting"],
+  "host_permissions": __HEDENM__,
   "content_scripts": [
-    {"matches": ["__HEDEN__*"], "js": ["pont.js"], "run_at": "document_idle"},
+    {"matches": __HEDENM__, "js": ["pont.js"], "run_at": "document_idle"},
     {"matches": __SITES__, "js": ["lecture.js"], "run_at": "document_idle", "world": "MAIN"},
     {"matches": __SITES__, "js": ["lecteur.js"], "run_at": "document_idle"}
   ]

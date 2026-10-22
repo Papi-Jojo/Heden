@@ -17,7 +17,8 @@ const SITES = ["seloger.com", "pap.fr", "leboncoin.fr", "bienici.com", "jinka.fr
 
 const L = vm.runInContext(lire("src/app/01b-lecture.js") + "\n;({extractCards, lirePage, isDetailUrl})", vm.createContext({URL, console, setTimeout, dataStore: {}}));
 const lecteur = `const X = ${L.extractCards.toString()};\n  const lirePage = ${L.lirePage.toString()};\n  const isDetailUrl = ${L.isDetailUrl.toString()};`;
-const sub = s => s.replaceAll("__HEDEN__", HEDEN).replaceAll("__VERSION__", VERSION).replaceAll("__SITES__", JSON.stringify(SITES)).replace("/*LECTEUR*/", lecteur);
+const u = new URL(HEDEN), chemin = u.pathname.replace(/\/$/, "") || "/", HEDENM = JSON.stringify([...new Set([u.origin + chemin + "*", u.origin + chemin.toLowerCase() + "*"])]);   // avec ou sans « / » final
+const sub = s => s.replaceAll("__HEDENM__", HEDENM).replaceAll("__HEDEN__", HEDEN).replaceAll("__VERSION__", VERSION).replaceAll("__SITES__", JSON.stringify(SITES)).replace("/*LECTEUR*/", lecteur);
 
 fs.rmSync(OUT, {recursive: true, force: true}); fs.mkdirSync(OUT, {recursive: true});
 const files = {};

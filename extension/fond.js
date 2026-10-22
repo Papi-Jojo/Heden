@@ -1,16 +1,22 @@
 /* Heden : relais entre les pages immobilières ouvertes (lecteur.js) et l'onglet Heden (pont.js).
    Aucune page n'est ouverte ni lue en dehors de celles que l'utilisateur consulte : seul l'onglet Heden est ouvert si besoin. */
-const HEDEN = "__HEDEN__";
+const HEDEN = "__HEDEN__", HEDENM = __HEDENM__;   // l'adresse de Heden, avec ou sans « / » final, quelle que soit la casse du chemin
 const attente = new Map();   // envoi → onglet d'origine, pour lui rendre la réponse
 async function ongletHeden() {
-  const ts = await chrome.tabs.query({url: HEDEN + "*"});
+  const ts = await chrome.tabs.query({url: HEDENM});
   if (ts.length) return ts.find(t => t.status === "complete") || ts[0];
   return chrome.tabs.create({url: HEDEN + "#annonces", active: false});
 }
+const joindre = async (id, msg) => { try { const r = await chrome.tabs.sendMessage(id, msg); return !!(r && r.ok); } catch (e) { return false; } };
+// onglet Heden ouvert avant l'installation (ou la mise à jour) de l'extension : on y ajoute le pont
+const brancher = id => chrome.scripting.executeScript({target: {tabId: id}, files: ["pont.js"]}).catch(() => {});
 async function envoyer(msg) {
-  const t = await ongletHeden();
+  let t = await ongletHeden();
+  if (t.discarded) await chrome.tabs.reload(t.id).catch(() => {});   // onglet mis en veille par le navigateur
   for (let k = 0; k < 40; k++) {   // l'onglet Heden peut être en train de se charger
-    try { const r = await chrome.tabs.sendMessage(t.id, msg); if (r && r.ok) return true; } catch (e) {}
+    if (await joindre(t.id, msg)) return true;
+    if (k === 1 || k === 8) await brancher(t.id);
+    if (k === 16) { t = await ongletHeden(); if (t.discarded) await chrome.tabs.reload(t.id).catch(() => {}); }
     await new Promise(r => setTimeout(r, 750));
   }
   return false;
@@ -35,4 +41,7 @@ chrome.runtime.onMessage.addListener((m, s) => {
     }
   } else if (m.type === "langue" && m.lang) chrome.storage.local.set({lang: m.lang});
 });
-chrome.runtime.onInstalled.addListener(() => { chrome.action.setBadgeBackgroundColor({color: "#7F5539"}); });
+chrome.runtime.onInstalled.addListener(async () => {
+  chrome.action.setBadgeBackgroundColor({color: "#7F5539"});
+  for (const t of await chrome.tabs.query({url: HEDENM})) brancher(t.id);   // onglets Heden déjà ouverts
+});

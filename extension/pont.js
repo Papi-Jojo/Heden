@@ -1,5 +1,6 @@
 /* Dans l'onglet Heden : transmet à l'app les pages lues par l'extension, et rend la réponse (combien d'annonces sont parties). */
 (() => {
+  if (window.__hedenPont) return; window.__hedenPont = 1;
   const V = chrome.runtime.getManifest().version;
   const annonce = () => window.postMessage({type: "heden-ext-ready", v: V}, location.origin);
   annonce(); setTimeout(annonce, 2000);

@@ -311,7 +311,7 @@ async function loadVivier() {
 /* ---------- Extension Heden : les pages lues pendant la navigation arrivent dans l'onglet Heden ----------
    Listes de résultats et fiches vont dans Explorer (vivier commun) ; une annonce déjà dans Mes annonces ou les Favoris
    est mise à jour (prix, photos, disponibilité). L'extension ne lit que les pages que l'utilisateur ouvre. */
-const EXT_VERSION = "1.0.0", ext = {v: null};
+const EXT_VERSION = "1.0.1", ext = {v: null};
 const attendre = async (ok, ms) => { for (let t = 0; !ok() && t < ms; t += 200) await new Promise(r => setTimeout(r, 200)); return ok(); };
 async function recevoirPage(raw) {
   const {safe, items} = cleanPage(raw), d = Object.assign({}, safe, {items, liste: !!raw.liste});
