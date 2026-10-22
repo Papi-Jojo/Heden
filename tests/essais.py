@@ -446,24 +446,34 @@ def extension(pw):
         if "/900001.htm" in u:
             etat = {"classified": {"medias": {"images": [{"url": f"https://photos.ex.fr/g{k}.jpg"} for k in range(9)]}, "description": "Appartement traversant au 4e étage avec ascenseur, balcon, DPE C, 12 rue Oberkampf."}}
             return rt.fulfill(body=f"<html><head><title>Appartement 3 pièces 64 m² Paris 11e</title></head><body><h1>Appartement 3 pièces 64 m²</h1><p>Paris 11e (75011) · 615 000 €</p><p>4e étage avec ascenseur, balcon, traversant. DPE C. 12 rue Oberkampf.</p><script>window.__ETAT__ = {json.dumps(etat)};</script></body></html>", content_type="text/html; charset=utf-8")
+        if "distributionTypes=Rent" in u:
+            cs = "".join(f'<li><a href="https://www.seloger.com/annonce/location/ile-de-france/paris-75/paris-75000/LOC{i}?serp_view=list"><img src="https://photos.ex.fr/r{i}.jpg"></a><div><span>{p} €/mois</span></div><div>Appartement à louer</div><div>{r} pièces · {s_} m² · 2ème étage</div><div>Paris {a}ème arrondissement (750{a:02d})</div></li>' for i, (p, r, s_, a) in enumerate([("2 900", 3, 65, 7), ("1 450", 2, 38, 11), ("4 000", 3, 93, 16)]))
+            return rt.fulfill(body=f"<html><head><title>Louer Paris</title></head><body><ul>{cs}</ul></body></html>", content_type="text/html; charset=utf-8")
         if "/900004.htm" in u:
             return rt.fulfill(body="<html><head><title>Annonce expirée</title></head><body><h1>Cette annonce n’est plus disponible</h1><p>Appartement 3 pièces 45 m² Paris 10e 499 000 €</p></body></html>", content_type="text/html; charset=utf-8")
         return rt.abort()
     ctx.add_init_script(INIT)
     ctx.route("**/*", lambda rt: portail(rt) if "seloger.com" in rt.request.url or "photos.ex.fr" in rt.request.url else routes(rt))
     e = Essai.__new__(Essai); e.b = ctx; e.ctx = ctx; e.erreurs = []; e.mobile = False
-    H = e.page(); e.connexion(H, "johan@x.fr", "Johan")
+    H = e.page()
     viv = lambda: H.evaluate(DBQ).get("vivier") or []
     bulle = lambda pg: pg.evaluate("() => { const h = [...document.documentElement.children].find(x => x.shadowRoot); return h ? h.shadowRoot.querySelector('.t').textContent : ''; }")
+    # pas encore connecté : la liste de locations attend, puis part après la connexion (« 2 900 €/mois » est bien un loyer)
+    R = ctx.new_page(); R.goto("https://www.seloger.com/classified-search?distributionTypes=Rent&locations=paris"); R.wait_for_timeout(6000)
+    assert not viv() and "Connectez-vous" in bulle(R), (len(viv()), bulle(R))
+    e.connexion(H, "johan@x.fr", "Johan"); H.wait_for_timeout(8000)
+    loc = [v for v in viv() if v["kind"] == "location"]
+    assert sorted(v["price"] for v in loc) == [1450, 2900, 4000], [(v["kind"], v["price"]) for v in viv()]
+    R.close()
     S = ctx.new_page(); S.goto("https://www.seloger.com/recherche?tri=date"); S.wait_for_timeout(7000)
-    assert len(viv()) == 4, [v.get("url") for v in viv()]
+    assert len(viv()) == 7, [v.get("url") for v in viv()]
     assert "4 nouvelles annonces" in bulle(S), bulle(S)
     assert S.evaluate("() => !![...document.documentElement.children].find(x => x.shadowRoot).shadowRoot.querySelector('a')"), "pas de lien vers la page suivante"
     # le lendemain : la même liste, un prix a baissé → rien de nouveau, prix à jour avec son historique
     prix["b"] = 549000
     S.reload(); S.wait_for_timeout(7000)
     b = next(v for v in viv() if v["url"].endswith("900002.htm"))
-    assert len(viv()) == 4 and b["price"] == 549000 and b["prix_hist"][-1]["price"] == 580000, b
+    assert len(viv()) == 7 and b["price"] == 549000 and b["prix_hist"][-1]["price"] == 580000, b
     assert "Rien de nouveau" in bulle(S), bulle(S)
     # la fiche complète : toutes les photos, l'étage, la rue
     S.goto("https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/900001.htm"); S.wait_for_timeout(7000)

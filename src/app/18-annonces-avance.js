@@ -311,7 +311,7 @@ async function loadVivier() {
 /* ---------- Extension Heden : les pages lues pendant la navigation arrivent dans l'onglet Heden ----------
    Listes de résultats et fiches vont dans Explorer (vivier commun) ; une annonce déjà dans Mes annonces ou les Favoris
    est mise à jour (prix, photos, disponibilité). L'extension ne lit que les pages que l'utilisateur ouvre. */
-const EXT_VERSION = "1.0.1", ext = {v: null};
+const EXT_VERSION = "1.0.2", ext = {v: null};
 const attendre = async (ok, ms) => { for (let t = 0; !ok() && t < ms; t += 200) await new Promise(r => setTimeout(r, 200)); return ok(); };
 async function recevoirPage(raw) {
   const {safe, items} = cleanPage(raw), d = Object.assign({}, safe, {items, liste: !!raw.liste});
@@ -330,15 +330,17 @@ async function recevoirPage(raw) {
   if (maj) { save(); renderListingPins(); if ((currentTab === "annonces" || currentTab === "favoris")) renderListings(); }
   if (!cloud.user || !cloud.client) return {liste: r.liste, n: r.ann.length, maj, err: "connexion"};
   if (!r.ann.length && !r.gone.length) return {liste: r.liste, n: 0, maj};
-  for (const x of r.ann) {
+  await Promise.all(r.ann.map(async x => {   // rue → position (en parallèle : une liste arrive d'un bloc)
     await banRue(x.f); if (!r.liste) await ademeCheck(x.f);
     x.a.data = Object.assign(vivierData(x.f), x.a.data.complet ? {complet: true, url: x.a.data.url} : {});
-  }
+  }));
+  // hors du projet (une location pour un achat) : dans Explorer, mais pas affichée tant que le projet ne la comprend pas
+  const autre = projet() === "deux" ? 0 : r.ann.filter(x => x.a.kind !== projet()).length;
   const {data, error} = await cloud.client.rpc("vivier_deposer", {p_annonces: r.ann.map(x => x.a), p_retirees: r.gone});
   if (error) return {liste: r.liste, n: 0, maj, err: schemaMissing(error) ? "base" : "envoi"};
   cloud.vivierAt = 0;
   if (currentTab === "annonces" && lui.feed === "explorer" && !lui.openId) loadVivier().then(() => renderListings());
-  return {liste: r.liste, n: r.ann.length, nouvelles: (data && data.nouvelles) || 0, revues: (data && data.revues) || 0, gone: r.gone.length, maj};
+  return {liste: r.liste, n: r.ann.length, nouvelles: (data && data.nouvelles) || 0, revues: (data && data.revues) || 0, gone: r.gone.length, maj, autre, projet: projet()};
 }
 window.addEventListener("message", e => {
   if (e.source !== window || e.origin !== location.origin) return;

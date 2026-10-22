@@ -29,17 +29,34 @@ async function compter(m) {
   s.dernier = Date.now(); s.err = m.err || null;
   await chrome.storage.local.set({stats: s});
 }
+/* Une page qui n'a pas pu partir (Heden fermé, déconnecté, pas de réseau) attend ici et repart dès que Heden répond */
+async function garder(d) {
+  const {file} = await chrome.storage.local.get({file: []});
+  const url = String(d.url || "").split("#")[0];
+  await chrome.storage.local.set({file: file.filter(x => String(x.url || "").split("#")[0] !== url).concat(d).slice(-60)});
+}
+let vidage = false;
+async function vider() {
+  if (vidage) return; vidage = true;
+  try {
+    const {file} = await chrome.storage.local.get({file: []}); if (!file.length) return;
+    await chrome.storage.local.set({file: []});
+    for (const d of file) { const id = "f" + Math.random().toString(36).slice(2); attente.set(id, null); garde.set(id, d); if (!(await envoyer({type: "page", id, d}))) { attente.delete(id); garde.delete(id); await garder(d); } }
+  } finally { vidage = false; }
+}
+const garde = new Map();   // envoi → la page, à garder si Heden répond par une erreur
 chrome.runtime.onMessage.addListener((m, s) => {
   if (m.type === "page" && s.tab) {
-    const id = Math.random().toString(36).slice(2) + Date.now().toString(36); attente.set(id, s.tab.id);
-    envoyer({type: "page", id, d: m.d}).then(ok => { if (!ok) { attente.delete(id); chrome.tabs.sendMessage(s.tab.id, {type: "ack", err: "heden"}).catch(() => {}); } });
+    const id = Math.random().toString(36).slice(2) + Date.now().toString(36); attente.set(id, s.tab.id); garde.set(id, m.d);
+    envoyer({type: "page", id, d: m.d}).then(ok => { if (!ok) { attente.delete(id); garde.delete(id); garder(m.d); chrome.tabs.sendMessage(s.tab.id, {type: "ack", err: "heden"}).catch(() => {}); } });
   } else if (m.type === "ack") {
-    const src = attente.get(m.id); attente.delete(m.id); compter(m);
+    const src = attente.get(m.id), d = garde.get(m.id); attente.delete(m.id); garde.delete(m.id); compter(m);
+    if (m.err && d) garder(d); else if (!m.err) vider();
     if (src != null) {
       chrome.tabs.sendMessage(src, m).catch(() => {});
       if (m.nouvelles) chrome.action.setBadgeText({tabId: src, text: String(Math.min(999, m.nouvelles))}).catch(() => {});
     }
-  } else if (m.type === "langue" && m.lang) chrome.storage.local.set({lang: m.lang});
+  } else if (m.type === "langue") { if (m.lang) chrome.storage.local.set({lang: m.lang}); setTimeout(vider, 4000); }   // Heden vient de s'ouvrir : on renvoie ce qui attendait
 });
 chrome.runtime.onInstalled.addListener(async () => {
   chrome.action.setBadgeBackgroundColor({color: "#7F5539"});

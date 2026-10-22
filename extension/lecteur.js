@@ -86,18 +86,20 @@
     if (m.type !== "ack") return;
     if (m.err) {
       if (erreurDite) return; erreurDite = true;
-      return bulle(`<b>Heden</b>${esc(m.err === "connexion" ? T("Connectez-vous dans l’onglet Heden pour envoyer les annonces.", "Sign in in the Heden tab to send listings.")
+      return bulle(`<b>Heden</b>${esc(m.err === "connexion" ? T("Connectez-vous dans l’onglet Heden : les annonces de cette page partiront ensuite.", "Sign in in the Heden tab: this page’s listings will be sent afterwards.")
         : m.err === "base" ? T("La base de Heden n’est pas encore à jour (vivier.sql).", "Heden’s database is not up to date yet (vivier.sql).")
-        : m.err === "heden" ? T("L’onglet Heden ne répond pas : rechargez-le.", "The Heden tab is not responding: reload it.")
+        : m.err === "heden" ? T("L’onglet Heden ne répond pas : la page est gardée et partira dès qu’il répondra.", "The Heden tab is not responding: the page is kept and will be sent as soon as it does.")
         : T("Envoi impossible pour l’instant, nouvel essai à la prochaine page.", "Could not send for now; it will retry on the next page."))}`);
     }
     if (m.gone) return bulle(`<b>Heden</b>${esc(T("Annonce retirée du site : elle sort d’Explorer.", "Listing removed from the site: it leaves Explore."))}`);
+    // annonces hors du projet (des locations pour un projet d'achat) : elles partent, mais Heden ne les montre pas
+    const hors = m.autre ? `<br>${esc(m.projet === "achat" ? T("Ce sont des locations : ajoutez la location à votre projet dans Heden pour les voir.", "These are rentals: add renting to your project in Heden to see them.") : T("Ce sont des ventes : ajoutez l’achat à votre projet dans Heden pour les voir.", "These are sales: add buying to your project in Heden to see them."))}` : "";
     if (m.liste) {
       if (!m.n) return;
       const nv = m.nouvelles || 0, next = suivante();
-      return bulle(nv ? `<b>${esc(pl(nv, "nouvelle annonce", "nouvelles annonces", "new listing", "new listings"))} ${esc(T("dans Explorer", "in Explore"))}</b>${esc(m.revues ? T(`${m.revues} déjà connue${m.revues > 1 ? "s" : ""}, prix et dates à jour.`, `${m.revues} already known, prices and dates refreshed.`) : T("Envoyées à tout le groupe.", "Shared with the whole group."))}`
-        : `<b>${esc(T("Rien de nouveau sur cette page", "Nothing new on this page"))}</b>${esc(T(`${m.revues || m.n} annonces déjà connues, mises à jour. Triée par date, la suite l’est aussi.`, `${m.revues || m.n} listings already known, refreshed. Sorted by date, the next pages are too.`))}`, nv ? next : null);
+      return bulle(nv ? `<b>${esc(pl(nv, "nouvelle annonce", "nouvelles annonces", "new listing", "new listings"))} ${esc(T("dans Explorer", "in Explore"))}</b>${esc(m.revues ? T(`${m.revues} déjà connue${m.revues > 1 ? "s" : ""}, prix et dates à jour.`, `${m.revues} already known, prices and dates refreshed.`) : T("Envoyées à tout le groupe.", "Shared with the whole group."))}${hors}`
+        : `<b>${esc(T("Rien de nouveau sur cette page", "Nothing new on this page"))}</b>${esc(T(`${m.revues || m.n} annonces déjà connues, mises à jour. Triée par date, la suite l’est aussi.`, `${m.revues || m.n} listings already known, refreshed. Sorted by date, the next pages are too.`))}${hors}`, nv ? next : null);
     }
-    if (m.n || m.maj) bulle(`<b>${esc(T("Fiche complète envoyée à Heden", "Full listing sent to Heden"))}</b>${esc(m.maj ? T("Votre annonce est à jour (prix, photos, disponibilité).", "Your listing is up to date (price, photos, availability).") : m.nouvelles ? T("Nouvelle dans Explorer.", "New in Explore.") : T("Explorer est à jour.", "Explore is up to date."))}`);
+    if (m.n || m.maj) bulle(`<b>${esc(T("Fiche complète envoyée à Heden", "Full listing sent to Heden"))}</b>${esc(m.maj ? T("Votre annonce est à jour (prix, photos, disponibilité).", "Your listing is up to date (price, photos, availability).") : m.nouvelles ? T("Nouvelle dans Explorer.", "New in Explore.") : T("Explorer est à jour.", "Explore is up to date."))}${hors}`);
   });
 })();

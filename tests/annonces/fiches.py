@@ -322,3 +322,11 @@ Disponible le 15/11/2026
  dict(nom="Alerte Leboncoin", url="https://www.leboncoin.fr/ad/ventes_immobilieres/7",
   text="Appartement 2 pièces 38 m²\n415 000 €\nParis 75020 Gambetta", attendu=dict(price=415000, surface=38, rooms=2, postcode="75020", quartier="Gambetta")),
 ]
+
+# Liste de résultats SeLoger en location (page lue par l'extension) : « 2 900 €/mois » n'est pas un prix au m²
+EMAILS += [
+ dict(nom="Liste SeLoger locations", n=2, prix=[2900, 4000], html="""<html><body><ul>
+<li><a href="https://www.seloger.com/annonces/locations/appartement/paris-7eme-75/1.htm"><img src="https://img.ex.fr/l1.jpg" width="280" height="180"></a><div><span>2 900 €/mois</span></div><div>Appartement à louer</div><div>3 pièces · 1 chambre · 65 m² · 1er étage</div><div>Saint Thomas d'Aquin, Paris 7ème arrondissement (75007)</div></li>
+<li><a href="https://www.seloger.com/annonces/locations/appartement/paris-16eme-75/2.htm"><img src="https://img.ex.fr/l2.jpg" width="280" height="180"></a><div><span>4 000 €/mois</span></div><div>Appartement à louer</div><div>3 pièces · 2 chambres · 93 m² · 6ème étage</div><div>Muette, Paris 16ème arrondissement (75016)</div></li>
+</ul></body></html>"""),
+]

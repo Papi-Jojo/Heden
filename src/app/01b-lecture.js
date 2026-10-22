@@ -295,13 +295,13 @@ function extractCards(root, base) {
   // loyers : un montant suivi de « /mois », « CC », « charges comprises » (ou sur une page de locations)
   const RR = /(\d{1,2}[\s\u00a0\u202f\u2009.]?\d{3}|\d{3,4})(?:[.,]\d{1,2})?\s?(?:€|eur\b|euros?\b)/gi;
   let page = ""; try { page = String(base || (root.ownerDocument && root.ownerDocument.defaultView && root.ownerDocument.defaultView.location.href) || ""); } catch (e) {}
-  const rentPage = /\/locations?(?:[\/_-]|$)|\/louer|a-louer|transaction=location|categorie=locations/i.test(page);
+  const rentPage = /\/locations?(?:[\/_-]|$)|\/louer|a-louer|transaction=location|categorie=locations|distributionTypes=Rent|projects=1(?:&|$)|\/recherche\/location\//i.test(page);
   const prices = s => {
     const o = [];
     for (const m of s.matchAll(PR)) { const a = s.slice(m.index + m[0].length, m.index + m[0].length + 14).toLowerCase(); if (/^\s*(\/|par |le |du |hc|cc|charges)/.test(a)) continue; const v = +m[1].replace(/\D/g, ""); if (v >= 30000 && v <= 20000000) o.push(v); }
     for (const m of s.matchAll(RR)) {
       const a = s.slice(m.index + m[0].length, m.index + m[0].length + 20).toLowerCase(), b = s.slice(Math.max(0, m.index - 26), m.index).toLowerCase();
-      if (/(dont|charges?|honoraires|frais|d[ée]p[ôo]t|garantie|caution|[ée]tat des lieux)[^\d]{0,18}$/.test(b) || /^\s*(hc\b|h\.c|hors charges|de charges|\/ ?m|par m|m²)/.test(a)) continue;
+      if (/(dont|charges?|honoraires|frais|d[ée]p[ôo]t|garantie|caution|[ée]tat des lieux)[^\d]{0,18}$/.test(b) || /^\s*(hc\b|h\.c|hors charges|de charges|\/ ?m(?:²|2\b)|par m(?:²|2\b|[eè]tre)|m²)/.test(a)) continue;
       const tagged = /^\s*(\/ ?mois|par mois|mensuel|cc\b|c\.c|charges comprises)/.test(a), v = +m[1].replace(/\D/g, "");
       if ((tagged || rentPage) && v >= 200 && v <= 15000 && !o.includes(v)) o.push(v);
     }
@@ -371,7 +371,7 @@ function extractCards(root, base) {
   return out;
 }
 /* Page d'une seule annonce (et pas une page de résultats) */
-const isDetailUrl = u => /-r\d{6,}\b|\/annonces\/achat\/[^?#]+\/\d+\.htm|\/ad\/[a-z_]+\/\d+|\/vi\/\d+\.htm|\/annonce\/(?:vente|achat)\/|detail-vente|\/annonces\/annonce-|\/annonce-[a-z0-9-]+-\d+\.htm|\/annonce-immobiliere\//i.test(u || "");
+const isDetailUrl = u => /-r\d{6,}\b|\/annonces\/(?:achat|locations?)\/[^?#]+\/\d+\.htm|\/ad\/[a-z_]+\/\d+|\/vi\/\d+\.htm|\/annonce\/(?:vente|achat|location)\/|detail-(?:vente|location)|\/annonces\/annonce-|\/annonce-[a-z0-9-]+-\d+\.htm|\/annonce-immobiliere\//i.test(u || "");
 const SITE_NAMES = {"seloger.com": "SeLoger", "pap.fr": "PAP", "leboncoin.fr": "Leboncoin", "bienici.com": "Bien’ici", "logic-immo.com": "Logic-immo", "lefigaro.fr": "Figaro Immobilier", "orpi.com": "Orpi", "century21.fr": "Century 21", "laforet.com": "Laforêt", "guy-hoquet.com": "Guy Hoquet", "jinka.fr": "Jinka"};
 const siteName = host => { const h = String(host || "").toLowerCase().replace(/^www\./, ""); const k = Object.keys(SITE_NAMES).find(x => h === x || h.endsWith("." + x)); return k ? SITE_NAMES[k] : /\./.test(h) ? h : String(host || ""); };   // déjà un nom (« SeLoger ») : inchangé
 

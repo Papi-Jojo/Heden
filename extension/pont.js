@@ -11,7 +11,9 @@
     rep({ok: true});
   });
   window.addEventListener("message", e => {
-    if (e.source !== window || !e.data || e.data.type !== "heden-ext-ack") return;
+    if (e.source !== window || !e.data) return;
+    if (e.data.type === "heden-app-pret") { try { chrome.runtime.sendMessage({type: "langue", lang: localStorage.getItem("heden.lang") || "fr"}); } catch (er) {} return; }   // connecté : ce qui attendait peut partir
+    if (e.data.type !== "heden-ext-ack") return;
     try { chrome.runtime.sendMessage(Object.assign({}, e.data, {type: "ack"})); } catch (er) {}
   });
 })();

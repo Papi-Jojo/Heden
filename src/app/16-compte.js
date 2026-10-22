@@ -800,6 +800,7 @@ async function cloudRefresh(force) {
   setCloudStatus("ok");
   rerenderAll();
   processInbox(); processVivier(); autoShare();
+  try { window.postMessage({type: "heden-app-pret"}, location.origin); } catch (e) {}   // l'extension renvoie les pages gardées en attendant la connexion
 }
 
 function rerenderAll() {
