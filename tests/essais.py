@@ -422,6 +422,59 @@ def questionnaire(pw):
     assert not e.erreurs, e.erreurs; e.fermer()
 
 
+
+@essai
+def extension(pw):
+    """L'extension lit la liste de résultats et la fiche que l'utilisateur ouvre et les envoie dans Explorer ;
+    une annonce revue rafraîchit son prix (historique), une fiche complète apporte toutes ses photos, une fiche retirée sort du flux."""
+    import subprocess, tempfile
+    from outils import RACINE, routes, INIT
+    out = tempfile.mkdtemp() + "/extension/"
+    r = subprocess.run(["node", "scripts/build/extension.mjs"], cwd=RACINE, capture_output=True, text=True,
+                       env=dict(os.environ, HEDEN_URL=B.rsplit("/", 1)[0] + "/", HEDEN_EXT_OUT=out))
+    assert r.returncode == 0, r.stderr[-800:]
+    ctx = pw.chromium.launch_persistent_context(tempfile.mkdtemp(), headless=True, channel="chromium", viewport={"width": 1280, "height": 900}, service_workers="block",
+                                                args=[f"--disable-extensions-except={out}", f"--load-extension={out}"])
+    prix = {"b": 580000}
+    carte = lambda i, p, s, a: f'<li><a href="https://www.seloger.com/annonces/achat/appartement/paris-{a}eme-75/{900000 + i}.htm"><img src="https://photos.ex.fr/c{i}.jpg"><p>Appartement 3 pièces {s} m² Paris {a}e {p:,} €</p></a></li>'.replace(",", " ")
+    def portail(rt):
+        u = rt.request.url
+        if "photos.ex.fr" in u: return rt.fulfill(body=b"", content_type="image/jpeg")
+        if "/recherche" in u:
+            cs = [carte(1, 615000, 64, 11), carte(2, prix["b"], 58, 18), carte(3, 720000, 70, 17), carte(4, 499000, 45, 10)]
+            return rt.fulfill(body=f"<html><head><title>Achat Paris</title></head><body><h1>1 234 annonces</h1><ul>{''.join(cs)}</ul><a rel=next href='https://www.seloger.com/recherche?page=2'>Suivant</a></body></html>", content_type="text/html; charset=utf-8")
+        if "/900001.htm" in u:
+            etat = {"classified": {"medias": {"images": [{"url": f"https://photos.ex.fr/g{k}.jpg"} for k in range(9)]}, "description": "Appartement traversant au 4e étage avec ascenseur, balcon, DPE C, 12 rue Oberkampf."}}
+            return rt.fulfill(body=f"<html><head><title>Appartement 3 pièces 64 m² Paris 11e</title></head><body><h1>Appartement 3 pièces 64 m²</h1><p>Paris 11e (75011) · 615 000 €</p><p>4e étage avec ascenseur, balcon, traversant. DPE C. 12 rue Oberkampf.</p><script>window.__ETAT__ = {json.dumps(etat)};</script></body></html>", content_type="text/html; charset=utf-8")
+        if "/900004.htm" in u:
+            return rt.fulfill(body="<html><head><title>Annonce expirée</title></head><body><h1>Cette annonce n’est plus disponible</h1><p>Appartement 3 pièces 45 m² Paris 10e 499 000 €</p></body></html>", content_type="text/html; charset=utf-8")
+        return rt.abort()
+    ctx.add_init_script(INIT)
+    ctx.route("**/*", lambda rt: portail(rt) if "seloger.com" in rt.request.url or "photos.ex.fr" in rt.request.url else routes(rt))
+    e = Essai.__new__(Essai); e.b = ctx; e.ctx = ctx; e.erreurs = []; e.mobile = False
+    H = e.page(); e.connexion(H, "johan@x.fr", "Johan")
+    viv = lambda: H.evaluate(DBQ).get("vivier") or []
+    bulle = lambda pg: pg.evaluate("() => { const h = [...document.documentElement.children].find(x => x.shadowRoot); return h ? h.shadowRoot.querySelector('.t').textContent : ''; }")
+    S = ctx.new_page(); S.goto("https://www.seloger.com/recherche?tri=date"); S.wait_for_timeout(7000)
+    assert len(viv()) == 4, [v.get("url") for v in viv()]
+    assert "4 nouvelles annonces" in bulle(S), bulle(S)
+    assert S.evaluate("() => !![...document.documentElement.children].find(x => x.shadowRoot).shadowRoot.querySelector('a')"), "pas de lien vers la page suivante"
+    # le lendemain : la même liste, un prix a baissé → rien de nouveau, prix à jour avec son historique
+    prix["b"] = 549000
+    S.reload(); S.wait_for_timeout(7000)
+    b = next(v for v in viv() if v["url"].endswith("900002.htm"))
+    assert len(viv()) == 4 and b["price"] == 549000 and b["prix_hist"][-1]["price"] == 580000, b
+    assert "Rien de nouveau" in bulle(S), bulle(S)
+    # la fiche complète : toutes les photos, l'étage, la rue
+    S.goto("https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/900001.htm"); S.wait_for_timeout(7000)
+    a = next(v for v in viv() if v["url"].endswith("900001.htm"))
+    assert len(a["carte"]["imgs"]) == 9 and a["data"].get("complet") and a["data"].get("floor") == 4, (len(a["carte"]["imgs"]), a["data"])
+    # une fiche retirée sort d'Explorer
+    S.goto("https://www.seloger.com/annonces/achat/appartement/paris-10eme-75/900004.htm"); S.wait_for_timeout(7000)
+    assert next(v for v in viv() if v["url"].endswith("900004.htm"))["gone_at"], "annonce retirée toujours dans le flux"
+    assert not e.erreurs, e.erreurs; ctx.close()
+
+
 if __name__ == "__main__":
     voulus = sys.argv[1:]
     srv = demarrer(); echecs = 0

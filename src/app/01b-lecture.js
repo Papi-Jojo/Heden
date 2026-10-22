@@ -422,6 +422,35 @@ async function ademeCheck(f, force) {
 }
 
 /* ---------- Vivier : un e-mail d'alerte → annonces (même lecture dans l'app et dans le traitement automatique) ---------- */
+/* Ce que montre la page ouverte (annonce ou liste de résultats) : textes, données de la page, galerie complète, cartes d'annonces.
+   Sert au bouton + Heden et à l'extension : rien d'autre que la page que l'utilisateur regarde. X = extractCards.
+   Autonome (aucune autre fonction de l'app) : le bouton l'emporte telle quelle par toString(). */
+function lirePage(X) {
+  const m={};document.querySelectorAll('meta[property^="og:"],meta[name="description"]').forEach(x=>m[x.getAttribute('property')||x.getAttribute('name')]=x.content);
+  const ld=[...document.querySelectorAll('script[type="application/ld+json"]')].map(s=>s.textContent).slice(0,8);
+  const big=[...document.images].filter(i=>i.naturalWidth>=500);
+  let g=big[0]&&big[0].parentElement;for(let k=0;g&&k<6&&g.querySelectorAll('img').length<3;k++)g=g.parentElement;
+  const bs=v=>(v||'').split(',').map(x=>x.trim().split(/\s+/)[0]).filter(Boolean).pop();
+  const im=[...big.map(i=>i.currentSrc||i.src),...(g?[...g.querySelectorAll('img,source')].map(i=>bs(i.getAttribute('srcset')||i.getAttribute('data-srcset'))||i.getAttribute('data-src')||i.getAttribute('data-lazy-src')||i.getAttribute('data-original')||i.currentSrc||i.src):[])].map(u=>{try{return new URL(u,location.href).href}catch(e){return''}}).filter(u=>/^https?:/.test(u)&&!/logo|avatar|icon|sprite|placeholder|blank|spacer|transparent|data:/i.test(u)).filter((v,i,a)=>a.indexOf(v)===i).slice(0,40);
+  const G=[];
+  let T='';
+  const so=new Set();
+  let nn=0;
+  const W=(o,p,d)=>{if(!o||typeof o!=='object'||d>12||so.has(o)||nn++>150000)return;so.add(o);if(Array.isArray(o)){const us=o.map(x=>typeof x==='string'?x:x&&typeof x==='object'?(x.url||x.src||x.uri||x.href||x.large||x.original||''):'').filter(u=>typeof u==='string'&&/^https?:\/\/[^\s"]+\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(u));if((us.length>=2||/floor|plan/i.test(p)&&us.length)&&us.length>=o.length*.6&&/imag|photo|media|pictur|galer|pics/i.test(p)&&!/logo|agen|avatar|simil|recomm|reco|other|autre|thumb/i.test(p))G.push([p,us]);o.slice(0,200).forEach((x,i)=>W(x,p+'.'+i,d+1))}else for(const k of Object.keys(o).slice(0,400)){const v=o[k];if(typeof v==='string'&&v.length>T.length&&v.length<20000&&/descri/i.test(k)&&!/meta|seo/i.test(p+k))T=v;W(v,p+'.'+k,d+1)}};
+  try{for(const k of Object.keys(window))if(/^__/.test(k))W(window[k],k,0);
+  const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')W(JSON.parse(nd.textContent),'next',0)}catch(e){}const fl=p=>/floor|plan/i.test(p)?1:0,lg=p=>/large|big|full|origin|hd/i.test(p)?1:0;G.sort((a,b)=>fl(a[0])-fl(b[0])||lg(b[0])-lg(a[0])||b[1].length-a[1].length);
+  const fk=u=>u.split(/[?#]/)[0].split('/').pop();
+  const gal=[],gk=new Set();for(const [p,us] of G){if(gal.length&&!fl(p))continue;for(const u of us){const k=fk(u);if(!gk.has(k)){gk.add(k);gal.push(u)}}}const IM=(gal.length?gal:im).slice(0,40);
+  const BT=document.body.innerText||'';
+  const hs=[];document.querySelectorAll('ul,ol,div').forEach(u=>{const k=[...u.children];if(k.length<7||k.length>8||!k.every(c=>/^[A-G]$/.test(c.textContent.trim())))return;
+  const a=k.find(c=>/activ|select|current|highlight|\bon\b/i.test(c.className+' '+(c.getAttribute('aria-current')||'')));if(a)hs.push((u.parentElement.textContent||'').replace(/\s+/g,' ').replace(/(?:\b[A-G]\s?){6,}/,'').trim().slice(0,40)+' : '+a.textContent.trim())});
+  let it=[];
+  try{it=X(document.body).slice(0,60)}catch(e){}const tl=[...document.querySelectorAll('a[href^="tel:"]')].map(a=>a.getAttribute('href').slice(4)+'|'+(a.textContent||'').trim().slice(0,60)).slice(0,6);
+  const ml=[...document.querySelectorAll('a[href^="mailto:"]')].map(a=>a.getAttribute('href').slice(7).split('?')[0]).slice(0,4);
+  let st='';
+  try{for(const k of ['__NEXT_DATA__','__INITIAL_STATE__','__PRELOADED_STATE__','__NUXT__','__APOLLO_STATE__','__REDIAL_PROPS__']){const w=window[k];if(w&&typeof w==='object'&&!(w instanceof Element))st+=JSON.stringify(w).slice(0,800000)}const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')st+=nd.textContent.slice(0,800000)}catch(e){}const sn=[];for(const re of [/"(?:agency|agence|advertiser|seller|contact|owner|publisher|professional|realEstateAgency|annonceur|store)[A-Za-z]*"\s*:\s*\{[^{}]{0,1500}\}/gi,/"(?:agencyName|agency_name|advertiserName|sellerName|storeName|companyName|contactName|brandName|tradeName)"\s*:\s*"[^"]{2,90}"/gi,/"(?:phone|phoneNumber|telephone|mobile|phoneNumbers?)"\s*:\s*\[?"\+?[\d .()-]{8,20}"/gi]){let q;while((q=re.exec(st))&&sn.length<24)sn.push(q[0].slice(0,1600))}const d={v:6,url:location.href,title:document.title,meta:m,ld:ld,imgs:IM,text:(hs.join('\n')+'\n'+BT+(T&&!BT.includes(T.slice(0,60))?'\n'+T:'')).slice(0,40000),items:it,hints:{tels:tl,mails:ml,state:sn}};
+  return d;
+}
 const VIVIER_CHAMPS = ["bedrooms", "floor", "floors", "top", "elevator", "outdoor", "outdoorArea", "dpe", "dpeKwh", "charges", "taxe", "lots", "works", "quiet", "traversant", "bright",
   "cave", "parking", "view", "building", "exposure", "street", "metro", "quartier", "city", "furnished", "rentHC", "rentCharges", "deposit", "agencyFee", "viager", "rente",
   "seller", "agencyName", "agencyPhone", "ref", "lat", "lng", "precise", "placeLevel", "placedBy", "ademe"];
@@ -439,6 +468,24 @@ function vivierLire(m, parse = s => new DOMParser().parseFromString(s, "text/htm
   }).filter(Boolean);
   const ret = gone && doc ? [...doc.querySelectorAll("a[href]")].map(a => normUrl(a.getAttribute("href"))).filter(u => /^https?:/.test(u)).slice(0, 40) : [];
   return {ann, ret};
+}
+/* Une page lue par l'extension → annonces pour le vivier : chaque carte d'une liste de résultats, ou la fiche complète d'une annonce.
+   Une fiche qui dit « annonce retirée » va dans gone : le vivier la sort du flux. */
+function vivierDepuisPage(d) {
+  const url = String(d.url || ""), src = siteName(hostOf(url)), items = Array.isArray(d.items) ? d.items : [];
+  const mk = (f, carte, complet) => ({f, a: {url: normUrl(carte.url), source: src, kind: f.kind === "location" ? "location" : "achat", postcode: f.postcode || null, price: f.price,
+    surface: f.surface || null, rooms: f.rooms || null, carte, data: Object.assign(vivierData(f), complet ? {complet: true, url: normUrl(carte.url)} : {})}});
+  if (d.liste || (items.length >= 3 && !isDetailUrl(url))) {
+    const ann = items.slice(0, 80).map(c => {
+      const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)});
+      return /^https?:/.test(c.url || "") && f.price && (f.surface || f.rooms) ? mk(f, {url: c.url, text: String(c.text || "").slice(0, 400), imgs: cardImgs(c).slice(0, 6)}, false) : null;
+    }).filter(Boolean);
+    return {liste: true, ann, gone: []};
+  }
+  const f = Object.assign(parseListing(d), {fullPage: true});
+  if (f.gone) return {liste: false, ann: [], gone: [normUrl(url)], f};
+  const resume = String((d.meta && (d.meta["og:description"] || d.meta.description)) || d.text || "").replace(/\s+/g, " ").slice(0, 400);
+  return {liste: false, f, gone: [], ann: f.price && (f.surface || f.rooms) ? [mk(f, {url, text: `${d.title || ""}\n${resume}`.slice(0, 600), imgs: (f.photos || []).slice(0, 30)}, true)] : []};
 }
 /* rue lue dans l'annonce → Base Adresse Nationale (Géoplateforme IGN) ; sans mémoire, pour le traitement automatique */
 async function banRue(f) {

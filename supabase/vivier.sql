@@ -171,3 +171,49 @@ begin
 end $$;
 revoke all on function public.vivier_retraiter(text, int) from public;
 grant execute on function public.vivier_retraiter(text, int) to anon, authenticated;
+
+-- L'extension Heden : ce qu'un membre voit en naviguant (liste de résultats ou fiche d'annonce) entre dans le vivier.
+-- Une annonce revue rafraîchit sa date et son prix (historique gardé) ; une fiche complète l'emporte sur une carte ;
+-- une page qui dit « annonce retirée » la sort du flux. Rien n'est lu hors des pages ouvertes par le membre.
+drop function if exists public.vivier_deposer(jsonb);
+create or replace function public.vivier_deposer(p_annonces jsonb, p_retirees jsonb default '[]'::jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare a jsonb; v uuid; nv int := 0; nm int := 0; prix numeric; surf numeric; pc text; nb int; k text; u text; complet boolean; nouv int;
+begin
+  if auth.uid() is null then raise exception 'non connecté'; end if;
+  nouv := (select count(*) from vivier where first_seen > now() - interval '1 day');
+  for a in select x.value from jsonb_array_elements(coalesce(p_annonces, '[]'::jsonb)) as x limit 80 loop
+    u := left(coalesce(a->>'url', ''), 2000); k := case when a->>'kind' = 'location' then 'location' else 'achat' end;
+    prix := nullif(a->>'price', '')::numeric; surf := nullif(a->>'surface', '')::numeric; nb := nullif(a->>'rooms', '')::int; pc := left(a->>'postcode', 5);
+    complet := coalesce((a->'data'->>'complet')::boolean, false);
+    if prix is null or prix <= 0 or length(u) < 8 or length(coalesce(a->'carte', '{}'::jsonb)::text) > 12000 or length(coalesce(a->'data', '{}'::jsonb)::text) > 20000 then continue; end if;
+    v := null;
+    select id into v from vivier
+      where url = u or data->>'url' = u
+         or (pc is not null and postcode = pc and kind = k and surf is not null and abs(surface - surf) <= 1.5
+             and (nb is null or rooms is null or rooms = nb) and abs(price - prix) / greatest(price, prix) < 0.2 and last_seen > now() - interval '60 days')
+      order by (url = u or data->>'url' = u) desc, last_seen desc limit 1;
+    if v is null then
+      if nouv >= 5000 then continue; end if;   -- garde-fou : 5 000 annonces nouvelles par jour
+      insert into vivier(url, source, kind, postcode, price, surface, rooms, carte, data)
+      values (u, left(coalesce(a->>'source', ''), 60), k, pc, prix, surf, nb, coalesce(a->'carte', '{}'::jsonb), coalesce(a->'data', '{}'::jsonb));
+      nv := nv + 1; nouv := nouv + 1;
+    else
+      update vivier set
+        prix_hist = case when price <> prix then prix_hist || jsonb_build_object('price', price, 'at', now()) else prix_hist end,
+        price     = prix,
+        carte     = case when jsonb_array_length(coalesce(a->'carte'->'imgs', '[]'::jsonb)) > jsonb_array_length(coalesce(carte->'imgs', '[]'::jsonb))
+                           or (complet and jsonb_array_length(coalesce(a->'carte'->'imgs', '[]'::jsonb)) > 0) then a->'carte' else carte end,
+        data      = case when complet then data || coalesce(a->'data', '{}'::jsonb) else coalesce(a->'data', '{}'::jsonb) || data end,
+        last_seen = now(), gone_at = null
+      where id = v;
+      nm := nm + 1;
+    end if;
+  end loop;
+  update vivier set gone_at = now()
+    where gone_at is null and (url in (select left(x.value, 2000) from jsonb_array_elements_text(coalesce(p_retirees, '[]'::jsonb)) as x)
+                            or data->>'url' in (select left(x.value, 2000) from jsonb_array_elements_text(coalesce(p_retirees, '[]'::jsonb)) as x));
+  return jsonb_build_object('nouvelles', nv, 'revues', nm);
+end $$;
+revoke all on function public.vivier_deposer(jsonb, jsonb) from public, anon;
+grant execute on function public.vivier_deposer(jsonb, jsonb) to authenticated;

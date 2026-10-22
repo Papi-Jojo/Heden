@@ -289,3 +289,5 @@ input,textarea{caret-color:var(--email)}
 .lask__x{font-size:14px;line-height:20px;color:var(--ardoise-2)}
 .lask__acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
 .lask .hint2{font-size:12.5px}
+.steps code{font:600 12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 6px;border-radius:6px;background:var(--enduit);color:var(--ardoise)}
+.steps .steps__p{margin:0}.steps .steps__p+.steps__p{margin-top:4px}.steps a.btn{text-decoration:none}.steps .steps__btn{align-self:flex-start;margin:2px 0 6px}

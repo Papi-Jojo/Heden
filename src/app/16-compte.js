@@ -833,6 +833,7 @@ function cloudInit() {
   });
   cloud.client.auth.onAuthStateChange((event, session) => {
     const u = session && session.user ? session.user : null;
+    cloud.authPret = true;
     if (u && (!cloud.user || cloud.user.id !== u.id)) {
       cloud.user = u; cloud.step = "email"; cloud.synced = null; cloud.names = {};
       renderAccountChip();

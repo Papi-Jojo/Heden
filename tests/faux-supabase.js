@@ -27,6 +27,7 @@ window.supabase = { createClient() {
       in(k, vs) { q.filters.push(r => vs.includes(r[k])); return api; },
       is(k, v) { q.filters.push(r => (r[k] ?? null) === v); return api; },
       gt(k, v) { q.filters.push(r => r[k] > v); return api; },
+      not(k, op, v) { q.filters.push(r => op === "is" ? (r[k] ?? null) !== v : r[k] !== v); return api; },
       maybeSingle() { q.single = true; return api; },
       order() { return api; },
       limit(n) { q.limit = n; return api; },
@@ -88,6 +89,18 @@ window.supabase = { createClient() {
       const at = new Date().toISOString(); db.vivier = db.vivier || [];
       for (const a of args.p_annonces || []) db.vivier.push({id: uuid(), url: a.url, source: a.source, kind: a.kind, postcode: a.postcode, price: a.price, surface: a.surface, rooms: a.rooms, carte: a.carte, data: a.data || {}, first_seen: at, last_seen: at, gone_at: null});
       out = (args.p_annonces || []).length;
+    } else if (name === "vivier_deposer") {   // l'extension : annonce revue → prix et date rafraîchis ; nouvelle → ajoutée ; retirée → sortie du flux
+      const at = new Date().toISOString(); db.vivier = db.vivier || []; let nv = 0, nm = 0;
+      for (const a of args.p_annonces || []) {
+        const v = db.vivier.find(x => x.url === a.url || (x.data || {}).url === a.url || (a.postcode && x.postcode === a.postcode && x.kind === a.kind && a.surface && Math.abs(x.surface - a.surface) <= 1.5 && Math.abs(x.price - a.price) / Math.max(x.price, a.price) < .2));
+        if (!v) { db.vivier.push({id: uuid(), url: a.url, source: a.source, kind: a.kind, postcode: a.postcode, price: a.price, surface: a.surface, rooms: a.rooms, carte: a.carte, data: a.data || {}, prix_hist: [], first_seen: at, last_seen: at, gone_at: null}); nv++; continue; }
+        if (v.price !== a.price) { v.prix_hist = (v.prix_hist || []).concat({price: v.price, at}); v.price = a.price; }
+        const comp = (a.data || {}).complet;
+        if ((a.carte.imgs || []).length > ((v.carte || {}).imgs || []).length || (comp && (a.carte.imgs || []).length)) v.carte = a.carte;
+        v.data = comp ? Object.assign({}, v.data, a.data) : Object.assign({}, a.data, v.data); v.last_seen = at; v.gone_at = null; nm++;
+      }
+      for (const u of args.p_retirees || []) db.vivier.forEach(x => { if (!x.gone_at && (x.url === u || (x.data || {}).url === u)) x.gone_at = at; });
+      out = {nouvelles: nv, revues: nm};
     } else if (name === "vivier_enrichir") {
       const v = (db.vivier || []).find(x => x.url === args.p_url || (x.postcode === args.p_bien.postcode && Math.abs(x.surface - args.p_bien.surface) <= 1.5));
       if (v) { v.data = Object.assign({}, v.data, args.p_data, {url: args.p_url, complet: true}); if (args.p_imgs.length > (v.carte.imgs || []).length) v.carte.imgs = args.p_imgs; }

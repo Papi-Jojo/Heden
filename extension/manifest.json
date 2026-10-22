@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Heden",
+  "version": "__VERSION__",
+  "description": "Envoie dans Heden les annonces des pages immobilières que vous ouvrez : listes de résultats et fiches complètes.",
+  "icons": {"16": "icone.png", "32": "icone.png", "48": "icone.png", "128": "icone.png"},
+  "action": {"default_popup": "popup.html", "default_title": "Heden", "default_icon": {"16": "icone.png", "32": "icone.png"}},
+  "background": {"service_worker": "fond.js"},
+  "permissions": ["storage"],
+  "host_permissions": ["__HEDEN__*"],
+  "content_scripts": [
+    {"matches": ["__HEDEN__*"], "js": ["pont.js"], "run_at": "document_idle"},
+    {"matches": __SITES__, "js": ["lecture.js"], "run_at": "document_idle", "world": "MAIN"},
+    {"matches": __SITES__, "js": ["lecteur.js"], "run_at": "document_idle"}
+  ]
+}

@@ -121,6 +121,11 @@ function mergeCard(card, opts = {}) {
    Prix (avec historique), disponibilité, agence, infos manquantes. Les corrections, notes,
    statut et coordonnées précises restent ceux de l'utilisateur. */
 function refreshFromPage(ex, p) {
+  const news = applyPage(ex, p);
+  lui.openId = ex.id; if (currentTab !== "annonces") setTab("annonces"); else renderListings();
+  toast(news.length ? "Mise à jour : " + news.join(", ") : "Rien n’a changé sur le site");
+}
+function applyPage(ex, p) {
   const now = Date.now(), news = [];
   ex.lastSeen = now; ex.checkedAt = now; ex.fullPage = true;
   if (p.gone) { if (!ex.gone) news.push("plus en ligne sur le site"); ex.gone = ex.gone || now; }
@@ -142,8 +147,7 @@ function refreshFromPage(ex, p) {
     if (p.url && !ex.url) ex.url = p.url;
   }
   ex.updatedAt = now; save(); renderListingPins();
-  lui.openId = ex.id; if (currentTab !== "annonces") setTab("annonces"); else renderListings();
-  toast(news.length ? "Mise à jour : " + news.join(", ") : "Rien n’a changé sur le site");
+  return news;
 }
 
 /* ---------- Import d'une page de résultats ---------- */
@@ -279,13 +283,15 @@ async function loadVivier() {
   if (!cloud.user || !cloud.client || cloud.noVivier) return null;
   if (cloud.vivierRows && Date.now() - (cloud.vivierAt || 0) < 300000) return cloud.vivierRows;
   const since = new Date(Date.now() - 30 * 864e5).toISOString();
-  const {data, error} = await cloud.client.from("vivier").select("id, url, source, kind, postcode, price, surface, rooms, carte, data, first_seen, last_seen")
+  const {data, error} = await cloud.client.from("vivier").select("id, url, source, kind, postcode, price, surface, rooms, carte, data, prix_hist, first_seen, last_seen")
     .is("gone_at", null).gt("last_seen", since).order("first_seen", {ascending: false}).limit(400);
   if (error) { if (schemaMissing(error)) cloud.noVivier = true; return null; }
   cloud.vivierAt = Date.now();
   cloud.vivierRows = (data || []).map(r => {
-    const c = r.carte || {}, d = r.data || {}, item = {url: d.url || c.url || r.url, text: c.text || "", imgs: c.imgs || [], price: +r.price, source: r.source, origin: "vivier", data: d, first: Date.parse(r.first_seen) || 0};
-    const f = Object.assign(parseListing({url: item.url, text: item.text, imgs: item.imgs}), d, {price: item.price, id: "v:" + r.id, status: "nouvelle", origin: "vivier", source: r.source, addedAt: item.first, firstSeen: item.first});
+    const c = r.carte || {}, d = r.data || {}, item = {url: d.url || c.url || r.url, text: c.text || "", imgs: c.imgs || [], price: +r.price, source: r.source, origin: "vivier", data: d, first: Date.parse(r.first_seen) || 0, last: Date.parse(r.last_seen) || 0};
+    const hist = (Array.isArray(r.prix_hist) ? r.prix_hist : []).map(x => ({price: +x.price, at: Date.parse(x.at) || 0})).filter(x => x.price > 0), lastH = hist[hist.length - 1];
+    const f = Object.assign(parseListing({url: item.url, text: item.text, imgs: item.imgs}), d, {price: item.price, id: "v:" + r.id, status: "nouvelle", origin: "vivier", source: r.source, addedAt: item.first, firstSeen: item.first, lastSeen: item.last,
+      priceHistory: hist, dropped: !!(lastH && lastH.price > item.price && Date.now() - lastH.at < 14 * 864e5)});
     if (!(f.photos || []).length) f.photos = item.imgs;
     const ar = !f.lat && /^750(\d\d)$/.exec(f.postcode || ""), ctr = ar && ARR_CENTRE[+ar[1] - 1];
     if (ctr) Object.assign(f, {lat: ctr[0], lng: ctr[1], precise: false, placeLevel: "cp", est: estParCp[f.postcode] || undefined});
@@ -294,10 +300,58 @@ async function loadVivier() {
   });
   // une annonce déjà gardée dont le prix a changé dans le flux Heden : mise à jour (baisse signalée)
   let up = 0;
-  for (const r of cloud.vivierRows) { const ex = listings().find(x => x.vivierId === r.id || sameListing(x, r.f)); if (ex && r.item.price && ex.price !== r.item.price && r.item.first >= (ex.firstSeen || 0) - 864e5) { const m = mergeCard(r.item, {source: r.item.source}); if (m.kind === "drop" || m.kind === "change") up++; } }
+  for (const r of cloud.vivierRows) { const ex = listings().find(x => x.vivierId === r.id || sameListing(x, r.f)); if (ex && r.item.price && ex.price !== r.item.price && r.item.last >= (ex.priceAt || ex.firstSeen || 0)) { const m = mergeCard(r.item, {source: r.item.source}); if (m.kind === "drop" || m.kind === "change") up++; } }
+  // retirée du site (vue par un membre ou annoncée par une alerte) : signalée sur l'annonce gardée
+  const ids = listings().filter(x => x.vivierId && !x.gone).map(x => x.vivierId).slice(0, 200);
+  if (ids.length) { const {data: g} = await cloud.client.from("vivier").select("id, gone_at").in("id", ids).not("gone_at", "is", null);
+    (g || []).forEach(row => { const ex = listings().find(x => x.vivierId === row.id); if (ex && !ex.gone) { ex.gone = Date.parse(row.gone_at) || Date.now(); ex.updatedAt = Date.now(); up++; } }); }
   if (up) { save(); renderListingPins(); }
   return cloud.vivierRows;
 }
+/* ---------- Extension Heden : les pages lues pendant la navigation arrivent dans l'onglet Heden ----------
+   Listes de résultats et fiches vont dans Explorer (vivier commun) ; une annonce déjà dans Mes annonces ou les Favoris
+   est mise à jour (prix, photos, disponibilité). L'extension ne lit que les pages que l'utilisateur ouvre. */
+const EXT_VERSION = "1.0.0", ext = {v: null};
+const attendre = async (ok, ms) => { for (let t = 0; !ok() && t < ms; t += 200) await new Promise(r => setTimeout(r, 200)); return ok(); };
+async function recevoirPage(raw) {
+  const {safe, items} = cleanPage(raw), d = Object.assign({}, safe, {items, liste: !!raw.liste});
+  await attendre(() => cloud.authPret || !cloudReady, 8000);
+  if (cloud.user) await attendre(() => !!cloud.lastRefresh, 10000);
+  const r = vivierDepuisPage(d);
+  let maj = 0;
+  if (!r.liste && r.f) {
+    const ex = listings().find(x => sameListing(x, r.f) || (x.url && normUrl(x.url) === normUrl(d.url)));
+    if (ex) { applyPage(ex, r.f); maj = 1; }
+  } else for (const x of r.ann) {
+    if (!listings().some(y => sameListing(y, x.f))) continue;
+    const m = mergeCard({url: x.a.carte.url, text: x.a.carte.text, imgs: x.a.carte.imgs, price: x.f.price}, {source: x.a.source});
+    if (m.kind === "drop" || m.kind === "change") maj++;
+  }
+  if (maj) { save(); renderListingPins(); if ((currentTab === "annonces" || currentTab === "favoris")) renderListings(); }
+  if (!cloud.user || !cloud.client) return {liste: r.liste, n: r.ann.length, maj, err: "connexion"};
+  if (!r.ann.length && !r.gone.length) return {liste: r.liste, n: 0, maj};
+  for (const x of r.ann) {
+    await banRue(x.f); if (!r.liste) await ademeCheck(x.f);
+    x.a.data = Object.assign(vivierData(x.f), x.a.data.complet ? {complet: true, url: x.a.data.url} : {});
+  }
+  const {data, error} = await cloud.client.rpc("vivier_deposer", {p_annonces: r.ann.map(x => x.a), p_retirees: r.gone});
+  if (error) return {liste: r.liste, n: 0, maj, err: schemaMissing(error) ? "base" : "envoi"};
+  cloud.vivierAt = 0;
+  if (currentTab === "annonces" && lui.feed === "explorer" && !lui.openId) loadVivier().then(() => renderListings());
+  return {liste: r.liste, n: r.ann.length, nouvelles: (data && data.nouvelles) || 0, revues: (data && data.revues) || 0, gone: r.gone.length, maj};
+}
+window.addEventListener("message", e => {
+  if (e.source !== window || e.origin !== location.origin) return;
+  const m = e.data; if (!m || typeof m !== "object") return;
+  if (m.type === "heden-ext-ready") {
+    ext.v = String(m.v || "1"); try { localStorage.setItem("heden.ext", ext.v); } catch (er) {}
+    return;
+  }
+  if (m.type === "heden-ext-page" && m.d && typeof m.d === "object")
+    recevoirPage(m.d).catch(er => { console.warn("Heden : page de l'extension", er); return {n: 0, err: "envoi"}; })
+      .then(res => window.postMessage(Object.assign({type: "heden-ext-ack", id: m.id}, res), location.origin));
+});
+const extInstalled = () => { try { return !!(ext.v || localStorage.getItem("heden.ext")); } catch (e) { return !!ext.v; } };
 /* une annonce ouverte avec le bouton + Heden enrichit sa copie du vivier (toutes les photos, fiche complète) */
 function vivierEnrichir(p) {
   if (!cloud.user || !cloud.client || cloud.noVivier || !p || !p.price || !cleanWeb(p.url)) return;
@@ -732,8 +786,9 @@ const bmkOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) ? "ios" : /Andr
 let srcUI = {os: null, open: null};
 function bookmarkletCode() {
   const H = location.origin + location.pathname;
-  const body = `const m={};document.querySelectorAll('meta[property^="og:"],meta[name="description"]').forEach(x=>m[x.getAttribute('property')||x.getAttribute('name')]=x.content);const ld=[...document.querySelectorAll('script[type="application/ld+json"]')].map(s=>s.textContent).slice(0,8);const big=[...document.images].filter(i=>i.naturalWidth>=500);let g=big[0]&&big[0].parentElement;for(let k=0;g&&k<6&&g.querySelectorAll('img').length<3;k++)g=g.parentElement;const bs=v=>(v||'').split(',').map(x=>x.trim().split(/\\s+/)[0]).filter(Boolean).pop();const im=[...big.map(i=>i.currentSrc||i.src),...(g?[...g.querySelectorAll('img,source')].map(i=>bs(i.getAttribute('srcset')||i.getAttribute('data-srcset'))||i.getAttribute('data-src')||i.getAttribute('data-lazy-src')||i.getAttribute('data-original')||i.currentSrc||i.src):[])].map(u=>{try{return new URL(u,location.href).href}catch(e){return''}}).filter(u=>/^https?:/.test(u)&&!/logo|avatar|icon|sprite|placeholder|blank|spacer|transparent|data:/i.test(u)).filter((v,i,a)=>a.indexOf(v)===i).slice(0,40);const G=[];let T='';const so=new Set();let nn=0;const W=(o,p,d)=>{if(!o||typeof o!=='object'||d>12||so.has(o)||nn++>150000)return;so.add(o);if(Array.isArray(o)){const us=o.map(x=>typeof x==='string'?x:x&&typeof x==='object'?(x.url||x.src||x.uri||x.href||x.large||x.original||''):'').filter(u=>typeof u==='string'&&/^https?:\\/\\/[^\\s"]+\\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(u));if((us.length>=2||/floor|plan/i.test(p)&&us.length)&&us.length>=o.length*.6&&/imag|photo|media|pictur|galer|pics/i.test(p)&&!/logo|agen|avatar|simil|recomm|reco|other|autre|thumb/i.test(p))G.push([p,us]);o.slice(0,200).forEach((x,i)=>W(x,p+'.'+i,d+1))}else for(const k of Object.keys(o).slice(0,400)){const v=o[k];if(typeof v==='string'&&v.length>T.length&&v.length<20000&&/descri/i.test(k)&&!/meta|seo/i.test(p+k))T=v;W(v,p+'.'+k,d+1)}};try{for(const k of Object.keys(window))if(/^__/.test(k))W(window[k],k,0);const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')W(JSON.parse(nd.textContent),'next',0)}catch(e){}const fl=p=>/floor|plan/i.test(p)?1:0,lg=p=>/large|big|full|origin|hd/i.test(p)?1:0;G.sort((a,b)=>fl(a[0])-fl(b[0])||lg(b[0])-lg(a[0])||b[1].length-a[1].length);const fk=u=>u.split(/[?#]/)[0].split('/').pop();const gal=[],gk=new Set();for(const [p,us] of G){if(gal.length&&!fl(p))continue;for(const u of us){const k=fk(u);if(!gk.has(k)){gk.add(k);gal.push(u)}}}const IM=(gal.length?gal:im).slice(0,40);const BT=document.body.innerText||'';const hs=[];document.querySelectorAll('ul,ol,div').forEach(u=>{const k=[...u.children];if(k.length<7||k.length>8||!k.every(c=>/^[A-G]$/.test(c.textContent.trim())))return;const a=k.find(c=>/activ|select|current|highlight|\\bon\\b/i.test(c.className+' '+(c.getAttribute('aria-current')||'')));if(a)hs.push((u.parentElement.textContent||'').replace(/\\s+/g,' ').replace(/(?:\\b[A-G]\\s?){6,}/,'').trim().slice(0,40)+' : '+a.textContent.trim())});let it=[];try{it=X(document.body).slice(0,60)}catch(e){}const tl=[...document.querySelectorAll('a[href^="tel:"]')].map(a=>a.getAttribute('href').slice(4)+'|'+(a.textContent||'').trim().slice(0,60)).slice(0,6);const ml=[...document.querySelectorAll('a[href^="mailto:"]')].map(a=>a.getAttribute('href').slice(7).split('?')[0]).slice(0,4);let st='';try{for(const k of ['__NEXT_DATA__','__INITIAL_STATE__','__PRELOADED_STATE__','__NUXT__','__APOLLO_STATE__','__REDIAL_PROPS__']){const w=window[k];if(w&&typeof w==='object'&&!(w instanceof Element))st+=JSON.stringify(w).slice(0,800000)}const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')st+=nd.textContent.slice(0,800000)}catch(e){}const sn=[];for(const re of [/"(?:agency|agence|advertiser|seller|contact|owner|publisher|professional|realEstateAgency|annonceur|store)[A-Za-z]*"\\s*:\\s*\\{[^{}]{0,1500}\\}/gi,/"(?:agencyName|agency_name|advertiserName|sellerName|storeName|companyName|contactName|brandName|tradeName)"\\s*:\\s*"[^"]{2,90}"/gi,/"(?:phone|phoneNumber|telephone|mobile|phoneNumbers?)"\\s*:\\s*\\[?"\\+?[\\d .()-]{8,20}"/gi]){let q;while((q=re.exec(st))&&sn.length<24)sn.push(q[0].slice(0,1600))}const d={v:6,url:location.href,title:document.title,meta:m,ld:ld,imgs:IM,text:(hs.join('\\n')+'\\n'+BT+(T&&!BT.includes(T.slice(0,60))?'\\n'+T:'')).slice(0,40000),items:it,hints:{tels:tl,mails:ml,state:sn}};const sm=Object.assign({},d,{text:d.text.slice(0,9000),ld:ld.map(x=>x.slice(0,5000)).slice(0,2),items:it.slice(0,30).map(c=>({url:c.url,img:c.img,imgs:(c.imgs||[]).slice(0,4),text:c.text.slice(0,240)})),hints:{tels:tl,mails:ml,state:sn.slice(0,6).map(x=>x.slice(0,500))}});const w=window.open(H+'?importer='+Date.now()+'#import='+encodeURIComponent(JSON.stringify(sm)),'heden');let n=0;const t=setInterval(()=>{if(!w||n++>40)return clearInterval(t);try{w.postMessage({type:'heden-import',data:d},'*')}catch(e){}},400);window.addEventListener('message',e=>{if(e.data==='heden-recu')clearInterval(t)});`;
-  return "javascript:" + encodeURIComponent(`(()=>{const H=${JSON.stringify(H)};const X=${extractCards.toString()};${body}})();`);
+  // lecture : lirePage (01b-lecture.js) ; envoi : une version courte dans l'adresse, la complète par message
+  const body = `const sm=Object.assign({},d,{text:d.text.slice(0,9000),ld:d.ld.map(x=>x.slice(0,5000)).slice(0,2),items:d.items.slice(0,30).map(c=>({url:c.url,img:c.img,imgs:(c.imgs||[]).slice(0,4),text:c.text.slice(0,240)})),hints:{tels:d.hints.tels,mails:d.hints.mails,state:d.hints.state.slice(0,6).map(x=>x.slice(0,500))}});const w=window.open(H+'?importer='+Date.now()+'#import='+encodeURIComponent(JSON.stringify(sm)),'heden');let n=0;const t=setInterval(()=>{if(!w||n++>40)return clearInterval(t);try{w.postMessage({type:'heden-import',data:d},'*')}catch(e){}},400);window.addEventListener('message',e=>{if(e.data==='heden-recu')clearInterval(t)});`;
+  return "javascript:" + encodeURIComponent(`(()=>{const H=${JSON.stringify(H)};const X=${extractCards.toString()};const d=(${lirePage.toString()})(X);${body}})();`);
 }
 const bmkInstalled = () => { try { return !!localStorage.getItem("heden.bmk"); } catch (e) { return false; } };
 function bmkStepsHTML(os) {
@@ -755,12 +810,31 @@ function bmkStepsHTML(os) {
 }
 function sourcesHTML(empty) {
   const os = srcUI.os || bmkOS(), al = cloud.alert, inst = bmkInstalled();
-  const open = srcUI.open ?? (empty ? "alertes" : null);
+  const pc = os === "pc", extOn = extInstalled(), extOld = extOn && ext.v && ext.v !== EXT_VERSION;
+  const open = srcUI.open ?? (empty ? (pc && !extOn ? "extension" : "alertes") : null);
   const alertStatus = !cloud.user ? "Connectez-vous pour les recevoir" : cloud.noInbox ? "Indisponible pour l’instant" : !al ? "…" : !al.token ? "Pas encore activées"
     : al.last_at ? `Actives · ${plural(al.received || 0, "alerte reçue", "alertes reçues")}, la dernière ${ago(al.last_at)}` : "Activées · en attente de la première alerte";
   const maps = cloud.maps || [], h = homeProfile(), target = (h.alerts && h.alerts.mapId) || cloud.personalMapId;
   return `<section class="srcs" id="srcs">
-    <h2>${empty ? "Trois façons de remplir Heden" : "Alimenter Heden"}</h2>
+    <h2>${empty ? "Quatre façons de remplir Heden" : "Alimenter Heden"}</h2>
+    <div class="src${open === "extension" ? " is-open" : ""}" data-src="extension">
+      <button class="src__head" type="button" data-srct="extension"><span class="src__ic">${ICON_EXT}</span><span class="src__t"><b>L’extension Heden</b><span>${extOld ? `Mise à jour disponible : version ${EXT_VERSION}` : extOn ? "Installée · chaque page d’annonces que vous ouvrez part dans Explorer" : "Sur ordinateur : vos recherches remplissent Explorer en naviguant"}</span></span><span class="src__chev"></span></button>
+      <div class="src__body">
+        <p class="hint2">Sur SeLoger, PAP, Leboncoin, Bien’ici, Jinka et les autres sites, l’extension lit chaque liste de résultats et chaque annonce que vous ouvrez, et les envoie dans Explorer pour tout le groupe : nouvelles annonces, prix qui baissent, annonces retirées. Elle ne lit que les pages que vous ouvrez.</p>
+        ${extOn && !extOld ? `<ol class="steps">
+            <li><b>Ouvrez vos recherches, triées par date</b><div>Une bulle en bas de page dit combien d’annonces sont nouvelles. Quand une page n’apporte rien de neuf, inutile d’aller plus loin.</div></li>
+            <li><b>Ouvrez les annonces qui vous intéressent</b><div>Leur fiche complète, toutes les photos comprises, arrive dans Explorer. Celles de vos favoris se mettent à jour.</div></li>
+            <li><b>Gardez Heden ouvert et connecté</b><div>L’extension se sert de cet onglet pour envoyer les annonces ; elle l’ouvre si besoin.</div></li>
+          </ol>` : `<ol class="steps">
+            <li><b>Téléchargez l’extension</b><div><a class="btn btn--primary btn--sm steps__btn" href="heden-extension.zip" download>Télécharger l’extension</a><p class="steps__p hint2">Puis décompressez le fichier : un dossier « heden-extension » apparaît.</p></div></li>
+            <li><b>Ouvrez la page des extensions</b><div><p class="steps__p"><span>Dans la barre d’adresse, tapez</span> <code>chrome://extensions</code> <button class="link" type="button" data-extcopy>Copier l’adresse</button></p><p class="steps__p hint2"><span>Edge :</span> <code>edge://extensions</code> <span>· Brave :</span> <code>brave://extensions</code></p></div></li>
+            <li><b>Activez le mode développeur</b><div>L’interrupteur en haut à droite de la page.</div></li>
+            <li><b>Chargez le dossier</b><div><span>« Charger l’extension non empaquetée », puis choisissez le dossier « heden-extension ».</span>${extOld ? ` <span>Pour une mise à jour : remplacez le dossier, puis touchez ↻ sur la carte Heden.</span>` : ""}</div></li>
+            <li><b>Épinglez Heden</b><div>Icône de pièce de puzzle à droite de la barre d’adresse, puis l’épingle à côté de Heden.</div></li>
+          </ol>`}
+        ${pc ? "" : `<p class="hint2">Sur téléphone, les extensions ne sont pas disponibles : utilisez le bouton + Heden.</p>`}
+      </div>
+    </div>
     <div class="src${open === "alertes" ? " is-open" : ""}" data-src="alertes">
       <button class="src__head" type="button" data-srct="alertes"><span class="src__ic">${ICON_MAIL}</span><span class="src__t"><b>Vos alertes arrivent toutes seules</b><span>${esc(alertStatus)}</span></span><span class="src__chev"></span></button>
       <div class="src__body">
@@ -792,11 +866,13 @@ function sourcesHTML(empty) {
 }
 const ICON_MAIL = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 7 8.5-7"/></svg>';
 const ICON_BMK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z"/><path d="M12 7.5v6M9 10.5h6" stroke-linecap="round"/></svg>';
+const ICON_EXT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M9 4.5a2 2 0 0 1 4 0V6h4a1 1 0 0 1 1 1v4h-1.5a2 2 0 0 0 0 4H18v4a1 1 0 0 1-1 1h-4v-1.5a2 2 0 0 0-4 0V20H5a1 1 0 0 1-1-1v-4h1.5a2 2 0 0 0 0-4H4V7a1 1 0 0 1 1-1h4z"/></svg>';
 const ICON_PASTE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3" stroke-linecap="round"/></svg>';
 function bindSources(box = $("#srcs"), redraw = renderListings) {
   if (!box) return;
   $$("[data-srct]", box).forEach(b => b.onclick = () => { const k = b.dataset.srct; srcUI.open = srcUI.open === k || (srcUI.open == null && box.querySelector(`[data-src="${k}"].is-open`)) ? "" : k; redraw(); });
   $$("[data-os]", box).forEach(b => b.onclick = () => { srcUI.os = b.dataset.os; srcUI.open = "bouton"; redraw(); });
+  $$("[data-extcopy]", box).forEach(c => c.onclick = async () => { try { await navigator.clipboard.writeText("chrome://extensions"); toast("Adresse copiée : collez-la dans la barre d’adresse"); } catch (e) { toast("Tapez chrome://extensions dans la barre d’adresse"); } });
   $$("[data-bmkcopy]", box).forEach(c => c.onclick = async () => { try { await navigator.clipboard.writeText(bookmarkletCode()); toast("Code copié : collez-le dans le signet"); } catch (e) { window.prompt("Copiez ce code :", bookmarkletCode()); } });
   const l = $(".bmk__link", box); if (l) l.onclick = e => { e.preventDefault(); l.classList.remove("bmk__link--nudge"); void l.offsetWidth; l.classList.add("bmk__link--nudge"); toast("Ne cliquez pas : glissez-le dans la barre des favoris"); };
   const p = $("#srcPaste"); if (p) p.onclick = () => openAddListing();
@@ -830,10 +906,10 @@ function openAddFlow(view = "choix", dir = "in") {
   const opt = (k, ic, t, sub) => `<button class="addopt" type="button" data-v="${k}"><span class="src__ic">${ic}</span><span class="addopt__t"><b>${t}</b><small>${esc(sub)}</small></span><span class="src__chev src__chev--go"></span></button>`;
   let body;
   if (view === "choix") body = `<div class="auth__head"><h2 id="lsTitle">Ajouter une annonce</h2>${close}</div>
-    <div class="addopts">${opt("coller", ICON_PASTE, "Coller une annonce", "Son lien et son texte, tout de suite")}${opt("bouton", ICON_BMK, "Le bouton + Heden", bmkInstalled() ? "Installé : une annonce ou une page de résultats en un clic" : "À installer une fois, puis un clic sur chaque annonce")}${opt("alertes", ICON_MAIL, "Les alertes e-mail", status("alertes") || "Vos alertes arrivent toutes seules")}</div>`;
+    <div class="addopts">${bmkOS() === "pc" ? opt("extension", ICON_EXT, "L’extension Heden", extInstalled() ? status("extension") : "Sur ordinateur : vos recherches remplissent Explorer en naviguant") : ""}${opt("coller", ICON_PASTE, "Coller une annonce", "Son lien et son texte, tout de suite")}${opt("bouton", ICON_BMK, "Le bouton + Heden", bmkInstalled() ? "Installé : une annonce ou une page de résultats en un clic" : "À installer une fois, puis un clic sur chaque annonce")}${opt("alertes", ICON_MAIL, "Les alertes e-mail", status("alertes") || "Vos alertes arrivent toutes seules")}</div>`;
   else {
     const src = tmp.querySelector(`[data-src="${view}"] .src__body`);
-    body = `<div class="auth__head">${back}<h2 id="lsTitle">${view === "bouton" ? "Le bouton + Heden" : "Les alertes e-mail"}</h2>${close}</div><div class="addf__body" id="srcs">${src ? src.innerHTML : ""}</div>`;
+    body = `<div class="auth__head">${back}<h2 id="lsTitle">${view === "bouton" ? "Le bouton + Heden" : view === "extension" ? "L’extension Heden" : "Les alertes e-mail"}</h2>${close}</div><div class="addf__body" id="srcs">${src ? src.innerHTML : ""}</div>`;
   }
   card.innerHTML = `<div class="addf addf--${dir}" data-v="${view}">${body}</div>`;
   $$(".addopt", card).forEach(b => b.onclick = () => openAddFlow(b.dataset.v, "in"));

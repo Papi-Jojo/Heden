@@ -11,6 +11,8 @@ Lu au début de chaque session. Le README décrit l'app ; ici, ce qu'il faut sav
 - `17-annonces` note d'une annonce (`scoreListing`, fiabilité `reliable` / `need`), flux Mes annonces / Explorer / Favoris, fiche
 - `18-annonces-avance` questionnaire (`QORDER`, `applySetup`), bouton + Heden (`bookmarkletCode`), vivier (`loadVivier`, `processVivier`), épingles de la carte
 
+Extension de navigateur (`extension/`, construite par `scripts/build/extension.mjs` dans `dist/extension/` et `dist/heden-extension.zip`) : `lecture.js` lit la page dans son monde (`lirePage`, recopié depuis `01b-lecture.js`), `lecteur.js` envoie, `fond.js` relaie vers l'onglet Heden, `pont.js` passe à l'app (`recevoirPage` → `vivier_deposer`). Version : `EXT_VERSION` dans `18-annonces-avance.js`.
+
 Pas besoin de graphe : `graphify-out/` n'est pas versionné et vieillit vite. Chercher dans `src/app/` avec grep.
 
 ## Règles du code

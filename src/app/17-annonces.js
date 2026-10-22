@@ -445,6 +445,8 @@ function heroKicker(f, s, k) {
   const tr = trustSignals(f, s); if (tr.level) return tr.level === "fort" ? "Annonce suspecte" : "Annonce à vérifier";
   if (f.viager) return f.viager === "occupe" ? "Viager occupé" : f.viager === "libre" ? "Viager libre" : "Viager";
   if (f.dropped) return "Baisse de prix";
+  const vu = f.origin === "vivier" && f.lastSeen ? Math.floor((Date.now() - f.lastSeen) / 864e5) : 0;
+  if (vu >= 10) return `Pas revue depuis ${vu} jours`;   // plus vue dans les alertes ni par l'extension : peut-être vendue
   if (!s.reliable) return "À noter";
   if (k === 0 && lui.sort === "reco" && currentTab === "annonces") return "Recommandée";
   const days = Math.floor((Date.now() - (f.addedAt || 0)) / 864e5);
@@ -836,16 +838,21 @@ function bindHomeSection() {
 }
 
 /* réception d'une annonce envoyée par le bouton */
+/* Une page envoyée par le bouton + Heden ou l'extension : on ne garde que des chaînes et des tableaux de taille bornée */
+function cleanPage(d) {
+  const safe = {url: String(d.url || "").slice(0, 2000), title: String(d.title || "").slice(0, 300), text: String(d.text || "").slice(0, 40000),
+    meta: typeof d.meta === "object" && d.meta ? d.meta : {}, ld: Array.isArray(d.ld) ? d.ld.map(x => String(x).slice(0, 60000)).slice(0, 8) : [], imgs: Array.isArray(d.imgs) ? d.imgs.map(String).slice(0, 40) : []};
+  const hi = d.hints && typeof d.hints === "object" ? d.hints : {}, arr = (a, n, len) => Array.isArray(a) ? a.slice(0, n).map(x => String(x).slice(0, len)) : [];
+  safe.hints = {tels: arr(hi.tels, 6, 100), mails: arr(hi.mails, 4, 120), state: arr(hi.state, 24, 1600)};
+  const items = Array.isArray(d.items) ? d.items.slice(0, 80).map(c => ({url: String(c.url || "").slice(0, 2000), img: String(c.img || "").slice(0, 2000), imgs: Array.isArray(c.imgs) ? c.imgs.slice(0, 12).map(x => String(x).slice(0, 2000)) : [], text: String(c.text || "").slice(0, 1200)})) : [];
+  return {safe, items};
+}
 (function listenImport() {
   let done = false;
   const use = d => {
     if (done || !d) return; done = true;
-    const safe = {url: String(d.url || "").slice(0, 2000), title: String(d.title || "").slice(0, 300), text: String(d.text || "").slice(0, 40000),
-      meta: typeof d.meta === "object" && d.meta ? d.meta : {}, ld: Array.isArray(d.ld) ? d.ld.map(x => String(x).slice(0, 60000)).slice(0, 8) : [], imgs: Array.isArray(d.imgs) ? d.imgs.map(String).slice(0, 40) : []};
-    const hi = d.hints && typeof d.hints === "object" ? d.hints : {}, arr = (a, n, len) => Array.isArray(a) ? a.slice(0, n).map(x => String(x).slice(0, len)) : [];
-    safe.hints = {tels: arr(hi.tels, 6, 100), mails: arr(hi.mails, 4, 120), state: arr(hi.state, 24, 1600)};
+    const {safe, items} = cleanPage(d);
     try { localStorage.setItem("heden.bmk", "1"); } catch (e) {}
-    const items = Array.isArray(d.items) ? d.items.slice(0, 80).map(c => ({url: String(c.url || "").slice(0, 2000), img: String(c.img || "").slice(0, 2000), imgs: Array.isArray(c.imgs) ? c.imgs.slice(0, 12).map(x => String(x).slice(0, 2000)) : [], text: String(c.text || "").slice(0, 1200)})) : [];
     setTab("annonces");
     if (items.length >= 3 && !isDetailUrl(safe.url)) return openBatchImport(items, safe.url, (+d.v || 0) < 4);
     const p = Object.assign(parseListing(safe), {fullPage: true}), ex = listings().find(x => sameListing(x, p));

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Heden</title>
+<style>
+  :root{--pierre:#EDE0D4;--calcaire:#F8F2EC;--ardoise:#3B2A1E;--ardoise-2:#5C4332;--zinc:#664530;--email:#7F5539;--bourgeon:#DDB892;--trait:#DDC9B4}
+  @media (prefers-color-scheme:dark){:root{--pierre:#1E1611;--calcaire:#271D16;--ardoise:#EDE0D4;--ardoise-2:#D9C6B3;--zinc:#B9A08A;--email:#DDB892;--trait:#3E2F24}}
+  body{margin:0;width:300px;background:var(--calcaire);color:var(--ardoise);font:14px/19px system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{display:flex;flex-direction:column;gap:14px;padding:16px}
+  header{display:flex;align-items:center;gap:10px}
+  .g{width:24px;height:20px;border-radius:58% 42% 55% 45%/52% 48% 52% 48%;background:var(--bourgeon)}
+  h1{margin:0;font:700 19px/1 Georgia,serif}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--trait);border-radius:16px}
+  .row b{display:block;font-weight:650}.row small{color:var(--zinc);font-size:12.5px}
+  .sw{position:relative;flex:none;width:42px;height:24px;border-radius:999px;border:0;background:var(--trait);cursor:pointer}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--calcaire);transition:transform .18s}
+  .sw[aria-checked="true"]{background:var(--email)}.sw[aria-checked="true"]::after{transform:translateX(18px)}
+  .n{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .n span{display:flex;flex-direction:column;font-size:12px;color:var(--ardoise-2)}.n b{font:700 22px/26px Georgia,serif;color:var(--ardoise)}
+  .acts{display:flex;gap:8px}
+  button.btn{flex:1;height:36px;border-radius:999px;border:1px solid var(--trait);background:var(--pierre);color:var(--ardoise);font:600 13px system-ui,sans-serif;cursor:pointer}
+  button.btn--p{background:var(--ardoise);color:var(--calcaire);border-color:var(--ardoise)}
+  p{margin:0;font-size:12.5px;color:var(--zinc)}
+</style></head>
+<body><main>
+  <header><span class="g"></span><h1>Heden</h1></header>
+  <div class="row"><span><b id="tA">Lecture automatique</b><small id="tAs">Chaque page d’annonces que vous ouvrez part dans Explorer.</small></span><button class="sw" id="auto" role="switch" aria-checked="true" aria-labelledby="tA"></button></div>
+  <div><p id="tJ" style="margin-bottom:6px">Aujourd’hui</p><div class="n"><span><b id="nN">0</b><i id="lN" style="font-style:normal">nouvelles</i></span><span><b id="nR">0</b><i id="lR" style="font-style:normal">revues</i></span><span><b id="nF">0</b><i id="lF" style="font-style:normal">fiches</i></span></div></div>
+  <div class="acts"><button class="btn" id="relire">Relire la page</button><button class="btn btn--p" id="ouvrir">Ouvrir Heden</button></div>
+  <p id="tP">Heden ne lit que les pages que vous ouvrez.</p>
+</main><script src="popup.js"></script></body></html>
