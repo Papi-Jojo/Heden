@@ -311,7 +311,8 @@ async function loadVivier() {
 /* ---------- Extension Heden : les pages lues pendant la navigation arrivent dans l'onglet Heden ----------
    Listes de résultats et fiches vont dans Explorer (vivier commun) ; une annonce déjà dans Mes annonces ou les Favoris
    est mise à jour (prix, photos, disponibilité). L'extension ne lit que les pages que l'utilisateur ouvre. */
-const EXT_VERSION = "1.0.2", ext = {v: null};
+const EXT_VERSION = "1.0.3", ext = {v: null};
+const EXT_STORE = "";   // lien de la fiche Chrome Web Store, une fois publiée : installation et mises à jour sans dossier à charger
 const attendre = async (ok, ms) => { for (let t = 0; !ok() && t < ms; t += 200) await new Promise(r => setTimeout(r, 200)); return ok(); };
 async function recevoirPage(raw) {
   const {safe, items} = cleanPage(raw), d = Object.assign({}, safe, {items, liste: !!raw.liste});
@@ -828,7 +829,10 @@ function sourcesHTML(empty) {
             <li><b>Ouvrez les annonces qui vous intéressent</b><div>Leur fiche complète, toutes les photos comprises, arrive dans Explorer. Celles de vos favoris se mettent à jour.</div></li>
             <li><b>Gardez Heden ouvert et connecté</b><div>L’extension se sert de cet onglet pour envoyer les annonces ; elle l’ouvre si besoin.</div></li>
           </ol>
-          <p class="hint2"><a class="link" href="heden-extension.zip" download>Télécharger de nouveau l’extension</a></p>` : `<ol class="steps">
+          ${EXT_STORE ? "" : `<p class="hint2"><a class="link" href="heden-extension.zip" download>Télécharger de nouveau l’extension</a></p>`}` : EXT_STORE ? `<ol class="steps">
+            <li><b>Installez l’extension</b><div><a class="btn btn--primary btn--sm steps__btn" href="${EXT_STORE}" target="_blank" rel="noopener">Ouvrir le Chrome Web Store ↗</a><p class="steps__p hint2">Puis « Ajouter à Chrome ». Elle se met à jour toute seule.</p></div></li>
+            <li><b>Épinglez Heden</b><div>Icône de pièce de puzzle à droite de la barre d’adresse, puis l’épingle à côté de Heden.</div></li>
+          </ol>` : `<ol class="steps">
             <li><b>Téléchargez l’extension</b><div><a class="btn btn--primary btn--sm steps__btn" href="heden-extension.zip" download>Télécharger l’extension</a><p class="steps__p hint2">Puis décompressez le fichier : un dossier « heden-extension » apparaît.</p></div></li>
             <li><b>Ouvrez la page des extensions</b><div><p class="steps__p"><span>Dans la barre d’adresse, tapez</span> <code>chrome://extensions</code> <button class="link" type="button" data-extcopy>Copier l’adresse</button></p><p class="steps__p hint2"><span>Edge :</span> <code>edge://extensions</code> <span>· Brave :</span> <code>brave://extensions</code></p></div></li>
             <li><b>Activez le mode développeur</b><div>L’interrupteur en haut à droite de la page.</div></li>
