@@ -65,48 +65,60 @@ function tintPlan(layer = planLayer) {
 function applyBase() { getPlan().addTo(map); tintPlan(); vertApply(); }
 dark.addEventListener?.("change", () => { renderZones(); if (draft) drawDraft(); });
 
-/* ---------- Espaces verts : parcs, jardins, bois, squares, cimetières arborés, mis en avant sur le plan ----------
-   Chaque couche verte du fond (quel que soit son nom) reçoit une copie par-dessus : un vert sauge texturé de petites feuilles,
-   un liseré, et une ombre portée légère ; les noms des lieux restent au-dessus. Rien à télécharger : le fond les contient déjà. */
-const VERT_RE = /park|wood|forest|grass|garden|cemetery|landcover|nature|recreation|meadow|scrub|pitch|playground/;
-const VERT = {sauge: "#C9D2A7", feuille: "#8E9F66", trait: "#7F925A", ombre: "rgba(59,72,38,.22)"};
+/* ---------- Espaces verts : les parcs, jardins, squares, bois et cimetières d'OpenStreetMap (data/verts.json, scripts/donnees/verts.py) ----------
+   Un aplat sauge, un liseré, et de petits arbres posés en semis à partir du zoom de quartier ; sous les noms de rues.
+   Sans WebGL : les mêmes contours, sans arbres. */
+const VERT = {fond: "#D2DAB8", bord: "#A7B58A", cime: "#8A9C66", clair: "#A9B98A", tronc: "#7A6A50"};
 let vertOn = (() => { try { return localStorage.getItem("heden.vert") === "1"; } catch (e) { return false; } })();
-const vertDispo = () => !!(planLayer && typeof planLayer.getMaplibreMap === "function");
-function vertMotif() {
-  // une tuile de 64 px (32 px affichés) : semis de petites feuilles et de points, irrégulier pour éviter l'effet papier peint
-  const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d");
-  g.fillStyle = VERT.sauge; g.fillRect(0, 0, 64, 64);
-  const rnd = (() => { let x = 7; return () => (x = (x * 9301 + 49297) % 233280) / 233280; })();
-  for (let i = 0; i < 9; i++) {
-    const x = rnd() * 64, y = rnd() * 64, a = rnd() * Math.PI, l = 4 + rnd() * 3;
-    g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = i % 3 ? "rgba(142,159,102,.55)" : "rgba(118,137,82,.6)";
-    g.beginPath(); g.ellipse(0, 0, l, l * .42, 0, 0, Math.PI * 2); g.fill(); g.restore();
-  }
-  for (let i = 0; i < 14; i++) { g.fillStyle = "rgba(255,252,240,.35)"; g.beginPath(); g.arc(rnd() * 64, rnd() * 64, .9 + rnd() * .8, 0, Math.PI * 2); g.fill(); }
-  return g.getImageData(0, 0, 64, 64);
+let vertData = null, vertLeaf = null;
+const vertDispo = () => true;
+function vertCharger() {
+  return vertData ? Promise.resolve(vertData) : fetch("data/verts.json?v=" + Math.floor(Date.now() / 864e5)).then(r => r.ok ? r.json() : null).then(d => (vertData = d)).catch(() => null);
 }
-function vertApply() {
-  if (!vertDispo()) return;
-  const m = planLayer.getMaplibreMap(); if (!m) return;
+/* Un arbre minimaliste : une cime ronde (ou ovale), un reflet, un tronc fin, une ombre au sol. Trois variantes, dessinées une fois. */
+function vertArbre(k) {
+  const W = 44, H = 56, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  const cx = W / 2, rx = [13, 10.5, 11.5][k], ry = [13, 16, 11.5][k], cy = H - 14 - ry;
+  g.fillStyle = "rgba(62,72,38,.16)"; g.beginPath(); g.ellipse(cx + 3, H - 6, rx * .9, 3.2, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = VERT.tronc; g.lineWidth = 2.6; g.lineCap = "round"; g.beginPath(); g.moveTo(cx, H - 7); g.lineTo(cx, cy + ry * .4); g.stroke();
+  g.fillStyle = VERT.cime; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.fill();
+  if (k === 2) { g.beginPath(); g.ellipse(cx - 7, cy + 4, 7.5, 7.5, 0, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = VERT.clair; g.beginPath(); g.ellipse(cx - rx * .32, cy - ry * .34, rx * .42, ry * .3, -.5, 0, Math.PI * 2); g.fill();
+  return g.getImageData(0, 0, W, H);
+}
+const vertGeo = d => ({type: "FeatureCollection", features: d.p.map(r => ({type: "Feature", properties: {}, geometry: {type: "Polygon", coordinates: r}}))});
+const arbresGeo = d => ({type: "FeatureCollection", features: d.a.map(([x, y, k]) => ({type: "Feature", properties: {k}, geometry: {type: "Point", coordinates: [x, y]}}))});
+async function vertApply() {
+  const gl = planLayer && typeof planLayer.getMaplibreMap === "function" ? planLayer.getMaplibreMap() : null;
+  if (!vertOn) {
+    if (vertLeaf) { map.removeLayer(vertLeaf); vertLeaf = null; }
+    if (gl) ["heden-arbres", "heden-verts-bord", "heden-verts-fond"].forEach(id => { try { if (gl.getLayer(id)) gl.removeLayer(id); } catch (e) {} });
+    return;
+  }
+  const d = await vertCharger();
+  if (!d || !vertOn) { if (!d) toast("Les espaces verts ne sont pas encore prêts"); return; }
+  if (!gl) {   // repli sans WebGL : contours seulement
+    if (!vertLeaf) vertLeaf = L.geoJSON(vertGeo(d), {interactive: false, style: {color: VERT.bord, weight: 1, fillColor: VERT.fond, fillOpacity: .85}}).addTo(map);
+    return;
+  }
   const go = () => {
-    const st = m.getStyle(); if (!st || !st.layers) return;
-    const mine = st.layers.filter(l => /-heden-vert/.test(l.id));
-    if (!vertOn) { mine.forEach(l => { try { m.removeLayer(l.id); } catch (e) {} }); return; }
-    if (mine.length) return;
-    try { if (!m.hasImage("heden-feuilles")) m.addImage("heden-feuilles", vertMotif(), {pixelRatio: 2}); } catch (e) {}
-    const avant = (st.layers.find(l => l.type === "symbol") || {}).id;   // sous les noms de rues et de lieux
-    for (const l of st.layers) {
-      if (l.type !== "fill" || !VERT_RE.test(l.id) || /building|water/.test(l.id) || !l.source) continue;
-      const base = {source: l.source, ...(l["source-layer"] ? {"source-layer": l["source-layer"]} : {}), ...(l.filter ? {filter: l.filter} : {})};
-      try {
-        m.addLayer({id: l.id + "-heden-vert-ombre", type: "line", ...base, paint: {"line-color": VERT.ombre, "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 4], "line-blur": 3, "line-translate": [0, 1.5]}}, avant);
-        m.addLayer({id: l.id + "-heden-vert", type: "fill", ...base, paint: {"fill-pattern": "heden-feuilles", "fill-opacity": ["interpolate", ["linear"], ["zoom"], 11, .7, 15, .95]}}, avant);
-        m.addLayer({id: l.id + "-heden-vert-trait", type: "line", ...base, paint: {"line-color": VERT.trait, "line-width": ["interpolate", ["linear"], ["zoom"], 12, .6, 16, 1.4], "line-opacity": .8}}, avant);
-      } catch (e) {}
-    }
+    if (!vertOn) return;
+    const st = gl.getStyle(); if (!st || !st.layers) return;
+    try {
+      if (!gl.getSource("heden-verts")) gl.addSource("heden-verts", {type: "geojson", data: vertGeo(d), tolerance: .5});
+      if (!gl.getSource("heden-arbres")) gl.addSource("heden-arbres", {type: "geojson", data: arbresGeo(d)});
+      [0, 1, 2].forEach(k => { if (!gl.hasImage("heden-arbre-" + k)) gl.addImage("heden-arbre-" + k, vertArbre(k), {pixelRatio: 2}); });
+      const avant = (st.layers.find(l => l.type === "symbol") || {}).id;   // sous les noms de rues et de lieux
+      if (!gl.getLayer("heden-verts-fond")) gl.addLayer({id: "heden-verts-fond", type: "fill", source: "heden-verts", paint: {"fill-color": VERT.fond, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 11, .75, 15, .92]}}, avant);
+      if (!gl.getLayer("heden-verts-bord")) gl.addLayer({id: "heden-verts-bord", type: "line", source: "heden-verts", paint: {"line-color": VERT.bord, "line-width": ["interpolate", ["linear"], ["zoom"], 12, .5, 16, 1.3]}}, avant);
+      if (!gl.getLayer("heden-arbres")) gl.addLayer({id: "heden-arbres", type: "symbol", source: "heden-arbres", minzoom: 13.5,
+        layout: {"icon-image": ["concat", "heden-arbre-", ["to-string", ["get", "k"]]], "icon-anchor": "bottom", "icon-allow-overlap": true, "icon-ignore-placement": true, "symbol-z-order": "viewport-y",
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 13.5, .4, 15, .7, 17, 1.1]},
+        paint: {"icon-opacity": ["interpolate", ["linear"], ["zoom"], 13.5, 0, 14.2, 1]}}, avant);
+    } catch (e) { console.warn("Heden : espaces verts", e); }
   };
-  if (!m.__hedenVert) { m.__hedenVert = true; m.on("style.load", go); }
-  if (m.isStyleLoaded && m.isStyleLoaded()) go(); else m.once("load", go);
+  if (!gl.__hedenVert) { gl.__hedenVert = true; gl.on("style.load", () => vertOn && go()); }
+  if (gl.isStyleLoaded && gl.isStyleLoaded()) go(); else gl.once("load", go);
 }
 applyBase();
 

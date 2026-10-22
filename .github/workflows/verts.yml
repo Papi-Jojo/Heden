@@ -1,0 +1,47 @@
+name: Espaces verts (OpenStreetMap)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [scripts/donnees/verts.py]
+  schedule:
+    - cron: "17 6 5 1,7 *"   # deux fois par an
+
+permissions:
+  contents: write
+
+concurrency:
+  group: verts
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q "shapely>=2"
+      - name: Calculer les espaces verts
+        run: |
+          set -o pipefail
+          python -u scripts/donnees/verts.py data 2>&1 | tee verts.log
+      - name: Résumé
+        if: always()
+        run: |
+          if [ -f verts.log ]; then
+            msg=$(tail -n 30 verts.log | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::notice title=Verts::${msg}"
+          fi
+      - name: Publier
+        run: |
+          git config user.name "heden-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/verts.json
+          if git diff --cached --quiet; then echo "Rien de nouveau"; exit 0; fi
+          git commit -m "Données : espaces verts"
+          git pull --rebase origin main
+          git push origin HEAD:main
