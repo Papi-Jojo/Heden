@@ -90,7 +90,7 @@ function parseListing(src) {
   const me = low.match(/expos(?:[ée]e?s?|ition)\s*:?\s(?:plein\s)?(sud[- ]ouest|sud[- ]est|nord[- ]ouest|nord[- ]est|sud|nord|est|ouest)/);
   if (me) set("exposure", me[1].replace(" ", "-"));
   if (/traversant/.test(low)) set("traversant", true);
-  if (/lumineu|tr[eè]s clair|baign[ée] de lumi|ensoleill|lumi[eè]re naturelle/.test(low)) set("bright", true);
+  if (/lumineu|tr[eè]s clair|baign[ée] de lumi|ensoleill|lumi[eè]re naturelle|(?:bonne|belle|grande|tr[eè]s bonne) luminosit[ée]/.test(low)) set("bright", true);
   if (/\bsombre\b/.test(low)) set("dark", true);
   // DPE, charges, taxe foncière
   const md = raw.match(/(?:DPE|[Cc]lasse [ée]nergie|[Cc]onsommation [ée]nerg[ée]tique|[Pp]erformance [ée]nerg[ée]tique)[^A-Za-z\n]{0,14}\b([A-G])\b/);
@@ -445,16 +445,72 @@ function lirePage(X) {
   const BT=document.body.innerText||'';
   const hs=[];document.querySelectorAll('ul,ol,div').forEach(u=>{const k=[...u.children];if(k.length<7||k.length>8||!k.every(c=>/^[A-G]$/.test(c.textContent.trim())))return;
   const a=k.find(c=>/activ|select|current|highlight|\bon\b/i.test(c.className+' '+(c.getAttribute('aria-current')||'')));if(a)hs.push((u.parentElement.textContent||'').replace(/\s+/g,' ').replace(/(?:\b[A-G]\s?){6,}/,'').trim().slice(0,40)+' : '+a.textContent.trim())});
+  /* Fiches des annonces dans les données de la page (état de l'app, réponses JSON reçues pour l'afficher) :
+     description, étage, ascenseur, DPE, extérieur, quartier, position approchée. Rattachées aux cartes par leur identifiant. */
+  const FI=[];
+  try{
+    const R=[];for(const k of Object.keys(window))if(/^__/.test(k)&&!/^__heden/.test(k))R.push(window[k]);
+    const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')try{R.push(JSON.parse(nd.textContent))}catch(e){}
+    (window.__hedenJson||[]).forEach(x=>R.push(x));
+    const vu=new Set();let nb=0;
+    const leaves=(o,p,d,out)=>{if(out.length>600||d>6||!o||typeof o!=='object')return out;
+      if(Array.isArray(o))o.slice(0,60).forEach((x,i)=>{if(x&&typeof x==='object'&&typeof x.key==='string'&&('value_label' in x||'value' in x))out.push([x.key,x.value_label!=null?x.value_label:x.value,p+'.'+x.key]);else if(x&&typeof x==='object')leaves(x,p+'.'+i,d+1,out);else out.push([p.split('.').pop(),x,p+'.'+i])});
+      else for(const k of Object.keys(o).slice(0,150)){const v=o[k];if(v&&typeof v==='object')leaves(v,p+'.'+k,d+1,out);else out.push([k,v,p+'.'+k])}return out};
+    const IDK=/^(id|legacyId|list_id|adId|ad_id|listingId|classifiedId|reference)$/;
+    const oui=v=>v===true||(typeof v==='number'&&v>0)||/^(oui|yes|true|1)$/i.test(String(v).trim());
+    const non=v=>v===false||v===0||/^(non|no|false|0)$/i.test(String(v).trim());
+    const fiche=(o,L)=>{
+      const g=(re,pr)=>{const x=L.find(([k,v,p])=>re.test(k)&&(!pr||pr.test(p))&&v!=null&&v!=='');return x?x[1]:null};
+      const t=[],ids=[];L.forEach(([k,v,p])=>{if(IDK.test(k)&&(typeof v==='string'||typeof v==='number')&&String(v).length>=5&&p.split('.').length<=2)ids.push(String(v))});
+      const ti=g(/^(title|headline|subject)$/);if(typeof ti==='string')t.push(ti);
+      const pr=g(/^price$/i);if(pr!=null&&/^\d[\d\s.,]*$/.test(String(pr)))t.push(Math.round(+String(pr).replace(/[^\d.]/g,''))+' €');
+      const su=g(/^(surfaceArea|livingSpace|surface|square|main)$/,/surface|space|square|area/i);if(+su>0)t.push(String(su).replace('.',',')+' m²');
+      const ro=g(/^(roomsQuantity|rooms|nbroom|nb_rooms|numberOfRooms)$/);if(+ro>0)t.push(+ro+' pièces');
+      const be=g(/^(bedroomsQuantity|bedrooms|nbbedroom|nb_bedrooms|numberOfBedrooms)$/);if(be!=null&&+be>=0&&String(be)!=='')t.push(+be+' chambres');
+      const fl=g(/^(floor|floor_number|floorNumber|etage)$/),fq=g(/^(floorQuantity|floors|nb_floors_building|floorsCount|buildingFloors)$/);
+      if(fl!=null&&/^\d{1,2}$/.test(String(fl)))t.push(+fl===0?'Rez-de-chaussée':'Étage '+fl+(+fq>0?'/'+fq:''));
+      const el=g(/^(hasElevator|elevator|ascenseur|lift)$/);if(el!=null)t.push(oui(el)?'avec ascenseur':non(el)?'sans ascenseur':'');
+      const dp=g(/^(energyClassification|energyClass|energy_letter|energy_rate|dpe|energyCertificate|energy_certificate|energyLabel)$/);if(/^[A-G]$/i.test(String(dp||'').trim()))t.push('Classe énergie '+String(dp).trim().toUpperCase());
+      const ex=g(/^(exposition|exposure|orientation)$/);if(typeof ex==='string'&&/sud|nord|est|ouest/i.test(ex))t.push('exposé '+ex.toLowerCase().replace(/\s+/g,'-'));
+      if(oui(g(/^(hasCaretaker|caretaker|gardien|concierge)$/)))t.push('gardien');else if(oui(g(/^(hasDoorCode|hasIntercom|digicode|interphone|doorCode)$/)))t.push('digicode');
+      if(oui(g(/^(workToDo|hasWorks|travaux|worksNeeded)$/)))t.push('travaux à prévoir');
+      const ch=g(/^(annualCondominiumFees|annual_charges|condominiumFees)$/);if(+ch>0)t.push('Charges de copropriété : '+Math.round(+ch)+' € par an');
+      for(const [re,w] of [[/^(hasTerrace|terrace|terraceQuantity|terraces)$/,'terrasse'],[/^(hasGarden|garden)$/,'jardin privatif'],[/^(hasBalcony|balcony|balconyQuantity|balconies)$/,'balcon'],[/^(hasLoggia|loggia)$/,'loggia'],[/^(hasCellar|cellar|cave|cellars)$/,'cave'],[/^(hasParking|parking|parkingPlacesQuantity|parkingPlaces|garage|nb_parkings)$/,'parking']]){const v=g(re);if(v!=null&&oui(v))t.push(w)}
+      const oa=g(/^(outside_access|outdoor|exterieur)$/);if(typeof oa==='string'){if(/terrace|terrasse/i.test(oa))t.push('terrasse');if(/garden|jardin/i.test(oa))t.push('jardin privatif');if(/balcon/i.test(oa))t.push('balcon')}
+      const q=g(/^(libelle|district|neighborhood|neighbourhood|quartier)$/,/district|neighbo|quartier|address|location/i);if(typeof q==='string'&&q.length<60&&!/arrondissement|^\d/i.test(q))t.push('Quartier '+q);
+      let de='';L.forEach(([k,v])=>{if(typeof v==='string'&&v.length>de.length&&/descri|^body$|^text$/i.test(k))de=v});
+      if(de.length>=60)t.push(de.slice(0,2500));
+      let la=null,lo=null,exa=false;const pos=L.filter(([k,v])=>/^(lat|latitude)$/.test(k)&&+v>41&&+v<52);
+      for(const [,v,p] of pos){const base=p.replace(/\.[^.]+$/,''),ln=L.find(([k2,v2,p2])=>/^(lon|lng|longitude)$/.test(k2)&&p2.replace(/\.[^.]+$/,'')===base&&+v2>-6&&+v2<10);if(ln){la=+v;lo=+ln[1];if(/position|centroid|location|geo|coord/i.test(base))break}}
+      if(la!=null){const bt=L.find(([k,v,p])=>k==='type'&&/blur/i.test(p));exa=!!(bt&&bt[1]==='exact')}
+      let url=null;L.forEach(([k,v,p])=>{if(!url&&p.split('.').length<=2&&/^(url|href|link|permalink)$/i.test(k)&&typeof v==='string'&&/^https?:\/\//.test(v)&&!/\.(jpe?g|png|webp|gif|svg)(\?|$)/i.test(v)&&!/photo|image|logo|provider|agenc|financ|credit|profession/i.test(p))url=v});
+      const ph=[];L.forEach(([k,v,p])=>{if(ph.length<30&&typeof v==='string'&&/^https?:\/\/[^\s"]+\.(jpe?g|png|webp)/i.test(v)&&/photo|image|gallery|media|pictur|pics/i.test(p)&&!/logo|agen|provider|avatar|contact/i.test(p)&&!ph.includes(v))ph.push(v)});
+      return {ids:[...new Set(ids)],url,t:t.filter(Boolean).join('\n'),dl:de.length,geo:la!=null?{lat:la,lng:lo,ex:exa}:null,ph};
+    };
+    const W2=(o,d)=>{if(!o||typeof o!=='object'||d>14||vu.has(o)||nb++>60000||FI.length>=120)return;vu.add(o);
+      if(Array.isArray(o)){o.slice(0,300).forEach(x=>W2(x,d+1));return}
+      const ks=Object.keys(o);
+      if(ks.some(k=>IDK.test(k)&&(typeof o[k]==='string'||typeof o[k]==='number')&&String(o[k]).length>=5)){
+        const L=leaves(o,'',0,[]),has=re=>L.some(([k,v,p])=>re.test(k)&&v!=null&&v!=='');
+        if(has(/^price$/i)&&(L.some(([k,v])=>typeof v==='string'&&v.length>=60&&/descri|^body$/i.test(k))||has(/^(surfaceArea|livingSpace|surface|rooms|roomsQuantity|nbroom)$/))){FI.push(fiche(o,L));return}
+      }
+      for(const k of ks.slice(0,400))W2(o[k],d+1)};
+    R.forEach(x=>W2(x,0));
+  }catch(e){}
+  const fiOf=u=>{const s=String(u||'').split(/[?#]/)[0];return FI.find(f=>f.url&&f.url.split(/[?#]/)[0]===s)||FI.find(f=>f.ids.some(i=>s.includes(i)))};
   let it=[];
-  try{it=X(document.body).slice(0,60)}catch(e){}const tl=[...document.querySelectorAll('a[href^="tel:"]')].map(a=>a.getAttribute('href').slice(4)+'|'+(a.textContent||'').trim().slice(0,60)).slice(0,6);
+  try{it=X(document.body).slice(0,60)}catch(e){}
+  try{const pris=new Set();it.forEach(c=>{const f=fiOf(c.url);if(!f)return;pris.add(f);c.text=(c.text+'\n'+f.t).slice(0,4000);c.dl=f.dl;if(f.geo)c.geo=f.geo;if(f.ph.length>(c.imgs||[]).length){c.imgs=f.ph.slice(0,12);c.img=c.imgs[0]}});
+    if(it.length>=3||FI.length>=3)FI.filter(f=>!pris.has(f)&&f.url&&/€/.test(f.t)&&/m²|pièces/.test(f.t)).slice(0,80-it.length).forEach(f=>it.push({url:f.url,img:f.ph[0]||'',imgs:f.ph.slice(0,12),text:f.t.slice(0,4000),dl:f.dl,geo:f.geo}))}catch(e){}
+  const moi=fiOf(location.href);const tl=[...document.querySelectorAll('a[href^="tel:"]')].map(a=>a.getAttribute('href').slice(4)+'|'+(a.textContent||'').trim().slice(0,60)).slice(0,6);
   const ml=[...document.querySelectorAll('a[href^="mailto:"]')].map(a=>a.getAttribute('href').slice(7).split('?')[0]).slice(0,4);
   let st='';
-  try{for(const k of ['__NEXT_DATA__','__INITIAL_STATE__','__PRELOADED_STATE__','__NUXT__','__APOLLO_STATE__','__REDIAL_PROPS__']){const w=window[k];if(w&&typeof w==='object'&&!(w instanceof Element))st+=JSON.stringify(w).slice(0,800000)}const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')st+=nd.textContent.slice(0,800000)}catch(e){}const sn=[];for(const re of [/"(?:agency|agence|advertiser|seller|contact|owner|publisher|professional|realEstateAgency|annonceur|store)[A-Za-z]*"\s*:\s*\{[^{}]{0,1500}\}/gi,/"(?:agencyName|agency_name|advertiserName|sellerName|storeName|companyName|contactName|brandName|tradeName)"\s*:\s*"[^"]{2,90}"/gi,/"(?:phone|phoneNumber|telephone|mobile|phoneNumbers?)"\s*:\s*\[?"\+?[\d .()-]{8,20}"/gi]){let q;while((q=re.exec(st))&&sn.length<24)sn.push(q[0].slice(0,1600))}const d={v:6,url:location.href,title:document.title,meta:m,ld:ld,imgs:IM,text:(hs.join('\n')+'\n'+BT+(T&&!BT.includes(T.slice(0,60))?'\n'+T:'')).slice(0,40000),items:it,hints:{tels:tl,mails:ml,state:sn}};
+  try{for(const k of ['__NEXT_DATA__','__INITIAL_STATE__','__PRELOADED_STATE__','__NUXT__','__APOLLO_STATE__','__REDIAL_PROPS__']){const w=window[k];if(w&&typeof w==='object'&&!(w instanceof Element))st+=JSON.stringify(w).slice(0,800000)}const nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.tagName==='SCRIPT')st+=nd.textContent.slice(0,800000)}catch(e){}const sn=[];for(const re of [/"(?:agency|agence|advertiser|seller|contact|owner|publisher|professional|realEstateAgency|annonceur|store)[A-Za-z]*"\s*:\s*\{[^{}]{0,1500}\}/gi,/"(?:agencyName|agency_name|advertiserName|sellerName|storeName|companyName|contactName|brandName|tradeName)"\s*:\s*"[^"]{2,90}"/gi,/"(?:phone|phoneNumber|telephone|mobile|phoneNumbers?)"\s*:\s*\[?"\+?[\d .()-]{8,20}"/gi]){let q;while((q=re.exec(st))&&sn.length<24)sn.push(q[0].slice(0,1600))}const d={v:6,url:location.href,title:document.title,meta:m,ld:ld,imgs:IM,text:(hs.join('\n')+'\n'+BT+(T&&!BT.includes(T.slice(0,60))?'\n'+T:'')).slice(0,40000),items:it,hints:{tels:tl,mails:ml,state:sn},geo:moi&&moi.geo||null,dl:moi?moi.dl:0,fiche:moi?moi.t.slice(0,4000):''};
   return d;
 }
 const VIVIER_CHAMPS = ["bedrooms", "floor", "floors", "top", "elevator", "outdoor", "outdoorArea", "dpe", "dpeKwh", "charges", "taxe", "lots", "works", "quiet", "traversant", "bright",
   "cave", "parking", "view", "building", "exposure", "street", "metro", "quartier", "city", "furnished", "rentHC", "rentCharges", "deposit", "agencyFee", "viager", "rente",
-  "seller", "agencyName", "agencyPhone", "ref", "lat", "lng", "precise", "placeLevel", "placedBy", "ademe"];
+  "seller", "agencyName", "agencyPhone", "ref", "lat", "lng", "precise", "placeLevel", "placedBy", "ademe", "cachet", "dark", "descLen"];
 const vivierData = f => { const d = {}; VIVIER_CHAMPS.forEach(k => { if (f[k] != null && f[k] !== "") d[k] = f[k]; }); return d; };
 function vivierLire(m, parse = s => new DOMParser().parseFromString(s, "text/html")) {
   let doc = null; try { doc = parse(m.html || ""); } catch (e) {}
@@ -470,6 +526,13 @@ function vivierLire(m, parse = s => new DOMParser().parseFromString(s, "text/htm
   const ret = gone && doc ? [...doc.querySelectorAll("a[href]")].map(a => normUrl(a.getAttribute("href"))).filter(u => /^https?:/.test(u)).slice(0, 40) : [];
   return {ann, ret};
 }
+/* Données de la fiche lues dans la page (position approchée, longueur de la description) : posées sur l'annonce */
+function poserFiche(f, c) {
+  const g = c && c.geo;
+  if (g && isFinite(g.lat) && isFinite(g.lng) && !(f.lat && f.precise)) Object.assign(f, {lat: +g.lat, lng: +g.lng, precise: !!g.ex, placedBy: "site", placeLevel: g.ex ? "adresse" : "rue"});
+  if (c && +c.dl > 0) f.descLen = Math.max(+c.dl, f.descLen || 0);
+  return f;
+}
 /* Une page lue par l'extension → annonces pour le vivier : chaque carte d'une liste de résultats, ou la fiche complète d'une annonce.
    Une fiche qui dit « annonce retirée » va dans gone : le vivier la sort du flux. */
 function vivierDepuisPage(d) {
@@ -479,11 +542,13 @@ function vivierDepuisPage(d) {
   if (d.liste || (items.length >= 3 && !isDetailUrl(url))) {
     const ann = items.slice(0, 80).map(c => {
       const f = parseListing({url: c.url, text: c.text, imgs: cardImgs(c)});
+      poserFiche(f, c);
       return /^https?:/.test(c.url || "") && f.price && (f.surface || f.rooms) ? mk(f, {url: c.url, text: String(c.text || "").slice(0, 400), imgs: cardImgs(c).slice(0, 6)}, false) : null;
     }).filter(Boolean);
     return {liste: true, ann, gone: []};
   }
-  const f = Object.assign(parseListing(d), {fullPage: true});
+  const f = Object.assign(parseListing(d.fiche ? Object.assign({}, d, {text: String(d.text || "") + "\n" + d.fiche}) : d), {fullPage: true});
+  poserFiche(f, d);
   if (f.gone) return {liste: false, ann: [], gone: [normUrl(url)], f};
   const resume = String((d.meta && (d.meta["og:description"] || d.meta.description)) || d.text || "").replace(/\s+/g, " ").slice(0, 400);
   return {liste: false, f, gone: [], ann: f.price && (f.surface || f.rooms) ? [mk(f, {url, text: `${d.title || ""}\n${resume}`.slice(0, 600), imgs: (f.photos || []).slice(0, 30)}, true)] : []};

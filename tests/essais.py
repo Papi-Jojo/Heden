@@ -200,6 +200,7 @@ def annuler(pw):
     e = Essai(pw); pg = e.page(); e.connexion(pg, "johan@x.fr", "Johan")
     pg.evaluate("() => { const s = __heden.state(); s.listings = [{id: crypto.randomUUID(), title: 'T', price: 500000, surface: 50, rooms: 3, postcode: '75017', status: 'nouvelle', mapId: __heden.cloud().mapId, createdBy: __heden.cloud().user.id, photos: [], addedAt: Date.now(), firstSeen: Date.now()}]; __heden.save(); }")
     pg.wait_for_timeout(1500); e.onglet(pg, "annonces"); pg.wait_for_timeout(500)
+    pg.locator("[data-feed=mes]").click(); pg.wait_for_timeout(400)   # Explorer s'ouvre d'abord ; l'annonce ajoutée est dans « Mes ajouts »
     pg.locator(".hero .hero__fav").first.click(); pg.wait_for_timeout(2200)   # la synchro passe pendant que la notification est affichée
     assert pg.evaluate("__heden.state().listings[0].status") == "gardee", "le cœur n'a pas mis l'annonce en favori"
     pg.locator("#toast .toast__act").click(); pg.wait_for_timeout(600)
@@ -298,14 +299,16 @@ def vivier(pw):
     db = pg.evaluate(DBQ)
     assert len(db.get("vivier", [])) == 3 and not db.get("vivier_courrier"), [c for c in db["calls"] if "vivier" in c or "rpc" in c][-8:]
     e.onglet(pg, "annonces"); pg.wait_for_timeout(800)
-    assert "3 nouvelles" in pg.locator(".feed--explorer .feed__n").inner_text(), "Explorer n'annonce pas les nouveautés"
+    assert pg.locator(".feed--explorer").get_attribute("aria-selected") == "true", "Explorer n'est pas le flux ouvert d'abord"
+    assert "3" in pg.locator(".feed--explorer .feed__n").inner_text(), "Explorer n'annonce pas ses annonces"
     pg.locator("[data-feed=explorer]").click(); pg.wait_for_timeout(800)
     assert pg.locator(".hero--ex").count() == 3, "Explorer ne montre pas les annonces du flux Heden"
-    pg.locator(".hero--ex .hero__fav").first.click(); pg.wait_for_timeout(900)
+    pg.locator(".hero--ex .hero__fav").first.click(); pg.wait_for_timeout(1400)   # la carte file vers l'onglet Favoris
     got = pg.evaluate("__heden.state().listings.filter(f => f.origin === 'vivier').map(f => [f.source, f.status])")
     assert got == [["SeLoger", "gardee"]], got
-    pg.locator(".hero--ex .hero__drop").nth(1).click(); pg.wait_for_timeout(900)
-    assert pg.locator(".hero--ex").count() == 2, "l'annonce masquée reste dans Explorer"
+    assert pg.locator(".hero--ex").count() == 2 and not pg.locator(".hero--fly").count(), "le favori reste dans Explorer"
+    pg.locator(".hero--ex .hero__hide").nth(1).click(); pg.wait_for_timeout(900)
+    assert pg.locator(".hero--ex").count() == 1, "l'annonce masquée reste dans Explorer"
     pg.locator("[data-feed=mes]").click(); pg.wait_for_timeout(500)
     assert pg.locator(".hero").count() == 0, "une annonce d'Explorer apparaît dans Mes annonces"
     e.onglet(pg, "favoris"); pg.wait_for_timeout(500)
@@ -440,7 +443,7 @@ def extension(pw):
     def portail(rt):
         u = rt.request.url
         if "photos.ex.fr" in u: return rt.fulfill(body=b"", content_type="image/jpeg")
-        if "/recherche" in u:
+        if "seloger.com" in u and "/recherche" in u:
             cs = [carte(1, 615000, 64, 11), carte(2, prix["b"], 58, 18), carte(3, 720000, 70, 17), carte(4, 499000, 45, 10)]
             return rt.fulfill(body=f"<html><head><title>Achat Paris</title></head><body><h1>1 234 annonces</h1><ul>{''.join(cs)}</ul><a rel=next href='https://www.seloger.com/recherche?page=2'>Suivant</a></body></html>", content_type="text/html; charset=utf-8")
         if "/900001.htm" in u:
@@ -449,11 +452,20 @@ def extension(pw):
         if "distributionTypes=Rent" in u:
             cs = "".join(f'<li><a href="https://www.seloger.com/annonce/location/ile-de-france/paris-75/paris-75000/LOC{i}?serp_view=list"><img src="https://photos.ex.fr/r{i}.jpg"></a><div><span>{p} €/mois</span></div><div>Appartement à louer</div><div>{r} pièces · {s_} m² · 2ème étage</div><div>Paris {a}ème arrondissement (750{a:02d})</div></li>' for i, (p, r, s_, a) in enumerate([("2 900", 3, 65, 7), ("1 450", 2, 38, 11), ("4 000", 3, 93, 16)]))
             return rt.fulfill(body=f"<html><head><title>Louer Paris</title></head><body><ul>{cs}</ul></body></html>", content_type="text/html; charset=utf-8")
+        if "bienici.com/realEstateAds.json" in u:   # les résultats arrivent en JSON, la page les dessine ensuite
+            ads = [{"id": f"apimo-7700{i}", "price": p, "surfaceArea": s_, "roomsQuantity": r, "postalCode": "750" + a, "floor": fl, "floorQuantity": 6, "hasElevator": True, "energyClassification": "C",
+                    "exposition": "Sud", "hasCaretaker": True, "district": {"id": 100500 + i, "libelle": q}, "blurInfo": {"type": "disk", "radius": 50, "position": {"lat": 48.865 + i / 1000, "lon": 2.37}},
+                    "description": "Bel appartement familial, séjour et chambres sur cour, parquet, moulures. " * 12, "photos": [{"url": f"https://photos.ex.fr/bi{i}-{k}.jpg"} for k in range(5)]}
+                   for i, (p, s_, r, a, fl, q) in enumerate([(640000, 61, 3, "11", 4, "Folie-Méricourt"), (455000, 42, 2, "18", 2, "Montmartre"), (980000, 88, 4, "15", 5, "Saint-Lambert")])]
+            return rt.fulfill(body=json.dumps({"total": 3, "realEstateAds": ads}), content_type="application/json; charset=utf-8")
+        if "bienici.com/recherche" in u:
+            js = """fetch('/realEstateAds.json?filters=x').then(r => r.json()).then(j => { document.querySelector('ul').innerHTML = j.realEstateAds.map(a => `<li><a href="https://www.bienici.com/annonce/vente/paris/appartement/${a.roomsQuantity}pieces/${a.id}?q=x"><img src="https://photos.ex.fr/c.jpg"></a><div>Appartement ${a.roomsQuantity} pièces ${a.surfaceArea} m²</div><div>${a.postalCode} Paris</div><div>${a.price.toLocaleString('fr-FR')} €</div></li>`).join(''); });"""
+            return rt.fulfill(body=f"<html><head><title>Achat Paris - Bien'ici</title></head><body><ul></ul><script>{js}</script></body></html>", content_type="text/html; charset=utf-8")
         if "/900004.htm" in u:
             return rt.fulfill(body="<html><head><title>Annonce expirée</title></head><body><h1>Cette annonce n’est plus disponible</h1><p>Appartement 3 pièces 45 m² Paris 10e 499 000 €</p></body></html>", content_type="text/html; charset=utf-8")
         return rt.abort()
     ctx.add_init_script(INIT)
-    ctx.route("**/*", lambda rt: portail(rt) if "seloger.com" in rt.request.url or "photos.ex.fr" in rt.request.url else routes(rt))
+    ctx.route("**/*", lambda rt: portail(rt) if any(h in rt.request.url for h in ("seloger.com", "bienici.com", "photos.ex.fr")) else routes(rt))
     e = Essai.__new__(Essai); e.b = ctx; e.ctx = ctx; e.erreurs = []; e.mobile = False
     H = e.page()
     viv = lambda: H.evaluate(DBQ).get("vivier") or []
@@ -479,6 +491,13 @@ def extension(pw):
     S.goto("https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/900001.htm"); S.wait_for_timeout(7000)
     a = next(v for v in viv() if v["url"].endswith("900001.htm"))
     assert len(a["carte"]["imgs"]) == 9 and a["data"].get("complet") and a["data"].get("floor") == 4, (len(a["carte"]["imgs"]), a["data"])
+    # une liste dont les résultats arrivent en JSON (Bien'ici) : chaque annonce part avec sa fiche (étage, DPE, quartier, position approchée, description)
+    Bi = ctx.new_page(); Bi.goto("https://www.bienici.com/recherche/achat/paris-75000/appartement"); Bi.wait_for_timeout(7000)
+    bi = [v for v in viv() if "bienici" in v["url"]]
+    assert len(bi) == 3, [v["url"] for v in viv()]
+    d = next(v for v in bi if v["price"] == 640000)["data"]
+    assert (d.get("floor"), d.get("elevator"), d.get("dpe"), d.get("exposure"), d.get("building"), d.get("quartier"), d.get("placeLevel")) == (4, True, "C", "sud", "gardien", "Folie-Méricourt", "rue") and d.get("descLen", 0) > 600 and d.get("cachet"), d
+    Bi.close()
     # une fiche retirée sort d'Explorer
     S.goto("https://www.seloger.com/annonces/achat/appartement/paris-10eme-75/900004.htm"); S.wait_for_timeout(7000)
     assert next(v for v in viv() if v["url"].endswith("900004.htm"))["gone_at"], "annonce retirée toujours dans le flux"

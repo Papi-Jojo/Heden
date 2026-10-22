@@ -265,18 +265,32 @@ async function processVivier() {
 /* Centre habité de chaque arrondissement (hors bois) : une annonce d'Explorer sans adresse y est placée, pour estimer son quartier */
 const ARR_CENTRE = [[48.8625, 2.3364], [48.8683, 2.3428], [48.8630, 2.3600], [48.8543, 2.3576], [48.8445, 2.3497], [48.8491, 2.3327], [48.8562, 2.3122], [48.8727, 2.3125], [48.8770, 2.3375], [48.8761, 2.3608],
   [48.8590, 2.3800], [48.8405, 2.3920], [48.8283, 2.3622], [48.8292, 2.3266], [48.8401, 2.2928], [48.8580, 2.2760], [48.8873, 2.3067], [48.8925, 2.3484], [48.8871, 2.3848], [48.8634, 2.4011]];
-const estParCp = {};   // une estimation par arrondissement suffit : toutes ses annonces sans adresse partagent le même point
+const estParCp = {};   // une estimation par point (arrondissement, quartier, rue arrondie à 100 m) : les annonces voisines la partagent
 async function estimerExplorer(fs) {
   if (estimerExplorer.busy) return; estimerExplorer.busy = true;
   try {
     let n = 0;
     for (const f of fs) {
-      if (f.est || !f.lat || f.placeLevel !== "cp") continue;
-      if (!estParCp[f.postcode]) { try { estParCp[f.postcode] = await estimate(circlePoints(f.lat, f.lng, 450, 10)); } catch (e) { estParCp[f.postcode] = null; } n++; }
-      f.est = estParCp[f.postcode] || undefined;
+      if (f.est || !f.lat || n > 40) continue;
+      const cp = f.placeLevel === "cp", k = cp ? f.postcode : `${f.lat.toFixed(3)},${f.lng.toFixed(3)}`, r = cp ? 450 : f.placeLevel === "quartier" ? 350 : f.precise ? 120 : 180;
+      if (!(k in estParCp)) { try { estParCp[k] = await estimate(circlePoints(f.lat, f.lng, r, 10)); } catch (e) { estParCp[k] = null; } n++; }
+      f.est = estParCp[k] || undefined;
     }
     if (n && currentTab === "annonces" && lui.feed === "explorer" && !lui.openId) { const vw = $("#view-annonces"), y = vw ? vw.scrollTop : 0; renderListings(); if (vw) vw.scrollTop = y; }
   } finally { estimerExplorer.busy = false; }
+}
+/* Quartier nommé par le site → centre de la zone prédéfinie qui porte ce nom dans l'arrondissement (data/lieux.json) */
+const motsQ = s => sansAccent(s || "").replace(/^quartier\s+(?:de la |du |des |de l'|d'|de )?/, "").split(/[^a-z]+/).filter(w => w.length >= 3 && !/^(rue|les|des|sur|saint|sainte|porte|place)$/.test(w));
+function quartierPos(lx, arr, nom) {
+  const q = motsQ(nom), zs = lx && lx.arr && lx.arr[String(arr)]; if (!q.length || !zs) return null;
+  let best = null;
+  for (const z of zs) {
+    if (!Array.isArray(z.p) || z.p.length < 3) continue;
+    const w = motsQ(z.n), hit = q.filter(x => w.includes(x)), sc = hit.length / q.length + (z.k === "quartier" ? 0 : .01);
+    if (hit.some(x => x.length >= 4) && sc >= .5 && (!best || sc > best.sc)) best = {sc, z};
+  }
+  if (!best) return null;
+  const c = polyCenter(best.z.p); return [c[0], c[1], best.z.n];
 }
 /* annonces du vivier vues depuis 30 jours, encore en ligne ; relues au plus toutes les 5 minutes */
 async function loadVivier() {
@@ -287,14 +301,17 @@ async function loadVivier() {
     .is("gone_at", null).gt("last_seen", since).order("first_seen", {ascending: false}).limit(400);
   if (error) { if (schemaMissing(error)) cloud.noVivier = true; return null; }
   cloud.vivierAt = Date.now();
+  const lx = await loadLieux();   // quartier nommé par le site (« Montmartre », « Nation-Picpus ») → son centre, plutôt que celui de l'arrondissement
   cloud.vivierRows = (data || []).map(r => {
     const c = r.carte || {}, d = r.data || {}, item = {url: d.url || c.url || r.url, text: c.text || "", imgs: c.imgs || [], price: +r.price, source: r.source, origin: "vivier", data: d, first: Date.parse(r.first_seen) || 0, last: Date.parse(r.last_seen) || 0};
     const hist = (Array.isArray(r.prix_hist) ? r.prix_hist : []).map(x => ({price: +x.price, at: Date.parse(x.at) || 0})).filter(x => x.price > 0), lastH = hist[hist.length - 1];
     const f = Object.assign(parseListing({url: item.url, text: item.text, imgs: item.imgs}), d, {price: item.price, id: "v:" + r.id, status: "nouvelle", origin: "vivier", source: r.source, addedAt: item.first, firstSeen: item.first, lastSeen: item.last,
       priceHistory: hist, dropped: !!(lastH && lastH.price > item.price && Date.now() - lastH.at < 14 * 864e5)});
     if (!(f.photos || []).length) f.photos = item.imgs;
-    const ar = !f.lat && /^750(\d\d)$/.exec(f.postcode || ""), ctr = ar && ARR_CENTRE[+ar[1] - 1];
-    if (ctr) Object.assign(f, {lat: ctr[0], lng: ctr[1], precise: false, placeLevel: "cp", est: estParCp[f.postcode] || undefined});
+    const ar = !f.lat && /^750(\d\d)$/.exec(f.postcode || ""), qp = ar && quartierPos(lx, +ar[1], f.quartier), ctr = ar && ARR_CENTRE[+ar[1] - 1];
+    if (qp) Object.assign(f, {lat: qp[0], lng: qp[1], precise: false, placeLevel: "quartier", placedBy: qp[2], est: estParCp[`${qp[0].toFixed(3)},${qp[1].toFixed(3)}`] || undefined});
+    else if (ctr) Object.assign(f, {lat: ctr[0], lng: ctr[1], precise: false, placeLevel: "cp", est: estParCp[f.postcode] || undefined});
+    else if (f.lat && !f.est) f.est = estParCp[`${(+f.lat).toFixed(3)},${(+f.lng).toFixed(3)}`] || undefined;
     f.title = listingTitle(f);
     return {id: r.id, item, f};
   });
@@ -311,7 +328,7 @@ async function loadVivier() {
 /* ---------- Extension Heden : les pages lues pendant la navigation arrivent dans l'onglet Heden ----------
    Listes de résultats et fiches vont dans Explorer (vivier commun) ; une annonce déjà dans Mes annonces ou les Favoris
    est mise à jour (prix, photos, disponibilité). L'extension ne lit que les pages que l'utilisateur ouvre. */
-const EXT_VERSION = "1.0.3", ext = {v: null};
+const EXT_VERSION = "1.1.0", ext = {v: null};
 const EXT_STORE = "";   // lien de la fiche Chrome Web Store, une fois publiée : installation et mises à jour sans dossier à charger
 const attendre = async (ok, ms) => { for (let t = 0; !ok() && t < ms; t += 200) await new Promise(r => setTimeout(r, 200)); return ok(); };
 async function recevoirPage(raw) {

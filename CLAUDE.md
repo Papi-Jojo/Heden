@@ -8,10 +8,10 @@ Lu au début de chaque session. Le README décrit l'app ; ici, ce qu'il faut sav
 - `03-projet` achat / location, note des zones (`scoreOf`) · `04-estimations` données par quartier (`estimate`)
 - `05-onglets` `setTab` · `06-carte` zones sur la carte · `07-panneau`, `08-feuille` fiche de zone · `09-geocodage` recherche, zones prédéfinies (`data/lieux.json`) · `10-position` filtres de carte · `11-balade` · `13-connexion` profil · `15-astuces` guide pas à pas
 - `16-compte` Supabase : synchro par différence (`syncNow`, `cloudRefresh`), cartes de groupe, zones jumelles, partage automatique des zones perso (`autoShare`)
-- `17-annonces` note d'une annonce (`scoreListing`, fiabilité `reliable` / `need`), flux Mes annonces / Explorer / Favoris, fiche
+- `17-annonces` note d'une annonce (`scoreListing`, fiabilité `reliable` / `need`, note provisoire « ≈ »), flux Explorer / Mes ajouts / Favoris (un favori quitte les flux : `flyToFav`), pictogrammes (`PIC`, `svgI`), fiche
 - `18-annonces-avance` questionnaire (`QORDER`, `applySetup`), bouton + Heden (`bookmarkletCode`), vivier (`loadVivier`, `processVivier`), épingles de la carte
 
-Extension de navigateur (`extension/`, construite par `scripts/build/extension.mjs` dans `dist/extension/` et `dist/heden-extension.zip`) : `lecture.js` lit la page dans son monde (`lirePage`, recopié depuis `01b-lecture.js`), `lecteur.js` envoie, `fond.js` relaie vers l'onglet Heden, `pont.js` passe à l'app (`recevoirPage` → `vivier_deposer`). Version : `EXT_VERSION` dans `18-annonces-avance.js`.
+Extension de navigateur (`extension/`, construite par `scripts/build/extension.mjs` dans `dist/extension/`, `dist/heden-extension.zip` et `dist/heden-extension-store.zip`) : `ecoute.js` (dès le chargement) garde les réponses JSON d'annonces que la page reçoit, `lecture.js` lit la page dans son monde (`lirePage`, recopié depuis `01b-lecture.js` ; les fiches de l'état de la page et du JSON sont rattachées aux cartes), `lecteur.js` envoie, `fond.js` relaie vers l'onglet Heden, `pont.js` passe à l'app (`recevoirPage` → `vivier_deposer`). Version : `EXT_VERSION` dans `18-annonces-avance.js`.
 
 Pas besoin de graphe : `graphify-out/` n'est pas versionné et vieillit vite. Chercher dans `src/app/` avec grep.
 
@@ -40,4 +40,3 @@ Pas besoin de graphe : `graphify-out/` n'est pas versionné et vieillit vite. Ch
 
 ## Façon de travailler
 - Réponses courtes, en français. Poser une question quand la demande est floue ; proposer une migration ou un changement de structure quand c'est utile.
-- À venir : extension de navigateur pour ordinateur qui lit d'elle-même l'annonce ouverte depuis Heden.

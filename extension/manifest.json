@@ -11,6 +11,7 @@
   "host_permissions": __HEDENM__,
   "content_scripts": [
     {"matches": __HEDENM__, "js": ["pont.js"], "run_at": "document_idle"},
+    {"matches": __SITES__, "js": ["ecoute.js"], "run_at": "document_start", "world": "MAIN"},
     {"matches": __SITES__, "js": ["lecture.js"], "run_at": "document_idle", "world": "MAIN"},
     {"matches": __SITES__, "js": ["lecteur.js"], "run_at": "document_idle"}
   ]

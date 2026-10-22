@@ -22,7 +22,7 @@ const sub = s => s.replaceAll("__HEDENM__", HEDENM).replaceAll("__HEDEN__", HEDE
 
 fs.rmSync(OUT, {recursive: true, force: true}); fs.mkdirSync(OUT, {recursive: true});
 const files = {};
-for (const f of ["manifest.json", "fond.js", "pont.js", "lecture.js", "lecteur.js", "popup.html", "popup.js"]) files[f] = Buffer.from(sub(lire("extension/" + f)));
+for (const f of ["manifest.json", "fond.js", "pont.js", "ecoute.js", "lecture.js", "lecteur.js", "popup.html", "popup.js"]) files[f] = Buffer.from(sub(lire("extension/" + f)));
 for (const n of [16, 32, 48, 128]) files[`icones/${n}.png`] = fs.readFileSync(new URL(`extension/icones/${n}.png`, RACINE));
 JSON.parse(files["manifest.json"].toString());   // manifeste valide
 fs.mkdirSync(OUT + "icones", {recursive: true});

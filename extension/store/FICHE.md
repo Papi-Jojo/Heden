@@ -19,7 +19,7 @@ Publication « non répertoriée » : l'extension n'apparaît pas dans les reche
 
   > Heden envoie dans votre app Heden les annonces immobilières que vous consultez sur SeLoger, PAP, Leboncoin, Bien'ici, Jinka et d'autres sites.
   >
-  > Sur une liste de résultats, les annonces affichées partent dans Explorer, le flux partagé avec vos proches. Sur une annonce ouverte, sa fiche complète (photos, étage, DPE, rue) suit. Les prix qui baissent et les annonces retirées sont mis à jour.
+  > Sur une liste de résultats, les annonces affichées partent dans Explorer, le flux partagé avec vos proches, avec ce que le site donne pour les afficher (description, étage, DPE, quartier). Sur une annonce ouverte, sa fiche complète (photos, étage, DPE, rue) suit. Les prix qui baissent et les annonces retirées sont mis à jour.
   >
   > L'extension ne lit que les pages que vous ouvrez vous-même. Elle ne charge aucune autre page et ne clique sur rien. Il faut un compte Heden et l'onglet Heden ouvert.
 
@@ -37,6 +37,7 @@ Publication « non répertoriée » : l'extension n'apparaît pas dans les reche
 - **Justification des autorisations** :
   - `storage` : garder le réglage de lecture automatique, le compteur du jour et les pages en attente quand Heden n'est pas ouvert.
   - `scripting` : relier l'extension à un onglet Heden déjà ouvert avant l'installation.
+  - Script de page au chargement (`ecoute.js`) : garde une copie des réponses d'annonces que le site envoie à sa propre page, pour les lire avec elle ; aucune requête de plus.
   - **Autorisations d'hôte** (sites immobiliers) : lire les annonces des pages de ces sites que l'utilisateur ouvre.
   - **Autorisation d'hôte** (papi-jojo.github.io/Heden) : transmettre les annonces à l'onglet Heden.
 - **Code distant** : « Non, je n'utilise pas de code distant ».
