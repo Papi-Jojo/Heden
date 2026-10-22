@@ -344,14 +344,14 @@ window.addEventListener("message", e => {
   if (e.source !== window || e.origin !== location.origin) return;
   const m = e.data; if (!m || typeof m !== "object") return;
   if (m.type === "heden-ext-ready") {
-    ext.v = String(m.v || "1"); try { localStorage.setItem("heden.ext", ext.v); } catch (er) {}
+    ext.v = String(m.v || "1");
     return;
   }
   if (m.type === "heden-ext-page" && m.d && typeof m.d === "object")
     recevoirPage(m.d).catch(er => { console.warn("Heden : page de l'extension", er); return {n: 0, err: "envoi"}; })
       .then(res => window.postMessage(Object.assign({type: "heden-ext-ack", id: m.id}, res), location.origin));
 });
-const extInstalled = () => { try { return !!(ext.v || localStorage.getItem("heden.ext")); } catch (e) { return !!ext.v; } };
+const extInstalled = () => !!ext.v;   // l'extension s'annonce à chaque chargement de Heden : rien de retenu d'une fois sur l'autre
 /* une annonce ouverte avec le bouton + Heden enrichit sa copie du vivier (toutes les photos, fiche complète) */
 function vivierEnrichir(p) {
   if (!cloud.user || !cloud.client || cloud.noVivier || !p || !p.price || !cleanWeb(p.url)) return;
@@ -825,7 +825,8 @@ function sourcesHTML(empty) {
             <li><b>Ouvrez vos recherches, triées par date</b><div>Une bulle en bas de page dit combien d’annonces sont nouvelles. Quand une page n’apporte rien de neuf, inutile d’aller plus loin.</div></li>
             <li><b>Ouvrez les annonces qui vous intéressent</b><div>Leur fiche complète, toutes les photos comprises, arrive dans Explorer. Celles de vos favoris se mettent à jour.</div></li>
             <li><b>Gardez Heden ouvert et connecté</b><div>L’extension se sert de cet onglet pour envoyer les annonces ; elle l’ouvre si besoin.</div></li>
-          </ol>` : `<ol class="steps">
+          </ol>
+          <p class="hint2"><a class="link" href="heden-extension.zip" download>Télécharger de nouveau l’extension</a></p>` : `<ol class="steps">
             <li><b>Téléchargez l’extension</b><div><a class="btn btn--primary btn--sm steps__btn" href="heden-extension.zip" download>Télécharger l’extension</a><p class="steps__p hint2">Puis décompressez le fichier : un dossier « heden-extension » apparaît.</p></div></li>
             <li><b>Ouvrez la page des extensions</b><div><p class="steps__p"><span>Dans la barre d’adresse, tapez</span> <code>chrome://extensions</code> <button class="link" type="button" data-extcopy>Copier l’adresse</button></p><p class="steps__p hint2"><span>Edge :</span> <code>edge://extensions</code> <span>· Brave :</span> <code>brave://extensions</code></p></div></li>
             <li><b>Activez le mode développeur</b><div>L’interrupteur en haut à droite de la page.</div></li>
