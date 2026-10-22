@@ -374,10 +374,14 @@ input,textarea{caret-color:var(--email)}
 /* petite carte de la fiche */
 .lmini{display:flex;flex-direction:column;gap:10px}
 .lmini__wrap{position:relative}
-.lmini__map{height:190px;border-radius:var(--rayon-l);overflow:hidden;background:#EEE4D9;border:1px solid var(--trait);cursor:pointer;z-index:0}
-@media (min-width:900px){.lmini__map{height:240px}}
+.lmini__map{height:220px;border-radius:var(--rayon-l);overflow:hidden;background:#EEE4D9;border:1px solid var(--trait);z-index:0;touch-action:pan-y pinch-zoom}
+@media (min-width:900px){.lmini__map{height:280px}}
 .lmini__map .leaflet-control-attribution{font-size:9.5px;background:color-mix(in srgb,#F8F2EC 80%,transparent)}
-.lmini__go{position:absolute;top:10px;right:10px;z-index:2;display:inline-flex;align-items:center;gap:6px;background:var(--calcaire);box-shadow:var(--ombre-flottant)}
+.lmini__tools{position:absolute;top:10px;right:10px;z-index:2;display:flex;gap:6px}
+.lmini__tools .chip{display:inline-flex;align-items:center;gap:6px;background:var(--calcaire);box-shadow:var(--ombre-flottant)}
+.lmini__rc{width:34px;padding:0;justify-content:center}
+.lmini__map .leaflet-bottom.leaflet-right .leaflet-control-zoom{display:block;margin:0 10px 22px 0;border:0;box-shadow:var(--ombre-flottant);border-radius:14px;overflow:hidden}
+.lmini__map .leaflet-control-zoom a{width:34px;height:34px;line-height:34px;background:#F8F2EC;color:#3B2A1E;border-color:#DDC9B4}
 .lmini__leg{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;font-size:13.5px;color:var(--ardoise-2)}
 .lmini__lieu{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ardoise)}
 .lmini__lieu svg{opacity:.7;flex:none}
@@ -386,3 +390,14 @@ input,textarea{caret-color:var(--email)}
 .lmini__prec.is-approx i{background:transparent;border:1.5px dashed var(--email)}
 .lmini__pin{display:block;width:22px;height:22px;transform:translate(-50%,-50%);border-radius:var(--galet-a);background:var(--c,#7F5539);border:3px solid #F8F2EC;box-shadow:0 2px 8px rgba(59,42,30,.45)}
 .lmini__pin.is-approx{width:14px;height:14px;border-width:2.5px}
+
+/* photos des cartes du flux : défilement au doigt, flèches à la souris */
+.hero__car{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.hero__car::-webkit-scrollbar{display:none}
+.hero__car img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center;scroll-snap-stop:always}
+.hero__nav{position:absolute;top:50%;z-index:2;width:36px;height:36px;display:grid;place-items:center;margin-top:-18px;border:0;border-radius:50%;background:color-mix(in srgb,#F8F2EC 92%,transparent);color:#3B2A1E;box-shadow:0 4px 12px -6px rgba(38,35,31,.5);cursor:pointer;opacity:0;transition:opacity .18s,transform .15s}
+.hero__nav--p{left:9%}.hero__nav--n{right:9%}
+.hero__nav:active{transform:scale(.9)}
+@media (hover:hover){.hero:hover .hero__nav{opacity:1}}
+@media (hover:none){.hero__nav{display:none}}
+.hero:hover .hero__car img{transform:none}

@@ -448,8 +448,16 @@ function renderFavoris(box) {
 function bindHeroes(box) {
   const get = id => id.startsWith("v:") ? adoptVivier(id) : listings().find(x => x.id === id);
   $$(".hero[data-id]", box).forEach(card => {
+    // photos : on les fait défiler du doigt dans la carte, ou avec les flèches à la souris, sans ouvrir l'annonce
+    const car = card.querySelector(".hero__car"), idx = card.querySelector(".hero__i");
+    if (car) {
+      let raf = 0;
+      car.addEventListener("scroll", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (idx) idx.textContent = String(Math.round(car.scrollLeft / Math.max(1, car.clientWidth)) + 1); }); }, {passive: true});
+      $$(".hero__nav", card).forEach(b => b.onclick = e => { e.stopPropagation(); const n = car.children.length, i = Math.round(car.scrollLeft / car.clientWidth), to = (i + (b.classList.contains("hero__nav--n") ? 1 : -1) + n) % n;
+        car.scrollTo({left: to * car.clientWidth, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"}); });
+    }
     card.onclick = e => {
-      if (e.target.closest("[data-hst]")) return;
+      if (e.target.closest("[data-hst], .hero__nav")) return;
       const f = get(card.dataset.id); if (!f) return;
       const vw = $("#view-annonces"); lui.listScroll = vw.scrollTop;
       morph([[card.querySelector(".hero__ph"), "lph"], [card.querySelector(".hero__s"), "lsc"]],
@@ -618,7 +626,7 @@ function heroHTML(f, s, k = 0, neu = false) {
     : "";
   const hide = currentTab !== "favoris" && f.status !== "ecartee" ? `<button class="hero__hide" type="button" data-hst="ecartee" aria-label="Masquer l’annonce" title="Masquer l’annonce">${ICO.drop}</button>` : "";
   return `<article class="hero${ex ? " hero--ex" : ""}${ph ? "" : " hero--nophoto"}${f.gone || f.status === "ecartee" ? " hero--off" : ""}${s.fails.length ? " hero--fail" : ""}" data-id="${f.id}" style="--c:${noteCol(s)}">
-    <div class="hero__ph">${ph ? `<img src="${esc(ph)}" alt="" loading="${k < 2 ? "eager" : "lazy"}" referrerpolicy="no-referrer" onerror="this.remove()">` : GALETS}${(f.photos || []).length > 1 ? `<span class="hero__nph num">${f.photos.length} photos</span>` : ""}</div>
+    <div class="hero__ph">${ph ? `<div class="hero__car">${(f.photos || []).slice(0, 15).map((u, i) => `<img src="${esc(u)}" alt="" loading="${k < 2 && i === 0 ? "eager" : "lazy"}" referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : GALETS}${(f.photos || []).length > 1 ? `<span class="hero__nph num"><span class="hero__i">1</span>/${Math.min(15, f.photos.length)}</span><button class="hero__nav hero__nav--p" type="button" aria-label="Photo précédente" tabindex="-1">${svgI('<path d="M15 5 8 12l7 7"/>', 18)}</button><button class="hero__nav hero__nav--n" type="button" aria-label="Photo suivante" tabindex="-1">${svgI('<path d="m9 5 7 7-7 7"/>', 18)}</button>` : ""}</div>
     <button class="hero__fav" type="button" data-hst="fav" aria-pressed="${fav}" aria-label="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}">${ICO.keep}</button>${hide}
     <b class="hero__s num${s.reliable ? "" : " hero__s--q"}"${k === 0 && s.reliable ? ` data-count="${s.total}"` : ""}${s.reliable ? "" : ` title="${s.total != null ? "Note provisoire : il manque des infos" : "Pas assez d’infos pour noter"}"`}>${noteTxt(s)}</b>
     <div class="hero__b">
@@ -640,16 +648,18 @@ function precisionOf(f) { const k = f.precise ? (f.placeLevel === "dpe" ? "dpe" 
 function miniHTML(f, s) {
   if (!(f.lat && f.lng)) return "";
   const [r, t] = precisionOf(f);
-  return `<section class="lsec lmini"><div class="lmini__wrap"><div class="lmini__map" id="lminiMap" role="img" aria-label="Carte : ${esc(t.toLowerCase())}"></div>
-    <button class="chip chip--sm lmini__go" type="button" id="lmap">${svgI(PIC.carte, 15)}<span>Ouvrir la carte</span></button></div>
+  return `<section class="lsec lmini"><div class="lmini__wrap"><div class="lmini__map" id="lminiMap" aria-label="Carte : ${esc(t.toLowerCase())}"></div>
+    <div class="lmini__tools"><button class="chip chip--sm lmini__rc" type="button" id="lminiRc" aria-label="Recentrer sur l’annonce" title="Recentrer sur l’annonce">${svgI(PIC.cible, 15)}</button><button class="chip chip--sm lmini__go" type="button" id="lmap">${svgI(PIC.carte, 15)}<span>Ouvrir la carte</span></button></div></div>
     <div class="lmini__leg"><span class="lmini__lieu">${svgI(PIC.lieu, 16)}<span>${placeHTML(f, s)}</span></span><span class="lmini__prec${r ? " is-approx" : ""}"><i aria-hidden="true"></i><span>${t}</span></span></div></section>`;
 }
 function miniStart(f, s) {
   const el = $("#lminiMap"); if (!el || !window.L) return;
   miniStop();
   const [r] = precisionOf(f), c = [f.lat, f.lng];
-  lmini = L.map(el, {zoomControl: false, attributionControl: true, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, boxZoom: false, keyboard: false, tap: false});
+  // on s'y déplace et on zoome (doigts, double-clic, boutons) ; la molette reste au défilement de la fiche
+  lmini = L.map(el, {zoomControl: false, attributionControl: true, scrollWheelZoom: false, minZoom: 11, maxZoom: 18});
   lmini.attributionControl.setPrefix(false);
+  L.control.zoom({position: "bottomright", zoomInTitle: "Zoomer", zoomOutTitle: "Dézoomer"}).addTo(lmini);
   let fond = null;
   try { if (L.maplibreGL && window.maplibregl && supportsGL()) { fond = L.maplibreGL({style: STYLE_PLAN, attribution: OFM, interactive: false}); fond.addTo(lmini); tintPlan(fond); } } catch (e) { fond = null; }
   if (!fond) L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: OSM}).addTo(lmini);
@@ -665,7 +675,7 @@ function miniStart(f, s) {
   L.marker(c, {interactive: false, keyboard: false, icon: L.divIcon({className: "", html: `<span class="lmini__pin${r ? " is-approx" : ""}" style="--c:${col}"></span>`, iconSize: [0, 0]})}).addTo(lmini);
   lmini.setView(c, r >= 1000 ? 13 : r >= 400 ? 14 : 15, {animate: false});
   requestAnimationFrame(() => { if (lmini) lmini.invalidateSize(); });
-  el.onclick = () => { const b = $("#lmap"); if (b) b.click(); };
+  const rc = $("#lminiRc"); if (rc) rc.onclick = () => lmini && lmini.setView(c, r >= 1000 ? 13 : r >= 400 ? 14 : 15);
 }
 function renderListingDetail(id) { setTimeout(() => tipsKick(), 0); miniStop();
   const f = listings().find(x => x.id === id), box = $("#annonces"); if (!f) { lui.openId = null; return renderListings(); }
