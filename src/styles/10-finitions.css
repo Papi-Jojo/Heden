@@ -401,3 +401,8 @@ input,textarea{caret-color:var(--email)}
 @media (hover:hover){.hero:hover .hero__nav{opacity:1}}
 @media (hover:none){.hero__nav{display:none}}
 .hero:hover .hero__car img{transform:none}
+/* guide sur téléphone : bulle posée en bas ou en haut, pleine largeur */
+.tip--tour.is-dock{max-width:none}
+.tip--tour[data-side="dock"]::after{content:none}
+.tip--tour[data-side="dock"]{transform-origin:50% 100%}
+.tiphalo--tour{box-shadow:0 0 0 200vmax color-mix(in srgb,#1E1611 52%,transparent)}

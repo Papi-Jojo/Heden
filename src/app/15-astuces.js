@@ -42,7 +42,7 @@ async function tourShow() {
   for (let k = 0; k < 25 && !target; k++) { target = step.sel.map(x => $(x)).find(tipVisible) || null; if (!target) await new Promise(r => setTimeout(r, 120)); }
   if (tourI < 0) return;
   if (!target) { tourI++; return tourShow(); }                 // élément absent sur cet écran : étape suivante
-  try { target.scrollIntoView({block: "nearest"}); } catch (e) {}
+  tourVoir(target);
   tipHide();
   const veil = document.createElement("div"); veil.className = "tipveil";
   const halo = document.createElement("div"); halo.className = "tiphalo tiphalo--tour"; halo.setAttribute("aria-hidden", "true");
@@ -59,6 +59,24 @@ async function tourShow() {
   el.querySelector(".tip__skip").onclick = () => tourEnd(false);
   setTimeout(() => { const b = el.querySelector(".tip__ok"); if (b && document.contains(b)) b.focus({preventScroll: true}); }, 60);
 }
+/* Amène l'élément à l'écran en faisant défiler sa vue seulement : scrollIntoView ferait glisser toute la page sur iPhone (app sur l'écran d'accueil) */
+function tourVoir(t) {
+  try { if (window.scrollY || document.documentElement.scrollTop) window.scrollTo(0, 0); } catch (e) {}
+  let sc = t.parentElement;
+  while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === "auto" || o === "scroll") && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; }
+  if (!sc || sc === document.body) return;
+  const r = t.getBoundingClientRect(), b = tourBornes();
+  if (r.top < b.haut + 8 || r.bottom > b.bas - 8) sc.scrollTop += r.top - (b.haut + 24);
+}
+/* Haut et bas utiles de l'écran : sous la barre du haut, au-dessus de la barre d'onglets (encoches comprises) */
+function tourBornes() {
+  const vh = window.visualViewport ? visualViewport.height : innerHeight, tb = $(".tabbar"), top = $(".topbar");
+  const bas = tb && tb.offsetParent ? tb.getBoundingClientRect().top : vh;
+  let sa = tourBornes.sa;   // encoche (app sur l'écran d'accueil de l'iPhone) : env(safe-area-inset-top), mesurée une fois
+  if (sa == null) { const p = document.createElement("div"); p.style.cssText = "position:fixed;top:0;height:0;padding-top:env(safe-area-inset-top,0px);visibility:hidden"; document.body.appendChild(p); sa = tourBornes.sa = p.offsetHeight || 0; p.remove(); }
+  const tr = top && top.offsetParent ? top.getBoundingClientRect() : null;
+  return {haut: Math.max(sa, tr && tr.bottom > 0 ? tr.bottom : 0), bas: Math.min(vh, bas), vh};
+}
 function tourEnd(fini) {
   tourI = -1; tipHide();
   const st = tipsState(); st.done = true; tipsSave();
@@ -72,7 +90,22 @@ function tipPlace() {
   if (!document.contains(target)) return;
   const r = target.getBoundingClientRect(), vw = innerWidth, vh = (window.visualViewport ? visualViewport.height : innerHeight);
   const pad = 6, rad = parseFloat(getComputedStyle(target).borderTopLeftRadius) || 12;
-  halo.style.cssText = `left:${r.left - pad}px;top:${r.top - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;border-radius:${Math.min(rad + pad, (r.height + pad * 2) / 2)}px`;
+  // le halo reste dans l'écran (une barre d'onglets avec la marge de l'encoche dépasserait en bas)
+  const hl = Math.max(2, r.left - pad), ht = Math.max(2, r.top - pad), hr = Math.min(vw - 2, r.right + pad), hb = Math.min(vh - 2, r.bottom + pad);
+  halo.style.cssText = `left:${hl}px;top:${ht}px;width:${hr - hl}px;height:${hb - ht}px;border-radius:${Math.min(rad + pad, (hb - ht) / 2)}px`;
+  /* Téléphone : la bulle du guide se pose en bas, au-dessus des onglets, ou en haut si l'élément est dans la moitié basse ;
+     toute la largeur, jamais à cheval sur l'élément ni coupée par l'écran */
+  if (el.classList.contains("tip--tour") && !isDesktop()) {
+    const b = tourBornes(), inBar = !!target.closest(".tabbar"), h = el.offsetHeight, w = Math.min(vw - 24, 440);
+    const enHaut = !inBar && (r.top + r.bottom) / 2 > (b.haut + b.bas) / 2;
+    const y = enHaut ? Math.max(b.haut + 12, Math.min(r.top - pad - 14 - h, b.haut + 12)) : Math.max(b.haut + 12, b.bas - h - 14);
+    el.classList.add("is-dock"); el.style.width = w + "px"; el.style.left = Math.round((vw - w) / 2) + "px"; el.style.top = Math.round(y) + "px";
+    const colle = inBar || (enHaut ? false : Math.abs(y + h - (r.top - pad)) < 40);   // la flèche seulement quand la bulle touche l'élément
+    el.dataset.side = colle ? "haut" : "dock";
+    el.style.setProperty("--ax", Math.round(Math.max(22, Math.min(r.left + r.width / 2 - (vw - w) / 2, w - 22))) + "px");
+    return;
+  }
+  el.classList.remove("is-dock"); el.style.width = "";
   const w = el.offsetWidth, h = el.offsetHeight, gap = 14;
   const below = r.bottom + pad + gap + h <= vh - 8, above = r.top - pad - gap - h >= 8;
   const down = below && (!above || r.top + r.height / 2 < vh * 0.55);
