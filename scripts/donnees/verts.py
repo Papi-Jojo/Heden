@@ -1,8 +1,8 @@
 """Espaces verts de Paris et de la petite couronne, d'après OpenStreetMap, pour le filtre « Espaces verts » de la carte.
 
 Ce qu'on garde : parcs, jardins publics, squares, bois et forêts, cimetières, terrains de loisirs, grandes pelouses.
-Ce qu'on écarte : les jardins privés (access=private), les petites bandes d'herbe le long des rues (moins de 1 500 m²).
-Les contours sont réunis, simplifiés à 3 m près ; chaque espace reçoit des arbres posés en semis régulier légèrement
+Ce qu'on écarte : les jardins privés (access=private), les pelouses et friches (talus du périphérique, des voies ferrées,
+des aéroports) et toute bande étroite (un talus boisé n'est pas un bois). Les contours sont réunis, simplifiés à 4 m près ; chaque espace reçoit des arbres posés en semis régulier légèrement
 décalé (un arbre tous les 45 à 80 m selon la taille), à l'écart des bords, pour être dessinés en petits pictogrammes.
 
 Sortie : data/verts.json = {"v": date, "p": [[[ [lng, lat], ... ], trous...], ...], "a": [[lng, lat, variante], ...]}
@@ -17,16 +17,16 @@ BBOX = "48.72,2.13,48.99,2.57"   # Paris et petite couronne (BOUNDS de l'app)
 Q = f"""[out:json][timeout:300][bbox:{BBOX}];
 (way["leisure"~"^(park|garden|nature_reserve|recreation_ground|village_green)$"];
  relation["leisure"~"^(park|garden|nature_reserve|recreation_ground)$"];
- way["landuse"~"^(forest|cemetery|recreation_ground|village_green|grass|meadow)$"];
+ way["landuse"~"^(forest|cemetery|recreation_ground|village_green)$"];
  relation["landuse"~"^(forest|cemetery|recreation_ground)$"];
- way["natural"~"^(wood|scrub|grassland)$"];
- relation["natural"~"^(wood|scrub)$"];);
+ way["natural"="wood"];
+ relation["natural"="wood"];);
 out geom;"""
 LAT0 = 48.8566
 KX, KY = 111320 * math.cos(math.radians(LAT0)), 110540
 xy = lambda lat, lng: (lng * KX, lat * KY)
 lnglat = lambda x, y: [round(x / KX, 5), round(y / KY, 5)]
-PETIT = {"grass", "meadow", "scrub", "grassland"}   # herbe : seulement les vraies pelouses
+ETROIT = .12   # compacité minimale (4πA/P²) d'un espace de moins de 5 ha : écarte les talus et les bandes le long des voies
 
 
 def fetch():
@@ -63,15 +63,14 @@ def geom(el):
 
 def garder(t, g):
     if t.get("access") in ("private", "no") or t.get("garden:type") in ("residential", "private"): return False
-    kind = t.get("landuse") or t.get("natural") or t.get("leisure")
-    if kind in PETIT: return g.area >= 1500
-    return g.area >= 250
+    if g.area < 250: return False
+    return g.area >= 50000 or 4 * math.pi * g.area / max(1, g.length) ** 2 >= ETROIT
 
 
 def arbres(poly, n_max):
     """Semis décalé (quinconce + léger tremblement déterministe), à l'écart des bords ; un arbre au moins pour un square."""
     a = poly.area
-    pas = 45 if a < 20000 else 60 if a < 200000 else 80
+    pas = 45 if a < 20000 else 60 if a < 200000 else 90 if a < 2e6 else 130
     dedans = poly.buffer(-min(10, pas / 4))
     if dedans.is_empty: dedans = poly
     x0, y0, x1, y1 = dedans.bounds
@@ -100,9 +99,9 @@ def build(raw):
         if g is None or g.is_empty or not garder(t, g): continue
         gs.append(g)
     print(len(gs), "espaces lus")
-    u = unary_union(gs).simplify(3, preserve_topology=True)
+    u = unary_union(gs).simplify(4, preserve_topology=True)
     parts = list(u.geoms) if isinstance(u, MultiPolygon) else [u]
-    parts = [p for p in parts if isinstance(p, Polygon) and p.area >= 250]
+    parts = [p for p in parts if isinstance(p, Polygon) and p.area >= 250 and (p.area >= 50000 or 4 * math.pi * p.area / p.length ** 2 >= ETROIT)]
     polys, trees = [], []
     for p in sorted(parts, key=lambda q: -q.area):
         rings = [[lnglat(x, y) for x, y in p.exterior.coords]] + [[lnglat(x, y) for x, y in r.coords] for r in p.interiors if Polygon(r).area >= 400]
