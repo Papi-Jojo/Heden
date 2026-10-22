@@ -371,3 +371,18 @@ input,textarea{caret-color:var(--email)}
 @keyframes recu{0%{transform:scale(1)}35%{transform:scale(1.32)}100%{transform:scale(1)}}
 .tabbar [data-tab="favoris"].is-recu{color:var(--alerte)}
 .ldet__head .facts{margin:8px 0 6px}
+/* petite carte de la fiche */
+.lmini{display:flex;flex-direction:column;gap:10px}
+.lmini__wrap{position:relative}
+.lmini__map{height:190px;border-radius:var(--rayon-l);overflow:hidden;background:#EEE4D9;border:1px solid var(--trait);cursor:pointer;z-index:0}
+@media (min-width:900px){.lmini__map{height:240px}}
+.lmini__map .leaflet-control-attribution{font-size:9.5px;background:color-mix(in srgb,#F8F2EC 80%,transparent)}
+.lmini__go{position:absolute;top:10px;right:10px;z-index:2;display:inline-flex;align-items:center;gap:6px;background:var(--calcaire);box-shadow:var(--ombre-flottant)}
+.lmini__leg{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;font-size:13.5px;color:var(--ardoise-2)}
+.lmini__lieu{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ardoise)}
+.lmini__lieu svg{opacity:.7;flex:none}
+.lmini__prec{display:inline-flex;align-items:center;gap:7px}
+.lmini__prec i{width:10px;height:10px;border-radius:50%;background:var(--email)}
+.lmini__prec.is-approx i{background:transparent;border:1.5px dashed var(--email)}
+.lmini__pin{display:block;width:22px;height:22px;transform:translate(-50%,-50%);border-radius:var(--galet-a);background:var(--c,#7F5539);border:3px solid #F8F2EC;box-shadow:0 2px 8px rgba(59,42,30,.45)}
+.lmini__pin.is-approx{width:14px;height:14px;border-width:2.5px}

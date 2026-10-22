@@ -36,9 +36,9 @@ function getPlan() {
 }
 /* La carte reste en beige clair dans les deux thèmes : c'est elle qu'on regarde. */
 const MAPTONES = {fond: "#EEE4D9", rue: "#FAF5EF", bord: "#DCCBB9", bati: "#E5D7C8", eau: "#C9D2D8", vert: "#DDD6C1", libelle: "#664530", halo: "#F5EEE6", limite: "#BFA58C"};
-function tintPlan() {
-  if (!planLayer || typeof planLayer.getMaplibreMap !== "function") return;
-  const m = planLayer.getMaplibreMap(); if (!m) return;
+function tintPlan(layer = planLayer) {
+  if (!layer || typeof layer.getMaplibreMap !== "function") return;
+  const m = layer.getMaplibreMap(); if (!m) return;
   const apply = () => {
     const t = MAPTONES, st = m.getStyle(); if (!st || !st.layers) return;
     const set = (id, k, v) => { try { m.setPaintProperty(id, k, v); } catch (e) {} };

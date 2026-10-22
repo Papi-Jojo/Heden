@@ -324,7 +324,7 @@ function setStatus(f, st, after) {
   if (after) after(); else renderListings();
   toast({gardee: "Ajoutée aux favoris", visite: "Visite prévue", ecartee: "Annonce masquée", nouvelle: prev === "ecartee" ? "Annonce de nouveau affichée" : "Retirée des favoris"}[st], {label: "Annuler", fn: () => { f.status = prev; f.updatedAt = Date.now(); learnMemo.key = null; save(); renderListingPins(); renderListings(); }});
 }
-function renderListings() { setTimeout(() => tipsKick(), 0);
+function renderListings() { setTimeout(() => tipsKick(), 0); miniStop();
   const vw = $("#view-annonces"), box = $("#annonces");
   const view = lui.openId && listings().some(x => x.id === lui.openId) ? "d:" + lui.openId : "list", prev = lui.lastView;
   if (prev && prev !== view && prev === "list" && vw) lui.listScroll = vw.scrollTop;
@@ -632,7 +632,42 @@ function heroHTML(f, s, k = 0, neu = false) {
     </div>
   </article>`;
 }
-function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
+/* Petite carte de la fiche : où est l'annonce, à l'adresse près ou dans un cercle quand la position est approchée ; vos zones autour */
+let lmini = null;
+function miniStop() { if (lmini) { try { lmini.remove(); } catch (e) {} lmini = null; } }
+const PRECISION = {adresse: [0, "À l’adresse près"], dpe: [0, "À l’immeuble près (DPE officiel)"], rue: [150, "À la rue près"], metro: [350, "Près du métro cité"], quartier: [450, "Dans le quartier"], cp: [1100, "Quelque part dans l’arrondissement"], ville: [1500, "Quelque part dans la commune"]};
+function precisionOf(f) { const k = f.precise ? (f.placeLevel === "dpe" ? "dpe" : "adresse") : PRECISION[f.placeLevel] ? f.placeLevel : "rue"; return PRECISION[k]; }
+function miniHTML(f, s) {
+  if (!(f.lat && f.lng)) return "";
+  const [r, t] = precisionOf(f);
+  return `<section class="lsec lmini"><div class="lmini__wrap"><div class="lmini__map" id="lminiMap" role="img" aria-label="Carte : ${esc(t.toLowerCase())}"></div>
+    <button class="chip chip--sm lmini__go" type="button" id="lmap">${svgI(PIC.carte, 15)}<span>Ouvrir la carte</span></button></div>
+    <div class="lmini__leg"><span class="lmini__lieu">${svgI(PIC.lieu, 16)}<span>${placeHTML(f, s)}</span></span><span class="lmini__prec${r ? " is-approx" : ""}"><i aria-hidden="true"></i><span>${t}</span></span></div></section>`;
+}
+function miniStart(f, s) {
+  const el = $("#lminiMap"); if (!el || !window.L) return;
+  miniStop();
+  const [r] = precisionOf(f), c = [f.lat, f.lng];
+  lmini = L.map(el, {zoomControl: false, attributionControl: true, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, boxZoom: false, keyboard: false, tap: false});
+  lmini.attributionControl.setPrefix(false);
+  let fond = null;
+  try { if (L.maplibreGL && window.maplibregl && supportsGL()) { fond = L.maplibreGL({style: STYLE_PLAN, attribution: OFM, interactive: false}); fond.addTo(lmini); tintPlan(fond); } } catch (e) { fond = null; }
+  if (!fond) L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: OSM}).addTo(lmini);
+  // vos zones à proximité, en filigrane, colorées par leur note
+  for (const z of state.zones) {
+    if (!Array.isArray(z.points) || z.points.length < 3 || z.example) continue;
+    if (Math.min(...z.points.map(q => distM({lat: q[0], lng: q[1]}, {lat: f.lat, lng: f.lng}))) > 1500) continue;
+    const col = colorFor(zoneScore(z).score);
+    L.polygon(z.points, {color: col, weight: 1.5, opacity: .9, fillColor: col, fillOpacity: .16, interactive: false}).addTo(lmini);
+  }
+  const col = s.reliable ? noteCol(s) : "#7F5539";
+  if (r) L.circle(c, {radius: r, color: "#7F5539", weight: 1.5, dashArray: "4 5", fillColor: "#7F5539", fillOpacity: .1, interactive: false}).addTo(lmini);
+  L.marker(c, {interactive: false, keyboard: false, icon: L.divIcon({className: "", html: `<span class="lmini__pin${r ? " is-approx" : ""}" style="--c:${col}"></span>`, iconSize: [0, 0]})}).addTo(lmini);
+  lmini.setView(c, r >= 1000 ? 13 : r >= 400 ? 14 : 15, {animate: false});
+  requestAnimationFrame(() => { if (lmini) lmini.invalidateSize(); });
+  el.onclick = () => { const b = $("#lmap"); if (b) b.click(); };
+}
+function renderListingDetail(id) { setTimeout(() => tipsKick(), 0); miniStop();
   const f = listings().find(x => x.id === id), box = $("#annonces"); if (!f) { lui.openId = null; return renderListings(); }
   const s = scoreListing(f), h = homeProfile();
   const bar = (label, val, hint) => `<div class="mbar"><span>${label}</span><span class="bar"><i style="width:${val ?? 0}%;--c:${traitFor(val)}"></i></span><b class="num">${val ?? "–"}</b>${hint ? `<small>${hint}</small>` : ""}</div>`;
@@ -656,6 +691,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
       ${isKept(f) ? `<button class="chip chip--sm" type="button" data-st="visite" aria-pressed="${f.status === "visite"}">${ICO.visit}Visite prévue</button>` : ""}
       ${cleanWeb(f.url) ? `<a class="chip chip--sm" href="${esc(cleanWeb(f.url))}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
     </div>
+    ${miniHTML(f, s)}
     ${askHTML(f, s)}
     ${s.reliable && !f.fullPage && cleanWeb(f.url) && (f.photos || []).length < 6 ? `<p class="hint2 lact__hint">Toutes les photos et la fiche complète : ouvrez l’annonce, puis touchez + Heden sur sa page.</p>` : ""}
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
@@ -691,7 +727,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
     <div class="field"><label class="label" for="lnote">Vos notes</label><textarea id="lnote" placeholder="Impression, questions pour l’agent, date de visite…">${esc(f.note || "")}</textarea></div>
     <div class="datarow">
       <button class="btn" type="button" id="ledit">Corriger les informations</button>
-      ${f.lat ? `<button class="btn" type="button" id="lmap">Voir sur la carte</button>` : ""}
+
     </div>`;
   $("#lback").onclick = () => {
     const id = lui.openId, vw = $("#view-annonces");
@@ -725,7 +761,8 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
   const ff = $("#feelFix", box); if (ff) ff.onclick = () => openScoreFix(f);
   bindContact(f, box);
   foldSections(box);
-  const lm = $("#lmap"); if (lm) lm.onclick = () => { setTab("map"); map.flyTo([f.lat, f.lng], 16, {duration: .6}); };
+  miniStart(f, s);
+  const lm = $("#lmap"); if (lm) lm.onclick = () => { miniStop(); setTab("map"); setTimeout(() => { map.invalidateSize(); map.flyTo([f.lat, f.lng], 16, {duration: .6}); }, 80); };   // la carte doit avoir repris sa taille avant de voler
   $("#ldel").onclick = async () => {
     if (!(await askConfirm({title: "Supprimer cette annonce ?", text: "Elle disparaît de vos annonces et de la carte.", ok: "Supprimer", danger: true}))) return;
     state.listings = listings().filter(x => x.id !== f.id); save(); lui.openId = null; renderListings(); renderListingPins();
