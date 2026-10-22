@@ -1,9 +1,9 @@
 """Espaces verts de Paris et de la petite couronne, d'après OpenStreetMap, pour le filtre « Espaces verts » de la carte.
 
-Ce qu'on garde : parcs, jardins publics, squares, bois et forêts, cimetières, terrains de loisirs, grandes pelouses.
+Ce qu'on garde : parcs, jardins publics, squares, bois et forêts, cimetières, terrains de loisirs.
 Ce qu'on écarte : les jardins privés (access=private), les pelouses et friches (talus du périphérique, des voies ferrées,
 des aéroports) et toute bande étroite (un talus boisé n'est pas un bois). Les contours sont réunis, simplifiés à 4 m près ; chaque espace reçoit des arbres posés en semis régulier légèrement
-décalé (un arbre tous les 45 à 80 m selon la taille), à l'écart des bords, pour être dessinés en petits pictogrammes.
+décalé (un arbre tous les 45 à 130 m selon la taille), à l'écart des bords, pour être dessinés en petits pictogrammes.
 
 Sortie : data/verts.json = {"v": date, "p": [[[ [lng, lat], ... ], trous...], ...], "a": [[lng, lat, variante], ...]}
 Usage : python scripts/donnees/verts.py data   (ou : data brut.json pour rejouer sans Overpass)
