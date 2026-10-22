@@ -1203,4 +1203,4 @@ setTab(/profil/.test(location.hash) ? "profile" : /favoris/.test(location.hash) 
 cloudInit();
 refreshEstimates();
 maybeAutoQuiz();
-window.__heden = {state: () => state, parseListing, extractCards, bookmarkletCode, score: f => scoreListing(f), scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate, map, toast, openQuiz, toastAvoid: TOAST_AVOID};
+window.__heden = {state: () => state, plan: () => planLayer, parseListing, extractCards, bookmarkletCode, score: f => scoreListing(f), scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate, map, toast, openQuiz, toastAvoid: TOAST_AVOID};

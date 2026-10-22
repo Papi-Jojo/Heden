@@ -50,7 +50,8 @@ $("#brandHome").onclick = () => currentTab === "map" ? tabHome("map") : setTab("
 /* ---------- Filtres de la carte : les options sortent du bouton en galets ---------- */
 function paintMapFilter() {
   $$("#mapf [data-mf]").forEach(b => { const on = mapFilter[b.dataset.mf] !== false; b.setAttribute("aria-pressed", String(on)); b.title = on ? "Masquer sur la carte" : "Afficher sur la carte"; });
-  $("#mapf").classList.toggle("has-filter", !mapFilter.zones || !mapFilter.annonces);
+  const v = $("#mapf [data-vert]"); if (v) { v.hidden = !vertDispo(); v.setAttribute("aria-pressed", String(vertOn)); v.title = vertOn ? "Masquer les espaces verts" : "Montrer les espaces verts"; }
+  $("#mapf").classList.toggle("has-filter", !mapFilter.zones || !mapFilter.annonces || vertOn);
 }
 function openMapFilter(open) {
   const m = $("#mapf"); m.classList.toggle("is-open", open); $("#mapfBtn").setAttribute("aria-expanded", String(open));
@@ -61,6 +62,7 @@ $$("#mapf [data-mf]").forEach(b => b.onclick = () => {
   try { localStorage.setItem("heden.mapf", JSON.stringify(mapFilter)); } catch (e) {}
   paintMapFilter(); if (k === "zones") renderZones(); else renderListingPins();
 });
+$("#mapf [data-vert]").onclick = () => { vertOn = !vertOn; try { localStorage.setItem("heden.vert", vertOn ? "1" : "0"); } catch (e) {} vertApply(); paintMapFilter(); };
 document.addEventListener("pointerdown", e => { if (!e.target.closest("#mapf")) openMapFilter(false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#mapf").classList.contains("is-open")) { openMapFilter(false); $("#mapfBtn").focus(); } });
 paintMapFilter(); paintModeSel(); bindModeSel($("#mapMode"));

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Heden</title>
-<script src="i18n/runtime.js?v=22"></script>
+<script src="i18n/runtime.js?v=23"></script>
 <style>html.i18n-wait body{visibility:hidden}</style>
 <meta name="description" content="Notez les coins de Paris que vous visitez et repérez ceux qui vous correspondent.">
 <meta name="theme-color" content="#F8F2EC" media="(prefers-color-scheme: light)">
@@ -50,10 +50,6 @@
             <input id="q" type="search" placeholder="Adresse, rue, station…" aria-label="Rechercher une adresse">
             <div class="results" id="results" hidden></div>
           </form>
-          <div class="seg" id="basemap" role="group" aria-label="Fond de carte">
-            <button type="button" data-base="plan" aria-pressed="true">Plan</button>
-            <button type="button" data-base="sat" aria-pressed="false">Satellite</button>
-          </div>
         </div>
         <div class="walkbar" id="walkbar" hidden></div>
         <div class="mapmode" id="mapMode" role="group" aria-label="Projet affiché sur la carte" hidden><button type="button" data-proj="achat" aria-pressed="true">Achat</button><button type="button" data-proj="location" aria-pressed="false">Location</button></div>
@@ -67,6 +63,7 @@
             <div class="mapf__list" id="mapfList" role="group" aria-label="Afficher sur la carte">
               <button class="mapf__opt" type="button" data-mf="zones" aria-pressed="true" style="--i:0"><svg class="mapf__eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/><path class="mapf__slash" d="M4 4l16 16"/></svg><span>Zones</span></button>
               <button class="mapf__opt" type="button" data-mf="annonces" aria-pressed="true" style="--i:1"><svg class="mapf__eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/><path class="mapf__slash" d="M4 4l16 16"/></svg><span>Annonces</span></button>
+              <button class="mapf__opt mapf__opt--vert" type="button" data-vert aria-pressed="false" style="--i:2"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19.5c0-8 5-13.5 14.5-14.5 0 9.5-5.5 14.5-13.5 14.5"/><path d="M5 19.5c3-4.2 6.2-7 10-9"/></svg><span>Espaces verts</span></button>
             </div>
           </div>
           <button class="icon-btn" id="walkBtn" type="button" title="Tracer une balade" aria-label="Tracer une balade">

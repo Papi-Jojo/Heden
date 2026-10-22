@@ -295,3 +295,7 @@ body.walking .mapmode,body[data-mode="placing"] .mapmode,body[data-mode="rating"
 @keyframes toast-in{from{opacity:0;transform:translate(-50%,var(--ty,-10px)) scale(.92)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
 @keyframes toast-out{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,calc(var(--ty,-10px) * .6)) scale(.96)}}
 @media (prefers-color-scheme: dark){.toast[data-kind="info"] .toast__i{color:var(--laiton-vif)}.toast[data-kind="err"] .toast__i{color:var(--pierre)}}
+.mapf__opt:nth-child(3){border-radius:var(--galet-c)}
+.mapf__opt--vert[aria-pressed="true"]{background:#C9D2A7;border-color:#8E9F66;color:#2F3A1E}
+.mapf__opt--vert[aria-pressed="false"]{background:var(--calcaire);color:var(--ardoise);border-style:solid;border-color:var(--trait)}
+.mapf__opt--vert[aria-pressed="false"] span{text-decoration:none}
