@@ -9,8 +9,10 @@
   const T = (fr, en) => lang === "en" ? en : fr;
   const pl = (n, fr1, frN, en1, enN) => `${n} ${n > 1 ? T(frN, enN) : T(fr1, en1)}`;
 
+  // sites généralistes : seulement les rubriques immobilières (Leboncoin : ventes, locations, colocations)
+  const horsImmo = () => /(^|\.)leboncoin\.fr$/.test(location.hostname) && !/ventes_immobilieres|\/locations|colocations|category=(9|10|11)\b|\/(ad|c)\/(ventes_immobilieres|locations|colocations)/.test(location.href);
   function lire(force) {
-    if ((!auto && !force) || coupe) return;
+    if ((!auto && !force) || coupe || horsImmo()) return;
     const page = location.href.split("#")[0];
     if (!force && isDetailUrl(page) && vus.has(page)) return;
     if (++lectures > 40 && !force) return;                   // page qui bouge sans arrêt : on s'arrête là
