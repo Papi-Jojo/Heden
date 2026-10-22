@@ -211,6 +211,26 @@ def annuler(pw):
 
 
 @essai
+def zones_superposees(pw):
+    """Une annonce dans deux zones superposées : la plus petite prime critère par critère, la grande complète ce qu'elle ne note pas."""
+    e = Essai(pw); pg = e.page()
+    r = pg.evaluate("""() => { const s = __heden.state(), cs = s.profile.criteria.filter(c => c.weight > 0).map(c => c.id);
+      const carre = (lat, lng, d) => [[lat - d, lng - d], [lat - d, lng + d], [lat + d, lng + d], [lat + d, lng - d]];
+      const grande = {id: 'g', name: 'Montmartre', points: carre(48.886, 2.34, .006), ratings: Object.fromEntries(cs.map(id => [id, 1])), example: false};
+      const petite = {id: 'p', name: 'Rue Lepic', points: carre(48.886, 2.34, .001), ratings: {[cs[0]]: 5}, example: false};
+      s.zones = [grande, petite];   // la grande d'abord : avant, c'était elle qui comptait
+      const f = {id: 'a1', price: 500000, surface: 50, rooms: 2, postcode: '75018', lat: 48.886, lng: 2.34, precise: true, placeLevel: 'adresse', status: 'nouvelle', photos: []};
+      s.listings = [f]; __heden.save();
+      const a = __heden.score(f).area, attendu = __heden.scoreOf({ratings: Object.assign({}, grande.ratings, petite.ratings)}).score;
+      const hors = __heden.score(Object.assign({}, f, {lat: 48.8905, lng: 2.3445})).area;   // dans la grande seulement
+      return {zone: a.zone.name, pile: (a.stack || []).map(z => z.name), score: a.score, attendu, seule: __heden.scoreOf(grande).score, hors: [hors.zone.name, hors.stack]}; }""")
+    assert r["zone"] == "Rue Lepic" and r["pile"] == ["Rue Lepic", "Montmartre"], r
+    assert r["score"] == r["attendu"] and r["score"] != r["seule"], r
+    assert r["hors"] == ["Montmartre", None], r
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
 def epingles(pw):
     """Carte : seuls les favoris ; regroupés au loin, séparés de près ; plusieurs au même point → liste ; clic → popup photos + note."""
     e = Essai(pw, 1280, 860); pg = e.page()

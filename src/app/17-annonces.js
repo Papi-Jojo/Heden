@@ -142,12 +142,27 @@ function listingFilters(f, h) {
   if (h.noWorks && f.works === "travaux") fails.push("gros travaux");
   return fails;
 }
-/* Quartier : la zone qui contient l'annonce, sinon la plus proche (moins de 300 m), sinon l'estimation des données du coin */
+/* Zones superposées : la plus petite prime, critère par critère ; ce qu'elle ne note pas vient de la zone suivante (plus grande),
+   puis de l'estimation la plus locale. Chaque membre d'une carte de groupe est traité de même. */
+const zoneAire = z => z.area || (Array.isArray(z.points) && z.points.length >= 3 ? polyArea(z.points) : Infinity);
+function stackZones(zs) {
+  const sz = zs.slice().sort((a, b) => zoneAire(a) - zoneAire(b));
+  if (sz.length === 1) return {zone: sz[0], score: zoneScore(sz[0]).score, stack: null};
+  const from = new Set();
+  const merge = get => { const out = {}; for (const z of sz) for (const [id, v] of Object.entries(get(z) || {})) if (typeof v === "number" && !(id in out)) { out[id] = v; from.add(z); } return out; };
+  const ratings = merge(z => z.ratings);
+  const ids = [...new Set(sz.flatMap(z => (z.others || []).map(o => o.userId)))];
+  const others = ids.map(id => ({userId: id, ratings: merge(z => ((z.others || []).find(o => o.userId === id) || {}).ratings), fav: ((sz[0].others || []).find(o => o.userId === id) || {}).fav}));
+  const v = {id: sz[0].id, name: sz[0].name, points: sz[0].points, est: (sz.find(z => z.est) || {}).est, price: (sz.find(z => z.price > 0) || {}).price, ratings, others, fav: sz[0].fav, comment: sz[0].comment};
+  const more = sz.slice(1).filter(z => from.has(z));   // les plus grandes qui ont réellement apporté une note
+  return {zone: sz[0], score: zoneScore(v).score, stack: more.length ? [sz[0], ...more] : null};
+}
+/* Quartier : les zones qui contiennent l'annonce (superposées : voir stackZones), sinon la plus proche (moins de 300 m), sinon l'estimation des données du coin */
 function listingArea(f) {
   if (!(f.lat && f.lng)) return null;
   const p = {lat: f.lat, lng: f.lng}, coarse = f.placeLevel === "cp" || f.placeLevel === "ville";   // posée au centre de l'arrondissement : aucune zone ne la contient vraiment
-  const inside = !coarse && state.zones.find(z => Array.isArray(z.points) && inPoly(f.lat, f.lng, z.points));
-  if (inside) return {zone: inside, score: zoneScore(inside).score, how: "dans"};
+  const inside = coarse ? [] : state.zones.filter(z => Array.isArray(z.points) && inPoly(f.lat, f.lng, z.points));
+  if (inside.length) return Object.assign(stackZones(inside), {how: "dans"});
   let best = null;
   for (const z of coarse ? [] : state.zones) { if (!z.points) continue; const d = Math.min(...z.points.map(q => distM(p, {lat: q[0], lng: q[1]}))); if (d < 300 && (!best || d < best.d)) best = {zone: z, d}; }
   if (best) { const s = zoneScore(best.zone).score; return {zone: best.zone, score: s == null ? null : Math.max(0, s - 5), how: "près", d: best.d}; }
@@ -234,6 +249,7 @@ function scoreListing(f, raw = false) {
   const plus = [], minus = (f.scam || []).length ? ["Annonce suspecte"] : [];
   if (f.dropped && f.priceHistory && f.priceHistory.length) plus.push(`Prix baissé de ${fmtInt(f.priceHistory[f.priceHistory.length - 1].price - f.price)} €`);
   if (fx && fx.quartier != null) (fx.quartier >= 60 ? plus : minus).push(`Quartier corrigé à ${fx.quartier}`);
+  else if (area && area.stack) (area.score >= 65 ? plus : area.score < 45 ? minus : plus).push(`Dans vos zones « ${area.stack[0].name} » et « ${area.stack[1].name} » (${area.score ?? "–"})`);
   else if (area && area.zone) (area.score >= 65 ? plus : area.score < 45 ? minus : plus).push(`${area.how === "dans" ? "Dans" : "Près de"} votre zone « ${area.zone.name} » (${area.score ?? "–"})`);
   else if (area) { const ar = coarse && /^750(\d\d)$/.exec(f.postcode || ""); (area.score >= 60 ? plus : minus).push(ar ? `Paris ${arrNom(+ar[1])} estimé à ${area.score}, sans l’adresse` : `Quartier estimé à ${area.score} d’après les données du coin`); }
   if (ecart != null) (ecart <= -0.03 ? plus : ecart >= 0.08 ? minus : plus).push(ecart <= -0.03 ? `${Math.round(-ecart * 100)} % sous les ${rentK ? "loyers" : "ventes"} du quartier` : ecart >= 0.08 ? `${Math.round(ecart * 100)} % au-dessus des ${rentK ? "loyers" : "ventes"} du quartier${pa.adj.length ? ", à atouts égaux" : ""}` : rentK ? "Dans les loyers du quartier" : "Au prix des ventes du quartier");
@@ -576,7 +592,7 @@ const CHIP_TXT = {lumiere: ["Lumineux", "Sombre"], etage: ["Étage élevé", "É
 function chipsOf(f, s) {
   const out = [], add = (ic, t, tone, title) => { if (t && out.length < 4) out.push({ic, t, tone, title}); };
   if (s.fails.length) add(PIC.hors, "Hors critères", "minus", "Hors de vos critères : " + s.fails.join(", "));
-  if (s.quartier != null) add(PIC.lieu, `Quartier ${s.quartier}`, s.quartier >= 65 ? "plus" : s.quartier < 45 ? "minus" : "", s.area && s.area.zone ? `Votre zone « ${s.area.zone.name} »` : "Estimé d’après les données du coin");
+  if (s.quartier != null) add(PIC.lieu, `Quartier ${s.quartier}`, s.quartier >= 65 ? "plus" : s.quartier < 45 ? "minus" : "", s.area && s.area.stack ? `Vos zones « ${s.area.stack[0].name} » et « ${s.area.stack[1].name} »` : s.area && s.area.zone ? `Votre zone « ${s.area.zone.name} »` : "Estimé d’après les données du coin");
   if (s.ecart != null) add(PIC.prix, s.ecart <= -0.03 ? `${Math.round(-s.ecart * 100)} % sous le marché` : s.ecart >= 0.08 ? `${Math.round(s.ecart * 100)} % au-dessus` : "Prix du marché", s.ecart <= -0.03 ? "plus" : s.ecart >= 0.08 ? "minus" : "");
   const W = homeWeights(), ranked = Object.entries(W).filter(([id, w]) => w > 0 && s.known[id]).sort((a, b) => b[1] - a[1]);
   for (const [id] of ranked) {
@@ -654,7 +670,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0);
       <div class="lsec__head"><h2>${s.reliable ? "Pourquoi ce score" : "Ce que Heden sait déjà"}</h2><button class="btn btn--sm btn--clair" type="button" id="lfix">${s.hasFix ? "Revoir mes corrections" : s.reliable ? "Corriger la note" : "La noter"}</button></div>
       ${s.fixTotal ? `<p class="banner">Note fixée à ${s.total} par ${f.fix.by && cloud.user && f.fix.by !== cloud.user.id ? esc(personName(f.fix.by)) : "vous"}. Le détail ci-dessous reste celui de l’analyse${s.heden != null ? `, qui donne ${s.heden}` : ""}.</p>` : ""}
       ${bar("Logement", s.logement, `compte pour ${h.mix.logement} %${s.cover < .999 ? `, ${Math.round(s.cover * 100)} % des critères connus` : ""}`)}
-      ${bar("Quartier", s.quartier, s.fixQuartier ? "corrigé" : s.partial ? `estimé, sans ${esc((s.partial.missing || []).slice(0, 3).join(", ") || "vos critères de terrain")}` : s.area ? (s.area.zone ? (s.area.how === "dans" ? "dans « " + esc(s.area.zone.name) + " »" : "près de « " + esc(s.area.zone.name) + " »") : "estimé") : "lieu inconnu")}
+      ${bar("Quartier", s.quartier, s.fixQuartier ? "corrigé" : s.partial ? `estimé, sans ${esc((s.partial.missing || []).slice(0, 3).join(", ") || "vos critères de terrain")}` : s.area ? (s.area.stack ? `« ${esc(s.area.stack[0].name)} », complétée par « ${esc(s.area.stack.slice(1).map(z => z.name).join(" », « "))} »` : s.area.zone ? (s.area.how === "dans" ? "dans « " + esc(s.area.zone.name) + " »" : "près de « " + esc(s.area.zone.name) + " »") : "estimé") : "lieu inconnu")}
       ${bar("Prix", s.prix, s.ecart != null ? `${s.ecart > 0 ? "+" : "−"}${Math.abs(Math.round(s.ecart * 100))} % / quartier` : "à comparer")}
       ${s.adj && s.adj.length && s.med ? `<p class="hint2 lwhy__adj">Prix comparé à ${kindOf(f) === "location" ? fmt1(s.med) : fmtInt(s.med)} €/m² : le marché du quartier${s.medRaw ? ` (${kindOf(f) === "location" ? fmt1(s.medRaw) : fmtInt(s.medRaw)} €/m²)` : ""} ajusté au bien, ${esc(s.adj.map(([l, pc]) => `${l.toLowerCase()} ${pc > 0 ? "+" : "−"}${String(Math.abs(pc)).replace(".", ",")} %`).join(", "))}.</p>` : ""}
       ${s.redhib.length ? `<p class="lnote lnote--minus"><b>Rédhibitoire pour vous :</b> ${esc(s.redhib.map(r => r.label).join(", "))}, ce qui retire ${s.malus} points.</p>` : ""}
