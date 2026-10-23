@@ -482,3 +482,25 @@ input,textarea{caret-color:var(--email)}
 .psum__secs{display:flex;flex-wrap:wrap;gap:6px}
 .psum__secs .tag{margin:0}
 .acctrow .btn{flex:none}
+
+/* Profil, onglet Note : la part de chaque bloc en tête, puis le détail quartier / logement */
+.nmix{padding:22px 22px 10px;border:1px solid var(--trait);border-radius:var(--rayon-l);background:var(--calcaire);box-shadow:var(--relief),var(--ombre-1);background-image:var(--lustre),var(--grain);background-size:auto,180px 180px;gap:18px}
+.nmix__k{margin:0 0 6px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--laiton-vif)}
+.nmix__head .hint2{margin:6px 0 0}
+.nmix__bar{display:flex;gap:3px;height:42px;border-radius:14px;overflow:hidden}
+.nmix__bar i{display:flex;align-items:center;justify-content:center;flex-basis:0;min-width:0;overflow:hidden;transition:flex-grow .28s var(--ease-sortie)}
+.nmix__bar i,.nmix__bar b{font-style:normal}
+.nmix__bar b{font-size:13px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.nmix__bar [data-b=logement],.nmix__row[data-mix=logement] .nm::before{background:var(--email);color:var(--on-email)}
+.nmix__bar [data-b=quartier],.nmix__row[data-mix=quartier] .nm::before{background:color-mix(in srgb,var(--email) 58%,var(--calcaire));color:var(--on-score)}
+.nmix__bar [data-b=prix],.nmix__row[data-mix=prix] .nm::before{background:color-mix(in srgb,var(--email) 26%,var(--calcaire));color:var(--ardoise)}
+.nmix__row .nm::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:0}
+#view-profile .nmix__row{padding:12px 0;border-top:1px solid var(--trait)}
+#view-profile .nmix__row:first-child{border-top:0}
+.nsubs{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin-top:-6px}
+.nsubs__k{margin:0;font-size:15px;font-weight:650}
+.nsubs .seg{margin-left:0}
+.npane{display:flex;flex-direction:column;gap:28px}
+.npane[hidden]{display:none}
+.npane.swap-in>*{animation:vue-in .22s var(--ease-sortie) both}
+@media (prefers-reduced-motion: reduce){.nmix__bar i{transition:none}}

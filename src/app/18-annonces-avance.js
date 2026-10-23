@@ -721,7 +721,7 @@ function paintQuiz() {
   });
   const go = $("#qzDone"); if (go) go.onclick = () => { closeQuiz(); lui.openId = null; lui.feed = cloud.user ? "explorer" : "mes"; lui.exf = "pour"; rerenderAll(); setTab("annonces"); };
   const zo = $("#qzZones"); if (zo) zo.onclick = () => { closeQuiz(); rerenderAll(); openLieux(); };
-  const adv = $("#qzAdv"); if (adv) adv.onclick = () => { closeQuiz(); rerenderAll(); ptab = "quartier"; setTab("profile"); showPtab("quartier"); };
+  const adv = $("#qzAdv"); if (adv) adv.onclick = () => { closeQuiz(); rerenderAll(); ptab = "note"; setTab("profile"); showPtab("note"); };
 }
 function quizResultHTML() {
   const p = state.profile, h = homeProfile(), s = h.setup || qz.s;

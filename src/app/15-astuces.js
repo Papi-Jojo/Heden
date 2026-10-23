@@ -10,7 +10,7 @@ const TOUR = [
   {tab: "annonces", sel: [".feeds"], titre: "Deux flux d’annonces", txt: "Explorer : les annonces des sites immobiliers, notées pour vous. Mes ajouts : celles que vous ajoutez vous-même."},
   {tab: "annonces", sel: ["#addListing"], titre: "Ajouter une annonce", txt: "Collez son texte, ou installez le bouton + Heden : sur la page d’une annonce, un clic suffit, photos comprises."},
   {tab: "favoris", sel: [".tabbar [data-tab=favoris]", ".tabs [data-tab=favoris]"], titre: "Vos favoris", txt: "Touchez le cœur d’une annonce : elle se range ici et apparaît sur la carte, avec sa note."},
-  {tab: "profile", sel: [".ptabs"], titre: "Vos critères", txt: "Ce qui compte pour vous se règle ici : quelques questions, et Heden note chaque annonce selon vous. Le compte, la langue et ce guide sont dans Compte."}
+  {tab: "profile", sel: [".ptabs"], titre: "Vos critères", txt: "Ce qui compte pour vous se règle ici : quelques questions, et Heden note chaque annonce selon vous. Le poids du logement, du quartier et du prix est dans Note ; le compte et ce guide, dans Compte."}
 ];
 function tipsState() {
   if (tipsSt) return tipsSt;

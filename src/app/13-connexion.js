@@ -103,6 +103,13 @@ function renderAuth() {
   };
 }
 let ptab = (() => { try { return localStorage.getItem("heden.ptab") || "recherche"; } catch (e) { return "recherche"; } })();
+let nsub = (() => { try { return localStorage.getItem("heden.nsub") || "quartier"; } catch (e) { return "quartier"; } })();
+if (ptab === "quartier" || ptab === "logement") { nsub = ptab; ptab = "note"; }   // anciens onglets, regroupés dans Note
+function showNsub(k) {
+  nsub = k; try { localStorage.setItem("heden.nsub", k); } catch (e) {}
+  $$("[data-nsub]").forEach(x => { const on = x.dataset.nsub === k; x.setAttribute("aria-selected", String(on)); x.tabIndex = on ? 0 : -1; });
+  $$(".npane").forEach(pn => { pn.hidden = pn.dataset.npane !== k; if (!pn.hidden) { pn.classList.remove("swap-in"); void pn.offsetWidth; pn.classList.add("swap-in"); setTimeout(() => pn.classList.remove("swap-in"), 300); } });
+}
 function showPtab(k) {
   ptab = k; try { localStorage.setItem("heden.ptab", k); } catch (e) {}
   $$("[data-ptab]").forEach(x => { const on = x.dataset.ptab === k; x.setAttribute("aria-selected", String(on)); x.tabIndex = on ? 0 : -1; });
@@ -114,9 +121,11 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
   const cs = p.criteria;
   const wsum = cs.reduce((a, c) => a + (c.weight > 0 ? c.weight : 0), 0);
   const avail = Object.keys(LIB).filter(id => !cs.some(c => c.id === id));
-  const tabs = [["recherche", "Recherche"], ["quartier", "Quartier"], ["logement", "Logement"], ["compte", "Compte"]];
+  const tabs = [["recherche", "Recherche"], ["note", "Note"], ["compte", "Compte"]];
   if (!tabs.some(t => t[0] === ptab)) ptab = "recherche";
   const pane = (k, html) => `<div class="ppane" data-pane="${k}" ${ptab === k ? "" : "hidden"}>${html}</div>`;
+  if (nsub !== "logement") nsub = "quartier";
+  const npane = (k, html) => `<div class="npane" data-npane="${k}" role="tabpanel" ${nsub === k ? "" : "hidden"}>${html}</div>`;
   $("#prof").innerHTML = `
     <div class="prof__top"><h1>Votre profil</h1>
       <div class="seg ptabs" role="tablist" aria-label="Sections du profil">${tabs.map(([k, l]) => `<button type="button" role="tab" data-ptab="${k}" aria-selected="${ptab === k}" tabindex="${ptab === k ? 0 : -1}">${l}</button>`).join("")}</div></div>
@@ -131,10 +140,24 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
       <p class="hint2">${(() => { const lo = homeProfile().loc || {}; return [lo.colocs > 1 ? `Colocation à ${lo.colocs}` : null, lo.loyerMax ? `Loyer maximum ${fmtInt(lo.loyerMax)} € par mois` : "Pas de loyer maximum", lo.revenus ? `revenus de ${fmtInt(lo.revenus)} € par mois` : "revenus non indiqués", {vide: "vide", meuble: "meublé", indiff: "meublé ou vide"}[lo.meuble || "indiff"]].filter(Boolean).join(", ") + "."; })()}</p></div>
       <button class="btn btn--sm btn--clair" type="button" id="locProf">Modifier</button>
     </section>` : ""}
+    ${homeFiltersHTML()}
+    <section class="sec">
+      <h3 class="sub3">Budget des zones</h3>
+      ${projet() !== "location" ? `<div class="field">
+        <label class="label" for="pbudget">Budget max €/m²${projet() === "deux" ? " à l’achat" : ""}</label>
+        <input type="number" id="pbudget" inputmode="numeric" min="0" step="100" value="${p.budget ?? ""}" placeholder="Facultatif">
+      </div>` : ""}
+      ${projet() !== "achat" ? `<p class="hint2">Location : ${rentPpmBudget() ? `${fmt1(rentPpmBudget())} €/m² par mois au plus, d’après votre loyer maximum.` : "indiquez un loyer maximum plus haut."}</p>` : ""}
+      <p class="hint2">Au-dessus, la zone passe en pointillés.</p>
+    </section>
 `)}
-    ${pane("quartier", groupCritHTML() + `
+    ${pane("note", mixHTML() + `
+    <div class="nsubs"><p class="nsubs__k">Le détail de chaque part</p>
+      <div class="seg nsub" role="tablist" aria-label="Détail de la note">${[["quartier", "Le quartier"], ["logement", "Le logement"]].map(([k, l]) => `<button type="button" role="tab" data-nsub="${k}" aria-selected="${nsub === k}" tabindex="${nsub === k ? 0 : -1}">${l}</button>`).join("")}</div></div>
+    ${npane("quartier", groupCritHTML() + `
     <section class="sec">
       <h2>${isShared() ? "Vos critères personnels" : "Ce qui compte dans un quartier"}</h2>
+      <p class="hint2">Ces poids font la note de vos zones, qui est la part du quartier dans la note.</p>
       <div class="cards">
         ${cs.map((c, i) => `
           <div class="crow" data-i="${i}">
@@ -165,18 +188,9 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
       <div class="chips">${PRESETS.map(pr => `<button class="chip pchip" type="button" data-p="${pr.id}" aria-pressed="${p.presetId === pr.id && !p.modified}" title="${esc(pr.tagline)}">${esc(pr.name)}</button>`).join("")}</div>
       <p class="hint2">${(() => { const cur = PRESETS.find(x => x.id === p.presetId); return cur && !p.modified ? esc(cur.tagline) + "." : p.modified ? "Profil ajusté à la main." : ""; })()} Changer remplace vos critères, garde vos notes.</p>
     </section>
-    <section class="sec">
-      <h3 class="sub3">Budget des zones</h3>
-      ${projet() !== "location" ? `<div class="field">
-        <label class="label" for="pbudget">Budget max €/m²${projet() === "deux" ? " à l’achat" : ""}</label>
-        <input type="number" id="pbudget" inputmode="numeric" min="0" step="100" value="${p.budget ?? ""}" placeholder="Facultatif">
-      </div>` : ""}
-      ${projet() !== "achat" ? `<p class="hint2">Location : ${rentPpmBudget() ? `${fmt1(rentPpmBudget())} €/m² par mois au plus, d’après votre loyer maximum.` : "indiquez un loyer maximum dans Logement."}</p>` : ""}
-      <p class="hint2">Au-dessus, la zone passe en pointillés.</p>
-    </section>
 
 `)}
-    ${pane("logement", homeSectionHTML())}
+    ${npane("logement", homeWeightsHTML())}`)}
     ${pane("compte", accountHTML() + `
     <section class="sec">
       <h2>Vous</h2>
@@ -205,6 +219,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
       <p class="hint2 num">${state.zones.length} zone${state.zones.length > 1 ? "s" : ""} enregistrée${state.zones.length > 1 ? "s" : ""}${storageOk ? "" : " · stockage local bloqué par ce navigateur"}.</p>
     </section>`)}`;
   $$("[data-ptab]", $("#prof")).forEach(b => b.onclick = () => showPtab(b.dataset.ptab));
+  $$("[data-nsub]", $("#prof")).forEach(b => b.onclick = () => showNsub(b.dataset.nsub));
   bindAccount($("#prof"));
   bindHomeSection();
   bindProfileSummary();
@@ -247,7 +262,7 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
     if (v === "__custom") cs.push({id: "c_" + uid(), name: "Nouveau critère", desc: "", weight: 10});
     else cs.push({id: v, name: LIB[v].name, desc: LIB[v].desc, weight: 10});
     p.modified = true; save(); renderProfile();
-    if (v === "__custom") { const rows = $$(".crow"); const nm = $(".nm", rows[rows.length - 1]); nm.focus(); nm.select(); }
+    if (v === "__custom") { const rows = $$(".crow[data-i]"); const nm = $(".nm", rows[rows.length - 1]); nm.focus(); nm.select(); }
   };
   $("#exp").onclick = exportData;
   $("#imp").onclick = () => $("#importFile").click();

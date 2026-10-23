@@ -985,9 +985,24 @@ function openAddListing(existing, imported, opts = {}) {
   el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
 }
 
-/* ---------- Profil : le logement idéal ---------- */
-function homeSectionHTML() {
-  const h = homeProfile(), ws = Object.values(h.weights).reduce((a, w) => a + (w > 0 ? w : 0), 0) || 1;
+/* ---------- Profil : le logement idéal (filtres), ses critères, et la part de chaque bloc dans la note ---------- */
+const MIX_K = ["logement", "quartier", "prix"];
+const mixPct = h => { const ms = MIX_K.reduce((a, k) => a + (h.mix[k] || 0), 0) || 1; return Object.fromEntries(MIX_K.map(k => [k, Math.round((h.mix[k] || 0) / ms * 100)])); };
+function mixHTML() {
+  const h = homeProfile(), pc = mixPct(h);
+  const rows = [["logement", "Le logement", "Vos critères du logement"], ["quartier", "Le quartier", "La note de vos zones, ou l’estimation du coin"], ["prix", projet() === "location" ? "Le loyer" : "Le prix", {achat: "Comparé aux ventes réelles du quartier", location: "Comparé aux loyers de référence du quartier", deux: "Comparé aux ventes ou aux loyers du quartier"}[projet()]]];
+  return `<section class="sec nmix" id="mixSec">
+    <div class="nmix__head"><p class="nmix__k">La pondération principale</p><h2>La note d’une annonce</h2>
+      <p class="hint2">Sur 100 : la part du logement, du quartier et du prix.</p></div>
+    <div class="nmix__bar" aria-hidden="true">${MIX_K.map(k => `<i data-b="${k}" style="flex-grow:${h.mix[k] || 0}"><b class="num">${pc[k]} %</b></i>`).join("")}</div>
+    <div class="nmix__rows">${rows.map(([k, n, d]) => `<div class="crow crow--home nmix__row" data-mix="${k}">
+        <div style="min-width:0"><b class="nm">${n}</b><span class="ds">${d}</span></div>
+        <div class="wctl"><input type="range" min="0" max="60" step="5" value="${h.mix[k]}" aria-label="${{logement: "Part du logement", quartier: "Part du quartier", prix: projet() === "location" ? "Part du loyer" : "Part du prix"}[k]}"><output class="num"><span class="wv">${h.mix[k]}</span><small class="ws">${pc[k]} %</small></output></div>
+      </div>`).join("")}</div>
+  </section>`;
+}
+function homeFiltersHTML() {
+  const h = homeProfile();
   const num = (id, label, val, unit, step = 1) => `<div class="field"><label class="label" for="${id}">${label}</label><input type="number" id="${id}" inputmode="numeric" min="0" step="${step}" value="${val ?? ""}" placeholder="${unit}"></div>`;
   return `<section class="sec" id="homeSec">
     <h2>Votre logement idéal</h2>
@@ -1004,36 +1019,37 @@ function homeSectionHTML() {
       <button class="chip" type="button" id="hGround" aria-pressed="${!!h.noGround}">Pas de rez-de-chaussée</button>
       <button class="chip" type="button" id="hOut" aria-pressed="${!!h.outdoorReq}">Extérieur exigé</button>
     </div>
-    <h3 class="sub3">Ce qui compte dans le logement</h3>
+  </section>`;
+}
+function homeWeightsHTML() {
+  const h = homeProfile(), ws = Object.values(h.weights).reduce((a, w) => a + (w > 0 ? w : 0), 0) || 1;
+  return `<section class="sec" id="homeW">
+    <h2>Ce qui compte dans le logement</h2>
+    <p class="hint2">Ces poids se partagent la part du logement dans la note.</p>
     <div class="cards">${Object.keys(HOME_LIB).map(id => `<div class="crow crow--home" data-h="${id}">
         <div style="min-width:0"><b class="nm">${esc(HOME_LIB[id].name)}</b><span class="ds">${esc(HOME_LIB[id].desc)}</span></div>
         <div class="wctl"><input type="range" min="0" max="30" step="5" value="${h.weights[id] || 0}" aria-label="Poids de ${esc(HOME_LIB[id].name)}"><output class="num"><span class="wv">${h.weights[id] || 0}</span><small class="ws">${Math.round(Math.max(0, h.weights[id] || 0) / ws * 100)} %</small></output></div>
       </div>`).join("")}</div>
-    <h3 class="sub3">Dans la note d’une annonce</h3>
-    <div class="cards">${[["logement", "Le logement", "Vos critères ci-dessus"], ["quartier", "Le quartier", "La note de vos zones, ou l’estimation du coin"], ["prix", projet() === "location" ? "Le loyer" : "Le prix", {achat: "Comparé aux ventes réelles du quartier", location: "Comparé aux loyers de référence du quartier", deux: "Comparé aux ventes ou aux loyers du quartier"}[projet()]]].map(([k, n, d]) => `<div class="crow crow--home" data-mix="${k}">
-        <div style="min-width:0"><b class="nm">${n}</b><span class="ds">${d}</span></div>
-        <div class="wctl"><input type="range" min="0" max="60" step="5" value="${h.mix[k]}" aria-label="Part de ${n}"><output class="num"><span class="wv">${h.mix[k]}</span><small class="ws">${Math.round(h.mix[k] / ((h.mix.logement + h.mix.quartier + h.mix.prix) || 1) * 100)} %</small></output></div>
-      </div>`).join("")}</div>
   </section>`;
 }
 function bindHomeSection() {
-  const sec = $("#homeSec"); if (!sec) return;
   const h = homeProfile(), save = () => { h.custom = true; learnMemo.key = null; saveState(); };
-  const numIn = (id, key) => { $("#" + id).oninput = e => { const v = parseFloat(e.target.value); h[key] = isFinite(v) && v > 0 ? v : null; save(); }; };
-  if ($("#hBudget")) numIn("hBudget", "budgetMax");
-  const hl = $("#hLoyer"); if (hl) hl.oninput = e => { const v = parseFloat(e.target.value); h.loc = Object.assign({}, h.loc, {loyerMax: isFinite(v) && v > 0 ? Math.round(v) : null}); save(); };
-  numIn("hSurf", "surfaceMin"); numIn("hRooms", "roomsMin"); numIn("hBeds", "bedroomsMin");
-  $("#hElev").onchange = e => { h.elevatorFrom = +e.target.value || 0; save(); };
-  $("#hDpe").onchange = e => { h.dpeMax = e.target.value; save(); };
-  $("#hGround").onclick = e => { h.noGround = !h.noGround; e.currentTarget.setAttribute("aria-pressed", String(h.noGround)); save(); };
-  $("#hOut").onclick = e => { h.outdoorReq = !h.outdoorReq; e.currentTarget.setAttribute("aria-pressed", String(h.outdoorReq)); save(); };
+  const on = (id, ev, fn) => { const el = $("#" + id); if (el) el[ev] = fn; };
+  const numIn = (id, key) => on(id, "oninput", e => { const v = parseFloat(e.target.value); h[key] = isFinite(v) && v > 0 ? v : null; save(); });
+  numIn("hBudget", "budgetMax"); numIn("hSurf", "surfaceMin"); numIn("hRooms", "roomsMin"); numIn("hBeds", "bedroomsMin");
+  on("hLoyer", "oninput", e => { const v = parseFloat(e.target.value); h.loc = Object.assign({}, h.loc, {loyerMax: isFinite(v) && v > 0 ? Math.round(v) : null}); save(); });
+  on("hElev", "onchange", e => { h.elevatorFrom = +e.target.value || 0; save(); });
+  on("hDpe", "onchange", e => { h.dpeMax = e.target.value; save(); });
+  on("hGround", "onclick", e => { h.noGround = !h.noGround; e.currentTarget.setAttribute("aria-pressed", String(h.noGround)); save(); });
+  on("hOut", "onclick", e => { h.outdoorReq = !h.outdoorReq; e.currentTarget.setAttribute("aria-pressed", String(h.outdoorReq)); save(); });
   const repaint = () => {
-    const ws = Object.values(h.weights).reduce((a, w) => a + (w > 0 ? w : 0), 0) || 1, ms = (h.mix.logement + h.mix.quartier + h.mix.prix) || 1;
-    $$("[data-h]", sec).forEach(r => { const w = h.weights[r.dataset.h] || 0; r.querySelector(".wv").textContent = w; r.querySelector(".ws").textContent = Math.round(w / ws * 100) + " %"; });
-    $$("[data-mix]", sec).forEach(r => { const w = h.mix[r.dataset.mix]; r.querySelector(".wv").textContent = w; r.querySelector(".ws").textContent = Math.round(w / ms * 100) + " %"; });
+    const ws = Object.values(h.weights).reduce((a, w) => a + (w > 0 ? w : 0), 0) || 1, pc = mixPct(h);
+    $$("#homeW [data-h]").forEach(r => { const w = h.weights[r.dataset.h] || 0; r.querySelector(".wv").textContent = w; r.querySelector(".ws").textContent = Math.round(w / ws * 100) + " %"; });
+    $$("#mixSec [data-mix]").forEach(r => { r.querySelector(".wv").textContent = h.mix[r.dataset.mix]; r.querySelector(".ws").textContent = pc[r.dataset.mix] + " %"; });
+    $$("#mixSec [data-b]").forEach(b => { b.style.flexGrow = h.mix[b.dataset.b] || 0; b.firstElementChild.textContent = pc[b.dataset.b] + " %"; });
   };
-  $$("[data-h] input", sec).forEach(i => i.oninput = e => { h.weights[e.target.closest("[data-h]").dataset.h] = +e.target.value; repaint(); save(); });
-  $$("[data-mix] input", sec).forEach(i => i.oninput = e => { h.mix[e.target.closest("[data-mix]").dataset.mix] = +e.target.value; repaint(); save(); });
+  $$("#homeW [data-h] input").forEach(i => i.oninput = e => { h.weights[e.target.closest("[data-h]").dataset.h] = +e.target.value; repaint(); save(); });
+  $$("#mixSec [data-mix] input").forEach(i => i.oninput = e => { h.mix[e.target.closest("[data-mix]").dataset.mix] = +e.target.value; repaint(); save(); });
 }
 
 /* réception d'une annonce envoyée par le bouton */
