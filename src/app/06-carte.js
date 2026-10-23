@@ -30,7 +30,13 @@ const OFM = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &
    repli sur OpenFreeMap seulement si les tuiles manquent (site local sans les données de carte) */
 const STYLE_HEDEN = "carte/style.json", STYLE_OFM = "https://tiles.openfreemap.org/styles/positron";
 let STYLE_PLAN = STYLE_OFM, planHeden = false;
-try { if (window.pmtiles && window.maplibregl) { maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile); STYLE_PLAN = STYLE_HEDEN; planHeden = true; } } catch (e) {}
+const SITE = new URL(".", location.href).href;   // adresses absolues : MapLibre lit les tuiles et les polices hors de la page
+try { if (window.pmtiles && window.maplibregl) {
+  const P = new pmtiles.Protocol();
+  maplibregl.addProtocol("pmtiles", (q, ac) => P.tile(Object.assign({}, q, {url: q.url.replace(/^pmtiles:\/\/(?![a-z]+:)/i, "pmtiles://" + SITE)}), ac));
+  STYLE_PLAN = SITE + STYLE_HEDEN; planHeden = true;
+} } catch (e) {}
+const planRequete = (url, type) => !/^[a-z]+:/i.test(url) ? {url: new URL(url, SITE).href} : {url};
 const planAttrib = () => planHeden ? OSM + ' · <a href="https://protomaps.com" target="_blank">Protomaps</a>' : OFM;
 const planPret = planHeden ? fetch("carte/paris.pmtiles", {method: "HEAD"}).then(r => r.ok).catch(() => false) : Promise.resolve(false);
 planPret.then(ok => { if (ok || !planHeden) return;
@@ -48,7 +54,7 @@ function getPlan() {
   if (planLayer) return planLayer;
   try {
     if (L.maplibreGL && window.maplibregl && supportsGL()) {
-      planLayer = L.maplibreGL({style: STYLE_PLAN, attribution: planAttrib(), maxZoom: 19});
+      planLayer = L.maplibreGL({style: STYLE_PLAN, attribution: planAttrib(), maxZoom: 19, transformRequest: planRequete});
       return planLayer;
     }
   } catch (e) {}

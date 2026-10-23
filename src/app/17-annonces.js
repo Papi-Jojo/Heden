@@ -661,7 +661,7 @@ function miniStart(f, s) {
   lmini.attributionControl.setPrefix(false); creditsDiscrets(lmini);
   L.control.zoom({position: "bottomright", zoomInTitle: "Zoomer", zoomOutTitle: "Dézoomer"}).addTo(lmini);
   let fond = null;
-  try { if (L.maplibreGL && window.maplibregl && supportsGL()) { fond = L.maplibreGL({style: STYLE_PLAN, attribution: planAttrib(), interactive: false}); fond.addTo(lmini); lmini.attributionControl.addAttribution(planAttrib()); tintPlan(fond); } } catch (e) { fond = null; }
+  try { if (L.maplibreGL && window.maplibregl && supportsGL()) { fond = L.maplibreGL({style: STYLE_PLAN, attribution: planAttrib(), interactive: false, transformRequest: planRequete}); fond.addTo(lmini); lmini.attributionControl.addAttribution(planAttrib()); tintPlan(fond); } } catch (e) { fond = null; }
   if (!fond) L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: OSM}).addTo(lmini);
   // vos zones à proximité, en filigrane, colorées par leur note
   for (const z of state.zones) {
