@@ -35,13 +35,13 @@ JOURNAL = os.path.join(OUT, "journal.txt"); open(JOURNAL, "w").close()
 def note(t):
     with open(JOURNAL, "a") as j: j.write(t + "\n")
 with sync_playwright() as pw:
-    b = pw.chromium.launch()
+    b = pw.chromium.launch(args=["--enable-unsafe-swiftshader"])
     for w, h in [(390, 844), (1280, 860)]:
         ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=2, service_workers="block")
         ctx.add_init_script("localStorage.setItem('heden.quiz.later', String(Date.now())); sessionStorage.setItem('heden.intro','1'); localStorage.setItem('heden.tips.off','1')")
         def route(r):
             u = r.request.url.split("?")[0]
-            for k, f in LIBS.items():
+            for k, f in sorted(LIBS.items(), key=lambda x: -len(x[0])):   # « leaflet-maplibre-gl.js » avant « maplibre-gl.js »
                 if u.endswith(k): return r.fulfill(path=os.path.join(NM, f), content_type="text/css" if k.endswith(".css") else "application/javascript")
             if "127.0.0.1" in u: return r.continue_()
             return r.abort()   # aucun service tiers : le fond doit venir du site
