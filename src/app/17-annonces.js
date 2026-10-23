@@ -303,6 +303,7 @@ const PIC = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   tri: '<path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/>',
   cible: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+  langue: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.3 2.4 3.5 5.2 3.5 8.5s-1.2 6.1-3.5 8.5c-2.3-2.4-3.5-5.2-3.5-8.5s1.2-6.1 3.5-8.5Z"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".7" fill="currentColor"/>',
   carte: '<path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2-6-2Z"/><path d="M9 4.5v13M15 6.5v13"/>',
   profil: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c.8-3.7 3.8-6 7.5-6s6.7 2.3 7.5 6"/>',
@@ -362,13 +363,13 @@ function renderListingsView() {
 /* En-tête commun de l'onglet Annonces : le titre, puis les deux flux côte à côte */
 function feedsHTML(nMine, exLabel) {
   const f = (k, ico, t, n) => `<button class="feed feed--${k}" type="button" role="tab" data-feed="${k}" aria-selected="${lui.feed === k}"><span class="feed__ic">${ico}</span><b class="feed__t">${t}</b>${n !== "" ? `<span class="feed__n num">${n}</span>` : ""}</button>`;
-  return `<div class="ann__head"><div>${modeSelHTML("ann__mode")}<h1>${projet() === "deux" ? (isRent() ? "Locations" : "Achats") : "Annonces"}</h1></div>
-      <button class="iconbtn ann__add" type="button" id="addListing" aria-label="Ajouter une annonce" title="Ajouter une annonce">${svgI(PIC.plus, 20)}</button></div>
-    <div class="feeds" role="tablist" aria-label="Flux d’annonces">${f("explorer", ICO.explore, "Explorer", exLabel)}${f("mes", ICO.mine, "Mes ajouts", nMine)}</div>`;
+  const ms = modeSelHTML("ann__mode"), add = `<button class="iconbtn ann__add" type="button" id="addListing" aria-label="Ajouter une annonce" title="Ajouter une annonce">${svgI(PIC.plus, 20)}</button>`;
+  const feeds = `<div class="feeds" role="tablist" aria-label="Flux d’annonces">${f("explorer", ICO.explore, "Explorer", exLabel)}${f("mes", ICO.mine, "Mes ajouts", nMine)}</div>`;
+  return ms ? `<div class="ann__head ann__head--mode">${ms}${add}</div>${feeds}` : `<div class="ann__head">${feeds}${add}</div>`;
 }
 function otherKindHTML() {
   const other = projet() === "deux" ? 0 : listings().filter(f => kindOf(f) !== curMode()).length;
-  return other ? `<p class="hint2 ann__other">${plural(other, curMode() === "achat" ? "annonce de location masquée" : "annonce de vente masquée", curMode() === "achat" ? "annonces de location masquées" : "annonces de vente masquées")} : votre projet est ${curMode() === "achat" ? "l’achat" : "la location"}. <button class="link" type="button" id="addOther">Ajouter ${curMode() === "achat" ? "la location" : "l’achat"} à mon projet</button></p>` : "";
+  return other ? `<p class="hint2 ann__other">${plural(other, curMode() === "achat" ? "annonce de location masquée" : "annonce de vente masquée", curMode() === "achat" ? "annonces de location masquées" : "annonces de vente masquées")}. <button class="link" type="button" id="addOther">Ajouter ${curMode() === "achat" ? "la location" : "l’achat"} à mon projet</button></p>` : "";
 }
 function exploreLabel() {
   const rows = cloud.vivierRows; if (!cloud.user) return "";
@@ -382,11 +383,10 @@ function renderMine(box) {
   const all = mineListings().filter(f => !isKept(f)).map(f => ({f, s: scoreListing(f)})), hid = all.filter(x => x.f.status === "ecartee");
   const shown = (lui.filter === "masquees" ? hid : all.filter(x => x.f.status !== "ecartee")).sort(listSort);
   box.innerHTML = `${feedsHTML(fmtInt(all.length - hid.length), exploreLabel())}
-    <p class="feed__lead"><span aria-hidden="true">${svgI(PIC.info, 15)}</span><span>Les annonces que vous avez ajoutées vous-même, depuis un site, une alerte ou un texte collé.</span></p>
     ${all.length ? `<div class="ann__bar">${segHTML("filter", [["toutes", "Affichées", all.length - hid.length], ["masquees", "Masquées", hid.length]])}${sortHTML()}</div>` : ""}
     ${otherKindHTML()}
     ${all.length ? `<div class="ann__feed">${shown.map(({f, s}, k) => heroHTML(f, s, k)).join("") || `<p class="hint2 ann__none">${lui.filter === "masquees" ? "Aucune annonce masquée." : "Toutes vos annonces sont masquées."}</p>`}</div>`
-      : `<div class="ann__empty">${GALETS}<p>${kept ? `<span>Vos annonces sont toutes dans vos favoris.</span>` : "Ajoutez une annonce vue sur un site : Heden la note et la place sur la carte."}</p><div class="ann__emptyacts">${kept ? `<button class="btn" type="button" id="favGo2">Voir les favoris</button>` : `<button class="btn btn--primary" type="button" id="addListing2">Ajouter une annonce</button>`}</div></div>`}`;
+      : `<div class="ann__empty">${GALETS}<p>${kept ? `<span>Vos annonces sont toutes dans vos favoris.</span>` : "Aucune annonce ajoutée."}</p><div class="ann__emptyacts">${kept ? `<button class="btn" type="button" id="favGo2">Voir les favoris</button>` : `<button class="btn btn--primary" type="button" id="addListing2">Ajouter une annonce</button>`}</div></div>`}`;
   const a2 = $("#addListing2", box); if (a2) a2.onclick = () => openAddFlow();
   const f2 = $("#favGo2", box); if (f2) f2.onclick = () => setTab("favoris");
   $$("[data-filter]", box).forEach(b => b.onclick = () => { lui.filter = b.dataset.filter; renderListings(); });
@@ -417,9 +417,9 @@ function renderExplorer(box) {
     ${items.length ? `<div class="ann__bar">${segHTML("exf", [["pour", "Pour vous", pour.length], ["tout", "Toutes", items.length]])}${sortHTML()}</div>` : ""}
     ${otherKindHTML()}
     ${items.length ? nudgeHTML(items) : ""}
-    ${items.length ? `<div class="ann__feed">${shown.map(({f, s, neu}, k) => heroHTML(f, s, k, neu)).join("") || `<p class="hint2 ann__none">Aucune annonce ne correspond à vos critères pour l’instant. Touchez « Toutes » pour tout voir.</p>`}</div>
+    ${items.length ? `<div class="ann__feed">${shown.map(({f, s, neu}, k) => heroHTML(f, s, k, neu)).join("") || `<p class="hint2 ann__none">Aucune annonce ne correspond à vos critères.</p>`}</div>
       ${list.length > max ? `<button class="btn btn--block feed__more" type="button" id="exMore">Afficher ${Math.min(30, list.length - max)} annonces de plus</button>` : ""}`
-      : `<div class="ann__empty ann__empty--ex">${GALETS}<p>Rien de neuf pour l’instant : les annonces arrivent au fil des alertes reçues par Heden.</p></div>`}`;
+      : `<div class="ann__empty ann__empty--ex">${GALETS}<p>Rien de neuf pour l’instant.</p></div>`}`;
   $$("[data-exf]", box).forEach(b => b.onclick = () => { lui.exf = b.dataset.exf; lui.exMore = 0; renderListings(); });
   const mo = $("#exMore", box); if (mo) mo.onclick = () => { lui.exMore = (lui.exMore || 0) + 30; renderListings(); };
   bindNudge(box);
@@ -438,10 +438,10 @@ function renderFavoris(box) {
   if (!["tous", "visite"].includes(lui.favf)) lui.favf = "tous";
   const all = modeListings().filter(isKept).map(f => ({f, s: scoreListing(f)})), vis = all.filter(x => x.f.status === "visite");
   const shown = (lui.favf === "visite" ? vis : all).sort(listSort);
-  box.innerHTML = `<div class="ann__head"><div>${modeSelHTML("ann__mode")}<h1>Favoris</h1><p class="lead">${all.length ? `${plural(all.length, "annonce gardée", "annonces gardées")}, sur la carte aussi.` : ""}</p></div></div>
+  box.innerHTML = `${projet() === "deux" ? `<div class="ann__head ann__head--mode">${modeSelHTML("ann__mode")}</div>` : ""}
     ${all.length ? `<div class="ann__bar">${segHTML("favf", [["tous", "Tous", all.length], ["visite", "Visite prévue", vis.length]])}${sortHTML()}</div>` : ""}
-    ${all.length ? `<div class="ann__feed">${shown.map(({f, s}, k) => heroHTML(f, s, k)).join("") || `<p class="hint2 ann__none">Aucune visite prévue : touchez « Prévoir la visite » sur un favori.</p>`}</div>`
-      : `<div class="ann__empty ann__empty--fav"><span class="fav__ic" aria-hidden="true">${ICO.keep}</span><p>Touchez le cœur d’une annonce, dans Explorer ou Mes ajouts : elle se range ici et apparaît sur la carte.</p><button class="btn" type="button" id="favGo">Voir les annonces</button></div>`}`;
+    ${all.length ? `<div class="ann__feed">${shown.map(({f, s}, k) => heroHTML(f, s, k)).join("") || `<p class="hint2 ann__none">Aucune visite prévue.</p>`}</div>`
+      : `<div class="ann__empty ann__empty--fav"><span class="fav__ic" aria-hidden="true">${ICO.keep}</span><p>Aucun favori pour l’instant.</p><button class="btn" type="button" id="favGo">Voir les annonces</button></div>`}`;
   $$("[data-favf]", box).forEach(b => b.onclick = () => { lui.favf = b.dataset.favf; renderListings(); });
   const go = $("#favGo", box); if (go) go.onclick = () => setTab("annonces");
 }
@@ -522,10 +522,10 @@ function nudgeHTML(items) {
   const q = items.filter(x => !x.s.reliable && !x.s.fails.length && x.s.total != null);
   if (q.length < 2 && homeProfile().setup) return "";
   const lieu = q.filter(x => x.s.need.some(n => n === "quartier" || n === "adresse")).length, loge = q.filter(x => x.s.need.some(n => n !== "quartier" && n !== "adresse")).length;
-  const card = (k, ic, t, d, b) => `<div class="nudge nudge--${k}"><span class="nudge__ic" aria-hidden="true">${svgI(ic, 22)}</span><p><b>${t}</b><span>${d}</span></p><button class="btn btn--sm" type="button" data-invite="${k}">${b}</button></div>`;
-  if (!homeProfile().setup) return card("profil", PIC.profil, "Des notes faites pour vous", "Neuf questions, deux minutes : Heden note chaque annonce selon vos critères.", "Définir mon profil");
-  if (lieu >= loge && zonesRated() < 3) return card("carte", PIC.carte, `${plural(lieu, "annonce attend", "annonces attendent")} une note de quartier`, "Notez deux ou trois coins que vous connaissez : Heden s’en sert pour toutes les annonces autour.", "Noter un quartier");
-  if (loge >= 2) return card("fiche", PIC.ouvrir, `${plural(loge, "annonce n’en dit", "annonces n’en disent")} pas assez`, extInstalled() ? "Ouvrez-en une sur son site : l’extension lit sa fiche entière, et la note se précise pour tout le monde." : "Avec l’extension Heden, les fiches entières des sites sont lues : étage, DPE, extérieur, position.", extInstalled() ? "Voir les annonces à compléter" : "L’extension");
+  const card = (k, ic, t, b) => `<div class="nudge nudge--${k}"><span class="nudge__ic" aria-hidden="true">${svgI(ic, 22)}</span><p><b>${t}</b></p><button class="btn btn--sm" type="button" data-invite="${k}">${b}</button></div>`;
+  if (!homeProfile().setup) return card("profil", PIC.profil, "Les annonces attendent votre profil", "Définir mon profil");
+  if (lieu >= loge && zonesRated() < 3) return card("carte", PIC.carte, `${plural(lieu, "annonce attend", "annonces attendent")} une note de quartier`, "Noter un quartier");
+  if (loge >= 2) return card("fiche", PIC.ouvrir, `${plural(loge, "annonce attend sa", "annonces attendent leur")} fiche complète`, extInstalled() ? "Compléter" : "L’extension");
   return "";
 }
 function bindNudge(box) {
@@ -993,7 +993,7 @@ function mixHTML() {
   const rows = [["logement", "Le logement", "Vos critères du logement"], ["quartier", "Le quartier", "La note de vos zones, ou l’estimation du coin"], ["prix", projet() === "location" ? "Le loyer" : "Le prix", {achat: "Comparé aux ventes réelles du quartier", location: "Comparé aux loyers de référence du quartier", deux: "Comparé aux ventes ou aux loyers du quartier"}[projet()]]];
   return `<section class="sec nmix" id="mixSec">
     <div class="nmix__head"><p class="nmix__k">La pondération principale</p><h2>La note d’une annonce</h2>
-      <p class="hint2">Sur 100 : la part du logement, du quartier et du prix.</p></div>
+</div>
     <div class="nmix__bar" aria-hidden="true">${MIX_K.map(k => `<i data-b="${k}" style="flex-grow:${h.mix[k] || 0}"><b class="num">${pc[k]} %</b></i>`).join("")}</div>
     <div class="nmix__rows">${rows.map(([k, n, d]) => `<div class="crow crow--home nmix__row" data-mix="${k}">
         <div style="min-width:0"><b class="nm">${n}</b><span class="ds">${d}</span></div>
@@ -1002,30 +1002,47 @@ function mixHTML() {
   </section>`;
 }
 function homeFiltersHTML() {
-  const h = homeProfile();
+  const h = homeProfile(), p = state.profile;
   const num = (id, label, val, unit, step = 1) => `<div class="field"><label class="label" for="${id}">${label}</label><input type="number" id="${id}" inputmode="numeric" min="0" step="${step}" value="${val ?? ""}" placeholder="${unit}"></div>`;
-  return `<section class="sec" id="homeSec">
-    <h2>Votre logement idéal</h2>
-    <p class="hint2">Une annonce hors filtre reste visible, avec une note plafonnée.</p>
-    ${projet() === "deux" ? `<div class="row2">${num("hBudget", "Prix max à l’achat", h.budgetMax, "Ex. 550 000 €", 5000)}${num("hLoyer", "Loyer max, charges comprises", (h.loc || {}).loyerMax, "€ par mois", 50)}</div>
-    <div class="row2">${num("hSurf", "Surface min", h.surfaceMin, "m²")}<span></span></div>`
-      : `<div class="row2">${projet() === "location" ? num("hLoyer", "Loyer max, charges comprises", (h.loc || {}).loyerMax, "€ par mois", 50) : num("hBudget", "Budget total max", h.budgetMax, "Ex. 550 000 €", 5000)}${num("hSurf", "Surface min", h.surfaceMin, "m²")}</div>`}
-    <div class="row2">${num("hRooms", "Pièces min", h.roomsMin, "Ex. 3")}${num("hBeds", "Chambres min", h.bedroomsMin, "Ex. 2")}</div>
-    <div class="row2">
-      <div class="field"><label class="label" for="hElev">Ascenseur indispensable</label><select id="hElev">${[[0, "Jamais"], [2, "Dès le 2e étage"], [3, "Dès le 3e étage"], [4, "Dès le 4e étage"], [5, "Dès le 5e étage"]].map(([v, l]) => `<option value="${v}" ${+h.elevatorFrom === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-      <div class="field"><label class="label" for="hDpe">DPE au pire</label><select id="hDpe">${["A", "B", "C", "D", "E", "F", "G"].map(l => `<option value="${l}" ${h.dpeMax === l ? "selected" : ""}>${l === "G" ? "Peu importe" : l}</option>`).join("")}</select></div>
-    </div>
+  const budget = num("hBudget", projet() === "deux" ? "Prix max à l’achat" : "Budget total max", h.budgetMax, "Ex. 550 000 €", 5000), loyer = num("hLoyer", "Loyer max, charges comprises", (h.loc || {}).loyerMax, "€ par mois", 50);
+  const fields = [projet() !== "location" ? budget : "", projet() !== "achat" ? loyer : "", projet() !== "location" ? num("pbudget", "Budget des zones (€/m²)", p.budget, "Facultatif", 100) : "",
+    num("hSurf", "Surface min", h.surfaceMin, "m²"), num("hRooms", "Pièces min", h.roomsMin, "Ex. 3"), num("hBeds", "Chambres min", h.bedroomsMin, "Ex. 2"),
+    `<div class="field"><label class="label" for="hElev">Ascenseur indispensable</label><select id="hElev">${[[0, "Jamais"], [2, "Dès le 2e étage"], [3, "Dès le 3e étage"], [4, "Dès le 4e étage"], [5, "Dès le 5e étage"]].map(([v, l]) => `<option value="${v}" ${+h.elevatorFrom === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>`,
+    `<div class="field"><label class="label" for="hDpe">DPE au pire</label><select id="hDpe">${["A", "B", "C", "D", "E", "F", "G"].map(l => `<option value="${l}" ${h.dpeMax === l ? "selected" : ""}>${l === "G" ? "Peu importe" : l}</option>`).join("")}</select></div>`].filter(Boolean);
+  return `<div class="home__f" id="homeSec">
+    <div class="home__grid">${fields.join("")}</div>
     <div class="chips">
       <button class="chip" type="button" id="hGround" aria-pressed="${!!h.noGround}">Pas de rez-de-chaussée</button>
       <button class="chip" type="button" id="hOut" aria-pressed="${!!h.outdoorReq}">Extérieur exigé</button>
     </div>
-  </section>`;
+  </div>`;
+}
+/* une ligne de résumé : un morceau par <span> (traduction) */
+function homeSumHTML() {
+  const h = homeProfile(), lo = h.loc || {}, parts = [];
+  if (projet() !== "location" && h.budgetMax) parts.push(`${fmtInt(h.budgetMax)} € max`);
+  if (projet() !== "achat" && lo.loyerMax) parts.push(`${fmtInt(lo.loyerMax)} € par mois max`);
+  if (h.surfaceMin) parts.push(`${fmtInt(h.surfaceMin)} m² min`);
+  if (h.roomsMin) parts.push(`${h.roomsMin} pièce${h.roomsMin > 1 ? "s" : ""} min`);
+  if (h.bedroomsMin) parts.push(`${h.bedroomsMin} chambre${h.bedroomsMin > 1 ? "s" : ""} min`);
+  if (h.dpeMax && h.dpeMax !== "G") parts.push(`DPE ${h.dpeMax} au pire`);
+  return parts.length ? parts.map(x => `<span>${x}</span>`).join(`<span aria-hidden="true"> · </span>`) : `<span>Aucun filtre</span>`;
+}
+function openHomeSheet() {
+  let el = $("#lsheet");
+  if (!el) { el = document.createElement("div"); el.id = "lsheet"; el.className = "auth"; el.innerHTML = `<div class="auth__veil" data-lclose></div><div class="auth__card lsheet" role="dialog" aria-modal="true" aria-labelledby="lsTitle"></div>`; document.body.appendChild(el); }
+  const card = el.querySelector(".lsheet"), closeSheet = () => { el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); renderProfile(); renderListings(); };
+  el.onclick = e => { if (e.target.closest("[data-lclose]")) closeSheet(); };
+  card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Votre logement idéal</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    ${homeFiltersHTML()}
+    <div class="auth__foot"><button class="btn btn--primary btn--block" type="button" data-lclose>Terminé</button></div>`;
+  bindHomeSection();
+  const pb = $("#pbudget", card); if (pb) pb.oninput = e => { const v = parseFloat(e.target.value); state.profile.budget = isFinite(v) && v > 0 ? v : null; save(); };
+  el.hidden = false; requestAnimationFrame(() => el.classList.add("is-open"));
 }
 function homeWeightsHTML() {
   const h = homeProfile(), ws = Object.values(h.weights).reduce((a, w) => a + (w > 0 ? w : 0), 0) || 1;
   return `<section class="sec" id="homeW">
-    <h2>Ce qui compte dans le logement</h2>
-    <p class="hint2">Ces poids se partagent la part du logement dans la note.</p>
     <div class="cards">${Object.keys(HOME_LIB).map(id => `<div class="crow crow--home" data-h="${id}">
         <div style="min-width:0"><b class="nm">${esc(HOME_LIB[id].name)}</b><span class="ds">${esc(HOME_LIB[id].desc)}</span></div>
         <div class="wctl"><input type="range" min="0" max="30" step="5" value="${h.weights[id] || 0}" aria-label="Poids de ${esc(HOME_LIB[id].name)}"><output class="num"><span class="wv">${h.weights[id] || 0}</span><small class="ws">${Math.round(Math.max(0, h.weights[id] || 0) / ws * 100)} %</small></output></div>

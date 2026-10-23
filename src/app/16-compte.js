@@ -674,14 +674,13 @@ function sharedHTML() {
   if (!cloudReady) return "";
   let pending = null;
   try { pending = localStorage.getItem("heden.invite"); } catch (e) {}
-  if (!cloud.user) return `<section class="sec">
+  if (!cloud.user) return pending ? `<section class="sec">
       <h2>Carte de groupe</h2>
-      <p class="hint2">${pending ? `<b>Vous avez reçu une invitation.</b> <button class="link" type="button" data-auth>Connectez-vous</button> avec votre e-mail : vous rejoindrez la carte automatiquement.` : `<button class="link" type="button" data-auth>Connectez-vous</button> pour créer une carte commune avec vos proches ou vos colocataires. Chacun y note les zones avec son propre profil, et la couleur montre votre note commune.`}</p>
-    </section>`;
+      <p class="hint2"><b>Invitation reçue.</b> <button class="link" type="button" data-auth>Se connecter</button></p>
+    </section>` : "";
   const shared = cloud.maps.filter(m => m.kind === "partagee");
   return `<section class="sec" id="duoSec">
     <h2>Carte de groupe</h2>
-    <p class="hint2">À deux, en colocation ou en famille : chacun note avec son profil, plus des critères communs. Vos zones perso y apparaissent d’elles-mêmes, avec les mêmes notes.</p>
     ${shared.map(m => `<div class="mapcard" data-m="${m.id}">
       <div><b>${esc(m.name)}</b><p class="hint2">${esc(membersLabel(m))}</p></div>
       ${cloud.invite && cloud.invite.mapId === m.id ? inviteHTML(cloud.invite) : ""}

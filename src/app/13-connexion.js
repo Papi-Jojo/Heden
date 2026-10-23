@@ -8,7 +8,7 @@ function accountHTML() {
   if (!cloudReady) return "";
   return cloud.user
     ? `<div class="acctrow on"><i></i><span><b>${esc(cloud.user.email || "Connecté")}</b><small id="syncState">${esc(syncLabel())}</small></span><button class="btn btn--sm btn--clair" type="button" data-auth>Gérer</button></div>`
-    : `<div class="acctrow"><i></i><span><b>Sur cet appareil uniquement</b><small>Connectez-vous pour retrouver vos zones partout</small></span><button class="btn btn--sm btn--primary" type="button" data-auth>Se connecter</button></div>`;
+    : `<div class="acctrow"><i></i><span><b>Sur cet appareil uniquement</b></span><button class="btn btn--sm btn--primary" type="button" data-auth>Se connecter</button></div>`;
 }
 function bindAccount(root = document) {
   $$("[data-auth]", root).forEach(b => b.onclick = e => { e.stopPropagation(); openAuth(); });
@@ -127,8 +127,9 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
   if (nsub !== "logement") nsub = "quartier";
   const npane = (k, html) => `<div class="npane" data-npane="${k}" role="tabpanel" ${nsub === k ? "" : "hidden"}>${html}</div>`;
   $("#prof").innerHTML = `
-    <div class="prof__top"><h1>Votre profil</h1>
-      <div class="seg ptabs" role="tablist" aria-label="Sections du profil">${tabs.map(([k, l]) => `<button type="button" role="tab" data-ptab="${k}" aria-selected="${ptab === k}" tabindex="${ptab === k ? 0 : -1}">${l}</button>`).join("")}</div></div>
+    <div class="prof__top">
+      <div class="seg ptabs" role="tablist" aria-label="Sections du profil">${tabs.map(([k, l]) => `<button type="button" role="tab" data-ptab="${k}" aria-selected="${ptab === k}" tabindex="${ptab === k ? 0 : -1}">${l}</button>`).join("")}</div>
+      <button class="iconbtn prof__lang" type="button" id="langBtn" aria-label="${(window.HEDEN_LANG || "fr") === "en" ? "Passer en français" : "Switch to English"}" title="${(window.HEDEN_LANG || "fr") === "en" ? "Français" : "English"}" data-i18n-skip>${svgI(PIC.langue, 20)}</button></div>
     ${pane("recherche", profileSummaryHTML() + `
     ${projet() !== "location" ? `<section class="sec setrow">
       <div><h3 class="sub3">Financement</h3>
@@ -140,24 +141,17 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
       <p class="hint2">${(() => { const lo = homeProfile().loc || {}; return [lo.colocs > 1 ? `Colocation à ${lo.colocs}` : null, lo.loyerMax ? `Loyer maximum ${fmtInt(lo.loyerMax)} € par mois` : "Pas de loyer maximum", lo.revenus ? `revenus de ${fmtInt(lo.revenus)} € par mois` : "revenus non indiqués", {vide: "vide", meuble: "meublé", indiff: "meublé ou vide"}[lo.meuble || "indiff"]].filter(Boolean).join(", ") + "."; })()}</p></div>
       <button class="btn btn--sm btn--clair" type="button" id="locProf">Modifier</button>
     </section>` : ""}
-    ${homeFiltersHTML()}
-    <section class="sec">
-      <h3 class="sub3">Budget des zones</h3>
-      ${projet() !== "location" ? `<div class="field">
-        <label class="label" for="pbudget">Budget max €/m²${projet() === "deux" ? " à l’achat" : ""}</label>
-        <input type="number" id="pbudget" inputmode="numeric" min="0" step="100" value="${p.budget ?? ""}" placeholder="Facultatif">
-      </div>` : ""}
-      ${projet() !== "achat" ? `<p class="hint2">Location : ${rentPpmBudget() ? `${fmt1(rentPpmBudget())} €/m² par mois au plus, d’après votre loyer maximum.` : "indiquez un loyer maximum plus haut."}</p>` : ""}
-      <p class="hint2">Au-dessus, la zone passe en pointillés.</p>
+    <section class="sec setrow">
+      <div><h3 class="sub3">Logement idéal</h3><p class="hint2">${homeSumHTML()}</p></div>
+      <button class="btn btn--sm btn--clair" type="button" id="homeOpen">Modifier</button>
     </section>
 `)}
     ${pane("note", mixHTML() + `
-    <div class="nsubs"><p class="nsubs__k">Le détail de chaque part</p>
+    <div class="nsubs">
       <div class="seg nsub" role="tablist" aria-label="Détail de la note">${[["quartier", "Le quartier"], ["logement", "Le logement"]].map(([k, l]) => `<button type="button" role="tab" data-nsub="${k}" aria-selected="${nsub === k}" tabindex="${nsub === k ? 0 : -1}">${l}</button>`).join("")}</div></div>
     ${npane("quartier", groupCritHTML() + `
     <section class="sec">
-      <h2>${isShared() ? "Vos critères personnels" : "Ce qui compte dans un quartier"}</h2>
-      <p class="hint2">Ces poids font la note de vos zones, qui est la part du quartier dans la note.</p>
+      ${isShared() ? `<h2>Vos critères personnels</h2>` : ""}
       <div class="cards">
         ${cs.map((c, i) => `
           <div class="crow" data-i="${i}">
@@ -186,26 +180,21 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
     <section class="sec">
       <h3 class="sub3">Partir d’un profil type</h3>
       <div class="chips">${PRESETS.map(pr => `<button class="chip pchip" type="button" data-p="${pr.id}" aria-pressed="${p.presetId === pr.id && !p.modified}" title="${esc(pr.tagline)}">${esc(pr.name)}</button>`).join("")}</div>
-      <p class="hint2">${(() => { const cur = PRESETS.find(x => x.id === p.presetId); return cur && !p.modified ? esc(cur.tagline) + "." : p.modified ? "Profil ajusté à la main." : ""; })()} Changer remplace vos critères, garde vos notes.</p>
+      <p class="hint2">Changer remplace vos critères, garde vos notes.</p>
     </section>
 
 `)}
     ${npane("logement", homeWeightsHTML())}`)}
     ${pane("compte", accountHTML() + `
     <section class="sec">
-      <h2>Vous</h2>
       <div class="field">
         <label class="label" for="pname">Prénom</label>
-        <input type="text" id="pname" value="${esc(p.name)}" placeholder="Affiché sur les zones que vous notez" maxlength="40">
+        <input type="text" id="pname" value="${esc(p.name)}" maxlength="40" autocomplete="given-name">
       </div>
-    </section>
-    <section class="sec setrow">
-      <div><h3 class="sub3">Langue · Language</h3></div>
-      <div class="seg seg--sm" id="langSel" role="group" aria-label="Langue · Language" data-i18n-skip>${[["fr", "Français"], ["en", "English"]].map(([k, l]) => `<button type="button" data-lang="${k}" aria-pressed="${(window.HEDEN_LANG || "fr") === k}">${l}</button>`).join("")}</div>
     </section>
     ${installHTML()}
     <section class="sec setrow">
-      <div><h3 class="sub3">Guide</h3><p class="hint2">La visite des écrans principaux, pas à pas</p></div>
+      <div><h3 class="sub3">Guide</h3></div>
       <button class="btn btn--sm" type="button" id="tourGo">Revoir le guide</button>
     </section>
     ${sharedHTML()}
@@ -225,18 +214,16 @@ function renderProfile() { setTimeout(() => tipsKick(), 0);
   bindProfileSummary();
   const fp = $("#finProf"); if (fp) fp.onclick = openFinance;
   const lp = $("#locProf"); if (lp) lp.onclick = openRentSettings;
+  const ho = $("#homeOpen"); if (ho) ho.onclick = openHomeSheet;
   bindShared();
   $("#pname").oninput = e => { p.name = e.target.value.trim(); save(); };
   const tg = $("#tourGo"); if (tg) tg.onclick = () => { const st = tipsState(); st.off = false; tipsSave(); tourStart(); };
   const ib = $("#installApp"); if (ib) ib.onclick = async () => { const ev = installEvt; installEvt = null; ev.prompt(); try { await ev.userChoice; } catch (e) {} renderProfile(); };
-  $$("#langSel [data-lang]").forEach(b => b.onclick = () => {
-    if (b.dataset.lang === (window.HEDEN_LANG || "fr")) return;
-    try { localStorage.setItem("heden.lang", b.dataset.lang); } catch (e) {}
-    $$("#langSel [data-lang]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
-    setTimeout(() => location.reload(), 120);
-  });
+  $("#langBtn").onclick = () => {
+    try { localStorage.setItem("heden.lang", (window.HEDEN_LANG || "fr") === "en" ? "fr" : "en"); } catch (e) {}
+    location.reload();
+  };
   $("#halfP").onclick = e => { p.halfPoints = !p.halfPoints; e.currentTarget.setAttribute("aria-pressed", String(p.halfPoints)); save(); };
-  if ($("#pbudget")) $("#pbudget").oninput = e => { const v = parseFloat(e.target.value); p.budget = isFinite(v) && v > 0 ? v : null; save(); };
   $$(".pchip").forEach(b => b.onclick = () => {
     const pr = PRESETS.find(x => x.id === b.dataset.p);
     p.criteria = presetCriteria(pr); p.presetId = pr.id; p.modified = false; save(); renderProfile();
@@ -307,14 +294,13 @@ $("#importFile").addEventListener("change", async e => {
 /* Critères communs : le socle que chaque membre d'une carte de groupe note, en plus des siens */
 function groupCritHTML() {
   if (!cloud.user) return "";
-  if (!isShared()) return cloud.maps.some(m => m.kind === "partagee") ? `<p class="hint2 gcrit__off">Les critères communs se règlent quand une carte de groupe est affichée.</p>` : "";
+  if (!isShared()) return "";
   const m = curMap(), gc = m.criteria || [];
   if (!cloud.groupCritOk) return `<section class="sec"><h2>Critères communs</h2><p class="hint2">Bientôt disponibles sur cette carte.</p></section>`;
   const gsum = gc.reduce((a, c) => a + Math.max(0, c.weight || 0), 0);
   const avail = Object.keys(LIB).filter(id => !gc.some(c => c.id === id));
   return `<section class="sec gcrit">
       <h2>Critères communs</h2>
-      <p class="hint2">Pour toute la carte « ${esc(m.name)} » : chaque membre les note, en plus de ses critères personnels. Une note de 0 chez un seul membre plafonne la zone.</p>
       ${gc.length ? `<div class="cards">${gc.map((c, i) => `
         <div class="crow" data-g="${i}">
           <div style="min-width:0">
@@ -371,7 +357,7 @@ function installHTML() {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
   if (!installEvt && !ios) return "";
   return `<section class="sec setrow">
-      <div><h3 class="sub3">Application</h3><p class="hint2">${ios ? "Dans Safari, touchez Partager puis « Sur l’écran d’accueil » : Heden s’ouvre en plein écran, même sans réseau." : "Une icône sur l’écran d’accueil, en plein écran, même sans réseau."}</p></div>
+      <div><h3 class="sub3">Application</h3>${ios ? `<p class="hint2">Partager, puis « Sur l’écran d’accueil ».</p>` : ""}</div>
       ${installEvt ? `<button class="btn btn--sm" type="button" id="installApp">Installer</button>` : ""}
     </section>`;
 }

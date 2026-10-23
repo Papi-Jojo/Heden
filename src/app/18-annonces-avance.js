@@ -769,7 +769,6 @@ function profileSummaryHTML() {
   const h = homeProfile(), s = h.setup, L = learning();
   if (!s) return `<section class="sec psum psum--new">
       <h2>Réglez Heden en deux minutes</h2>
-      <p class="hint2">Neuf questions : Heden règle le reste et note chaque annonce selon vous.</p>
       <div><button class="btn btn--primary" type="button" id="quizGo">Répondre aux questions</button></div>
     </section>`;
   const prios = (s.prios || []).map(id => (PRIOS.find(q => q.id === id) || {}).name).filter(Boolean);
@@ -779,7 +778,7 @@ function profileSummaryHTML() {
       <div class="psum__head"><div><h2>Votre recherche</h2><p class="psum__line">${esc(profileLine(s))}</p></div><button class="btn btn--sm" type="button" id="quizGo">Refaire le questionnaire</button></div>
       ${prios.length ? `<div class="chips">${prios.map(n => `<span class="tag">${esc(n)}</span>`).join("")}</div>` : ""}
       <dl class="meta">${Array.isArray(s.arrs) ? `<dt>Secteurs</dt><dd class="psum__secs">${secteursTxt(s).split(/,\s*/).filter(Boolean).map(x => `<span class="tag">${esc(x)}</span>`).join("")}</dd>` : ""}${nos.length ? `<dt>Refus</dt><dd>${esc(nos.join(", "))}</dd>` : ""}${pl.length ? `<dt>Trajets</dt><dd>${esc(pl.map(p => `${p.label || p.q} (${MODES[p.mode || "tc"][0].toLowerCase()})`).join(", "))}</dd>` : ""}</dl>
-      ${(() => { const miss = readiness().filter(x => !x.ok); return miss.length ? `<div class="pready"><b>Pour des notes plus fiables</b><ul>${miss.map(x => `<li><span><b>${esc(x.t)}</b><small>${esc(x.d)}</small></span><button class="btn btn--sm btn--clair" type="button" data-ready="${x.k}">${x.k === "zones" ? "Noter un quartier" : "Répondre"}</button></li>`).join("")}</ul></div>` : ""; })()}
+      ${(() => { const miss = readiness().filter(x => !x.ok); return miss.length ? `<div class="pready"><b>Pour des notes plus fiables</b><ul>${miss.map(x => `<li><span><b>${esc(x.t)}</b></span><button class="btn btn--sm btn--clair" type="button" data-ready="${x.k}">${x.k === "zones" ? "Noter un quartier" : "Répondre"}</button></li>`).join("")}</ul></div>` : ""; })()}
       ${L.n < 4 ? "" : `<div class="plearn">${L.notes.length ? `<b>Appris de vos ${L.n} choix</b><ul>${L.notes.map(n => `<li class="${n.up ? "up" : "down"}">${esc(n.txt)}</li>`).join("")}</ul>` : `<p class="hint2">Vos ${L.n} choix confirment vos priorités : rien à ajuster pour l’instant.</p>`}
         <button class="chip" type="button" id="learnTg" aria-pressed="${h.learn !== false}">Apprendre de mes choix</button></div>`}
 
@@ -1077,7 +1076,6 @@ function openFinance() {
   const card = el.querySelector(".lsheet"), closeSheet = () => { el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); };
   el.onclick = e => { if (e.target.closest("[data-lclose]")) closeSheet(); };
   card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Votre financement</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-    <p class="auth__txt">Sert au coût par mois de chaque annonce. Rien n’est partagé.</p>
     <form class="lform" id="finF">
       <label class="lf"><span>Apport</span><input name="apport" inputmode="numeric" value="${fin.apport ?? ""}" placeholder="10 % si vide"></label>
       <label class="lf"><span>Taux du prêt (%)</span><input name="taux" inputmode="decimal" value="${String(fin.taux).replace(".", ",")}"></label>
@@ -1098,7 +1096,6 @@ function openRentSettings() {
   const card = el.querySelector(".lsheet"), closeSheet = () => { el.classList.remove("is-open"); setTimeout(() => { el.hidden = true; }, 200); };
   el.onclick = e => { if (e.target.closest("[data-lclose]")) closeSheet(); };
   card.innerHTML = `<div class="auth__head"><h2 id="lsTitle">Votre location</h2><button class="x" type="button" data-lclose aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-    <p class="auth__txt">Sert à filtrer les annonces et à calculer le taux d’effort. Rien n’est partagé.</p>
     <form class="lform" id="locF">
       <label class="lf"><span>Loyer maximum, charges comprises</span><input name="loyerMax" inputmode="numeric" value="${lo.loyerMax ?? ""}" placeholder="€ par mois"></label>
       <label class="lf"><span>Revenus nets du foyer</span><input name="revenus" inputmode="numeric" value="${lo.revenus ?? ""}" placeholder="€ par mois"></label>

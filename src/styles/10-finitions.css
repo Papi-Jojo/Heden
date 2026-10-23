@@ -498,9 +498,22 @@ input,textarea{caret-color:var(--email)}
 #view-profile .nmix__row{padding:12px 0;border-top:1px solid var(--trait)}
 #view-profile .nmix__row:first-child{border-top:0}
 .nsubs{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin-top:-6px}
-.nsubs__k{margin:0;font-size:15px;font-weight:650}
 .nsubs .seg{margin-left:0}
 .npane{display:flex;flex-direction:column;gap:28px}
 .npane[hidden]{display:none}
 .npane.swap-in>*{animation:vue-in .22s var(--ease-sortie) both}
 @media (prefers-reduced-motion: reduce){.nmix__bar i{transition:none}}
+
+/* Épuré : pas de titre de page ; le choix achat / location en tête des annonces */
+.ann__head{flex-wrap:nowrap;align-items:center}
+.ann__head>.feeds{margin-top:0;min-width:0}
+.ann__head--mode .modesel{display:flex;flex:1;max-width:440px;margin:0;align-self:auto;padding:4px;box-shadow:var(--relief),var(--ombre-1)}
+.ann__head--mode .modesel button{flex:1;min-width:0;height:44px;font-size:15px;font-weight:650}
+.prof__top{flex-direction:row;align-items:center;gap:10px}
+.prof__top .ptabs{flex:0 1 auto;min-width:0}
+.prof__lang{flex:none;margin-left:auto;color:var(--ardoise-2);background:none;border-color:transparent;box-shadow:none}
+.prof__lang:hover{color:var(--ardoise)}
+.lsheet .home__f{display:flex;flex-direction:column;gap:14px;margin:4px 0 18px}
+.home__grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 12px;align-items:end}
+.home__grid>.field:last-child:nth-child(odd){grid-column:1 / -1}
+.home__grid .field{margin:0}

@@ -40,3 +40,4 @@ Pas besoin de graphe : `graphify-out/` n'est pas versionné et vieillit vite. Ch
 
 ## Façon de travailler
 - Réponses courtes, en français. Poser une question quand la demande est floue ; proposer une migration ou un changement de structure quand c'est utile.
+- Interface épurée : pas de titre de page, pas de texte d'explication sous les titres, les incitations ou les réglages. Le fonctionnement doit se comprendre seul ; une explication seulement si elle est indispensable (conséquence d'une action, par exemple). Réglages secondaires dans un panneau qui s'ouvre (`#lsheet`), pas en page.
