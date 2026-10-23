@@ -30,6 +30,10 @@ NM = os.path.join(RACINE, "node_modules")
 LIBS = {"maplibre-gl.js": "maplibre-gl/dist/maplibre-gl.js", "maplibre-gl.css": "maplibre-gl/dist/maplibre-gl.css", "leaflet-maplibre-gl.js": "@maplibre/maplibre-gl-leaflet/leaflet-maplibre-gl.js",
         "leaflet.min.js": "leaflet/dist/leaflet.js", "leaflet.min.css": "leaflet/dist/leaflet.css", "turf.min.js": "@turf/turf/turf.min.js"}
 VUES = [("paris", 48.858, 2.345, 12), ("quartier", 48.8845, 2.3400, 15), ("rue", 48.8590, 2.3620, 17), ("verts", 48.8800, 2.3830, 15.5)]
+import traceback
+JOURNAL = os.path.join(OUT, "journal.txt"); open(JOURNAL, "w").close()
+def note(t):
+    with open(JOURNAL, "a") as j: j.write(t + "\n")
 with sync_playwright() as pw:
     b = pw.chromium.launch(args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
     for w, h in [(390, 844), (1280, 860)]:
@@ -47,13 +51,17 @@ with sync_playwright() as pw:
         pg.on("console", lambda m: errs.append(f"{m.type}: {m.text[:200]}") if m.type in ("error", "warning") and len(errs) < 40 else None)
         pg.on("requestfailed", lambda r: errs.append(f"échec {r.url[:120]}") if "127.0.0.1" in r.url and len(errs) < 40 else None)
         pg.goto(f"http://127.0.0.1:{PORT}/index.html"); pg.wait_for_timeout(2500)
+        note(f"{w} px, au chargement : " + str(pg.evaluate("(() => { try { const p = __heden.plan(), m = p && p.getMaplibreMap ? p.getMaplibreMap() : null; return m ? [m.getStyle() && m.getStyle().name, m.isStyleLoaded(), Object.keys(m.getStyle().sources)] : 'repli'; } catch (e) { return String(e); } })()")))
         for nom, lat, lng, z in VUES:
             if nom == "verts": pg.evaluate("localStorage.setItem('heden.vert','1')"); pg.reload(); pg.wait_for_timeout(2500)
             pg.evaluate(f"__heden.map.setView([{lat}, {lng}], {z}, {{animate: false}})"); pg.wait_for_timeout(3500)
             pg.screenshot(path=os.path.join(OUT, f"{nom}-{w}.png"))
-        pg.locator(".credits__i").first.click(); pg.wait_for_timeout(400)
-        pg.screenshot(path=os.path.join(OUT, f"credits-{w}.png"))
-        info = pg.evaluate("(() => { const p = __heden.plan(), m = p && p.getMaplibreMap ? p.getMaplibreMap() : null; return m ? [m.getStyle().name, m.isStyleLoaded(), m.queryRenderedFeatures().length] : 'repli'; })()")
+        try:
+            pg.locator(".credits__i").first.click(timeout=5000); pg.wait_for_timeout(400)
+            pg.screenshot(path=os.path.join(OUT, f"credits-{w}.png"))
+        except Exception as e: note("crédits : " + str(e)[:200])
+        note("\n".join(errs[:40]))
+        info = pg.evaluate("(() => { try { const p = __heden.plan(), m = p && p.getMaplibreMap ? p.getMaplibreMap() : null; return m ? [m.getStyle().name, m.isStyleLoaded(), m.queryRenderedFeatures().length, m.getZoom()] : 'repli'; } catch (e) { return String(e); } })()")
         with open(os.path.join(OUT, "journal.txt"), "a") as j: j.write(f"{w} px : fond {info}\n" + "\n".join(errs) + "\n\n")
         print(w, "fond :", info, errs[:10])
         ctx.close()

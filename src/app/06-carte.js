@@ -55,6 +55,7 @@ function getPlan() {
   try {
     if (L.maplibreGL && window.maplibregl && supportsGL()) {
       planLayer = L.maplibreGL({style: STYLE_PLAN, attribution: planAttrib(), maxZoom: 19, transformRequest: planRequete});
+      planLayer.once("add", () => { const m = planLayer.getMaplibreMap(); if (m) m.on("error", e => console.warn("Heden carte :", e && e.error ? e.error.message || e.error : e)); });
       return planLayer;
     }
   } catch (e) {}
