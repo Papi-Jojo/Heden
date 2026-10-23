@@ -76,3 +76,23 @@ jobs:
           sleep 20
           code=$(curl -s -o /dev/null -w "%{http_code}" -r 0-511 "${{ steps.deployment.outputs.page_url }}carte/paris.pmtiles")
           echo "::notice title=Carte::requête partielle → HTTP $code (206 attendu)"
+  apercu:
+    # les captures du fond de carte, sur la branche apercu-carte (lisibles sans télécharger d'artefact)
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    continue-on-error: true
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apercu-carte
+          path: apercu
+      - name: Publier les captures
+        run: |
+          cd apercu
+          git init -q -b apercu-carte
+          git config user.name "heden-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A; git commit -qm "Aperçu du fond de carte (${GITHUB_SHA::7})"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" apercu-carte
