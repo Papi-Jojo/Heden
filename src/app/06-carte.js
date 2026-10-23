@@ -10,19 +10,28 @@ const map = L.map("map", {
 L.control.zoom({position: "bottomright"}).addTo(map);
 map.attributionControl.setPrefix(false);
 /* Crédits de la carte : un petit « i » dans le coin ; on le touche pour lire la source (exigée par la licence d'OpenStreetMap) */
-function creditsDiscrets(m, pos = "bottomleft") {
+function creditsDiscrets(m, pos = "bottomleft", host = null) {
   const box = m.getContainer(); if (box.__credits) return; box.__credits = true;
   box.classList.add("has-credits");
-  if (m.attributionControl) m.attributionControl.setPosition(pos);   // à gauche : la droite porte déjà les boutons de la carte
-  const Btn = L.Control.extend({options: {position: pos}, onAdd() {
+  const mk = () => {
     const b = L.DomUtil.create("button", "credits__i"); b.type = "button"; b.textContent = "i";
     b.setAttribute("aria-label", "Sources de la carte"); b.title = "Sources de la carte"; b.setAttribute("aria-expanded", "false");
     L.DomEvent.disableClickPropagation(b);
-    b.onclick = () => { const o = box.classList.toggle("credits-open"); b.setAttribute("aria-expanded", String(o)); };
+    return b;
+  };
+  if (host) {   // carte principale : le « i » fixe sous les boutons de la carte, la source s'affiche à côté
+    const w = document.createElement("div"); w.className = "credits"; const b = mk(), t = document.createElement("div");
+    t.className = "credits__txt"; t.hidden = true; w.append(b, t); host.appendChild(w);
+    b.onclick = () => { const o = t.hidden; if (o) t.innerHTML = m.attributionControl ? m.attributionControl.getContainer().innerHTML : ""; t.hidden = !o; b.setAttribute("aria-expanded", String(o)); w.classList.toggle("is-open", o); };
+    return;
+  }
+  if (m.attributionControl) m.attributionControl.setPosition(pos);
+  const Btn = L.Control.extend({options: {position: pos}, onAdd() {
+    const b = mk(); b.onclick = () => { const o = box.classList.toggle("credits-open"); b.setAttribute("aria-expanded", String(o)); };
     return b; }});
   new Btn().addTo(m);
 }
-creditsDiscrets(map, isDesktop() ? "bottomleft" : "bottomright");   // téléphone : en bas à droite, posé sur la feuille des zones (CSS --sheet-h)
+creditsDiscrets(map, "bottomright", $(".fab-col"));   // sous le bouton « Ma position », sans bouger avec la feuille
 
 const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
 const OFM = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> ' + OSM;

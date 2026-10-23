@@ -217,11 +217,12 @@ body{background-color:var(--pierre)}
 @media (max-width:899px){.hero{grid-template-columns:1fr;padding:14px 14px 18px;gap:16px}.hero__ph{aspect-ratio:16/11}.hero h2{font-size:26px;line-height:29px}}
 
 /* ---- Mouvement ---- */
-@keyframes vue-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes vue-in{from{opacity:0;translate:0 6px}to{opacity:1;translate:none}}
 .view--in>*{animation:vue-in .22s var(--ease-sortie) both}
 @keyframes carte-in{from{opacity:.35}to{opacity:1}}
-@keyframes feuille-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-@keyframes feuille-in-g{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+/* « translate » et non « transform » : l'animation ne doit pas écraser le cran de la feuille (transform en ligne) */
+@keyframes feuille-in{from{opacity:0;translate:0 14px}to{opacity:1;translate:none}}
+@keyframes feuille-in-g{from{opacity:0;translate:-10px 0}to{opacity:1;translate:none}}
 #view-map.view--in #map{animation:carte-in .24s ease-out both}
 #view-map.view--in .panel{animation:feuille-in .26s var(--ease-sortie) both}
 @media (min-width:900px){#view-map.view--in .panel{animation-name:feuille-in-g}}
