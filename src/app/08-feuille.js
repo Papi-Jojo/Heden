@@ -129,7 +129,7 @@ function renderList() {
         <div class="empty">
           ${GALETS}
           <ol>
-            <li><span>Répondez aux six questions de l’onglet <b>Profil</b> : Heden règle vos critères tout seul.</span></li>
+            <li><span>Répondez aux neuf questions de l’onglet <b>Profil</b> : Heden règle vos critères tout seul.</span></li>
             <li><span>Touchez la carte pour poser le premier point d’une zone, puis continuez point par point autour du morceau de quartier visité.</span></li>
             <li><span>Notez chaque critère de 0 à 5 : la zone prend sa couleur, du rouge au vert.</span></li>
           </ol>

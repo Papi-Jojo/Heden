@@ -561,8 +561,14 @@ const secteursTxt = s => (s.arrs || []).length ? (s.arrs || []).slice().sort((a,
 function normWeights(obj, keep) {
   let e = Object.entries(obj).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]); if (keep) e = e.slice(0, keep);
   const s = e.reduce((a, [, w]) => a + w, 0) || 1;
-  let r = e.map(([id, w]) => [id, Math.max(5, Math.round(w / s * 100 / 5) * 5)]);
-  const diff = 100 - r.reduce((a, [, w]) => a + w, 0); if (r.length) r[0][1] = Math.max(5, r[0][1] + diff);
+  const ex = e.map(([, w]) => w / s * 100);
+  let r = e.map(([id], i) => [id, Math.max(5, Math.round(ex[i] / 5) * 5)]);
+  // l'écart d'arrondi va aux poids les plus arrondis, jamais d'office au premier : la priorité n° 1 garde son rang
+  for (let diff = 100 - r.reduce((a, [, w]) => a + w, 0), n = 0; diff && n < 60; diff = 100 - r.reduce((a, [, w]) => a + w, 0), n++) {
+    const st = diff > 0 ? 5 : -5, ok = r.map((x, i) => i).filter(i => st > 0 || r[i][1] > 5); if (!ok.length) break;
+    const i = ok.sort((x, y) => st > 0 ? (r[x][1] - ex[x]) - (r[y][1] - ex[y]) : (r[y][1] - ex[y]) - (r[x][1] - ex[x]))[0];
+    r[i][1] += st;
+  }
   return r;
 }
 function applySetup(s) {
@@ -1200,4 +1206,4 @@ setTab(/profil/.test(location.hash) ? "profile" : /favoris/.test(location.hash) 
 cloudInit();
 refreshEstimates();
 maybeAutoQuiz();
-window.__heden = {state: () => state, plan: () => planLayer, parseListing, extractCards, bookmarkletCode, score: f => scoreListing(f), scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate, map, toast, openQuiz, toastAvoid: TOAST_AVOID};
+window.__heden = {state: () => state, plan: () => planLayer, parseListing, extractCards, bookmarkletCode, score: f => scoreListing(f), scoreOf, colorFor, cloud: () => cloud, save, startNew, addPoint, estimate, map, toast, openQuiz, applySetup, toastAvoid: TOAST_AVOID};
