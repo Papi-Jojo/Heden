@@ -27,6 +27,7 @@ function setSheetVar(off) {
 }
 function applySheet() {
   if (isDesktop()) { panel.style.transform = ""; panel.removeAttribute("data-sheet"); setSheetVar(0); return; }
+  if (!panel.offsetHeight) return;   // carte cachée (autre onglet) : sans hauteur, la feuille paraîtrait ouverte au retour, puis redescendrait
   const off = sheetOffset();
   panel.dataset.sheet = ui.sheet;
   panel.style.transform = off ? `translateY(${off}px)` : "";
@@ -53,7 +54,7 @@ function endSheetDrag(e) {
   const d = sheetDrag; if (!d || e.pointerId !== d.id) return;
   sheetDrag = null; panel.classList.remove("dragging");
   if (!d.moved) {
-    if (e.type === "pointerup" && !e.target.closest("button, a, input, select, textarea")) { ui.sheet = ui.sheet === "open" ? "peek" : ui.sheet === "mini" ? "peek" : "open"; applySheet(); }
+    if (e.type === "pointerup" && !e.target.closest("button, a, input, select, textarea")) { ui.sheet = ui.sheet === "open" ? (hasMini() ? "mini" : "peek") : "open"; applySheet(); }   // un toucher : tout ouvert ou tout replié
     return;
   }
   const v = (e.clientY - d.y0) / Math.max(1, performance.now() - d.t0);
@@ -92,28 +93,15 @@ function sortedZones() {
 function renderList() {
   const items = sortedZones();
   const n = items.length;
-  const best = items.find(i => i.s.score != null && !overBudget(i.z));
-  const p = state.profile;
-  const presetName = (PRESETS.find(x => x.id === p.presetId) || {}).name;
-  const profileLine = p.modified || !presetName ? "Profil personnalisé" : `Profil ${presetName}`;
   panel.innerHTML = `
     <div class="grip"></div>
     <div class="panel__head" id="phead">
-      <div class="grow">
-        ${mapSwitchHTML()}
-        <h2>${n ? `${n} zone${n > 1 ? "s" : ""} notée${n > 1 ? "s" : ""}` : "Aucune zone pour l’instant"}</h2>
-        <div class="sub">${best ? `En tête : ${esc(best.z.name || "Sans nom")}, ${best.s.score}/100` : esc(profileLine) + `, ${crit().filter(c => c.weight > 0).length} critères`}</div>
-        ${cloudReady ? `<button type="button" class="acct-line ${cloud.user ? (cloud.status === "error" ? "err" : "on") : ""}" data-auth><i></i><span>${cloud.user ? esc(accountShort()) : "Sur cet appareil"}</span>${cloud.user ? "" : `<b>Se connecter</b>`}</button>` : ""}
-      </div>
-      <div class="phead__acts"><button class="btn btn--sm btn--clair btn--ico" id="pickZone" type="button" aria-label="Zones prédéfinies" title="Zones prédéfinies"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.4-6.5-11a6.5 6.5 0 0 1 13 0c0 5.6-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg></button><button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button></div>
+      ${mapSwitchHTML() ? `<div class="grow">${mapSwitchHTML()}</div>` : ""}
+      <div class="phead__acts"><button class="btn btn--sm btn--clair phead__lieu" id="pickZone" type="button" title="Zones prédéfinies"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.4-6.5-11a6.5 6.5 0 0 1 13 0c0 5.6-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg><span>Choisir un lieu</span></button><button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button></div>
     </div>
     <div class="panel__body">
       ${!storageOk ? `<div class="banner">Ce navigateur bloque le stockage local : vos zones seront perdues à la fermeture. Exportez-les depuis l’onglet Profil.</div>` : ""}
       ${n ? `
-        <div class="legend">
-          <div class="legend__bar"></div>
-          <div class="legend__ticks num"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-        </div>
         ${n > 1 ? `<div class="sortrow" role="group" aria-label="Trier les zones"><span>Trier par</span>${SORTS.map(([k, l]) => `<button type="button" class="chip chip--sm" data-sort="${k}" aria-pressed="${(ui.sort || "note") === k}">${l}</button>`).join("")}</div>` : ""}
         <div class="zlist">
           ${items.map(({z, s, pr}) => `

@@ -427,7 +427,7 @@ input,textarea{caret-color:var(--email)}
   }
 }
 /* cartes posées : listes, réglages, sources, profil, invitations */
-.cards,.ann__list,.src,.mapcard,.acctrow,.duo,.trip,.preset,.fair>div,.psum,.nudge,.hero--ex,.ann__empty,.pready,.qready,.sec .meta{box-shadow:var(--relief),var(--ombre-1)}
+.cards,.ann__list,.src,.mapcard,.acctrow,.duo,.trip,.preset,.fair>div,.psum,.nudge,.hero--ex,.ann__empty{box-shadow:var(--relief),var(--ombre-1)}
 .cards,.ann__list,.src,.mapcard,.acctrow,.duo,.trip,.preset,.fair>div,.psum:not(.psum--new),.hero--ex,.nudge{background-image:var(--lustre),var(--grain);background-size:auto,180px 180px}
 .nudge{border-style:solid;border-color:var(--trait)}
 /* annonces de Mes ajouts (café) : un relief plus marqué, la photo comme un galet posé */
@@ -471,4 +471,14 @@ input,textarea{caret-color:var(--email)}
 .credits-open .credits__i{background:#664530;color:#F8F2EC}
 .has-credits.credits-open .leaflet-control-attribution{background:#F8F2EC!important;color:#664530!important;box-shadow:0 2px 8px -4px rgba(59,42,30,.35)}
 .has-credits.credits-open .leaflet-control-attribution a{color:#3B2A1E!important}
-@media (max-width:899px){#map .leaflet-top.leaflet-left{top:66px}#map .leaflet-top.leaflet-left .credits__i,#map .leaflet-top.leaflet-left .leaflet-control-attribution{margin:0 0 6px 14px!important}}
+@media (max-width:899px){
+  #map .leaflet-bottom.leaflet-right{bottom:var(--sheet-h,0px);transition:bottom .2s var(--ease-sortie)}
+  #map .leaflet-bottom.leaflet-right .credits__i,#map .leaflet-bottom.leaflet-right .leaflet-control-attribution{margin:0 12px 10px 0!important}
+}
+
+/* tête de la feuille des zones : les deux actions, rien d'autre */
+.panel__head>.phead__acts:first-child{flex:1;justify-content:space-between}
+.phead__lieu{display:inline-flex;align-items:center;gap:7px}
+.psum__secs{display:flex;flex-wrap:wrap;gap:6px}
+.psum__secs .tag{margin:0}
+.acctrow .btn{flex:none}

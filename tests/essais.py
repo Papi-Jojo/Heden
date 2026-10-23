@@ -30,7 +30,7 @@ def zone(pw):
     e = Essai(pw); pg = e.page()
     e.zone(pg, "Abbesses")
     assert "Abbesses" in " ".join(pg.locator(".zrow").all_inner_texts()), "zone absente de la liste"
-    assert "1 zone" in pg.locator(".panel__head h2").inner_text()
+    assert pg.locator(".zrow").count() == 1, "une zone attendue dans la liste"
     assert not e.erreurs, e.erreurs; e.fermer()
 
 

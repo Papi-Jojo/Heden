@@ -22,7 +22,7 @@ function creditsDiscrets(m, pos = "bottomleft") {
     return b; }});
   new Btn().addTo(m);
 }
-creditsDiscrets(map, isDesktop() ? "bottomleft" : "topleft");   // téléphone : sous la recherche, la feuille des zones couvre le bas
+creditsDiscrets(map, isDesktop() ? "bottomleft" : "bottomright");   // téléphone : en bas à droite, posé sur la feuille des zones (CSS --sheet-h)
 
 const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
 const OFM = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> ' + OSM;
@@ -94,64 +94,9 @@ function tintPlan(layer = planLayer) {
   if (!m.__hedenTint) { m.__hedenTint = apply; m.on("style.load", apply); }
   if (m.isStyleLoaded && m.isStyleLoaded()) apply(); else m.once("load", apply);
 }
-function applyBase() { const p = getPlan(); p.addTo(map); if (p !== tiles.osm && map.attributionControl) map.attributionControl.addAttribution(planAttrib()); tintPlan(); vertApply(); }
+function applyBase() { const p = getPlan(); p.addTo(map); if (p !== tiles.osm && map.attributionControl) map.attributionControl.addAttribution(planAttrib()); tintPlan(); }
 dark.addEventListener?.("change", () => { renderZones(); if (draft) drawDraft(); });
 
-/* ---------- Espaces verts : les parcs, jardins, squares, bois et cimetières d'OpenStreetMap (data/verts.json, scripts/donnees/verts.py) ----------
-   Un aplat sauge, un liseré, et de petits arbres posés en semis à partir du zoom de quartier ; sous les noms de rues.
-   Sans WebGL : les mêmes contours, sans arbres. */
-const VERT = {fond: "#D2DAB8", bord: "#A7B58A", cime: "#8A9C66", clair: "#A9B98A", tronc: "#7A6A50"};
-let vertOn = (() => { try { return localStorage.getItem("heden.vert") === "1"; } catch (e) { return false; } })();
-let vertData = null, vertLeaf = null;
-const vertDispo = () => true;
-function vertCharger() {
-  return vertData ? Promise.resolve(vertData) : fetch("data/verts.json?v=" + Math.floor(Date.now() / 864e5)).then(r => r.ok ? r.json() : null).then(d => (vertData = d)).catch(() => null);
-}
-/* Un arbre minimaliste : une cime ronde (ou ovale), un reflet, un tronc fin, une ombre au sol. Trois variantes, dessinées une fois. */
-function vertArbre(k) {
-  const W = 44, H = 56, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
-  const cx = W / 2, rx = [13, 10.5, 11.5][k], ry = [13, 16, 11.5][k], cy = H - 14 - ry;
-  g.fillStyle = "rgba(62,72,38,.16)"; g.beginPath(); g.ellipse(cx + 3, H - 6, rx * .9, 3.2, 0, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = VERT.tronc; g.lineWidth = 2.6; g.lineCap = "round"; g.beginPath(); g.moveTo(cx, H - 7); g.lineTo(cx, cy + ry * .4); g.stroke();
-  g.fillStyle = VERT.cime; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.fill();
-  if (k === 2) { g.beginPath(); g.ellipse(cx - 7, cy + 4, 7.5, 7.5, 0, 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = VERT.clair; g.beginPath(); g.ellipse(cx - rx * .32, cy - ry * .34, rx * .42, ry * .3, -.5, 0, Math.PI * 2); g.fill();
-  return g.getImageData(0, 0, W, H);
-}
-const vertGeo = d => ({type: "FeatureCollection", features: d.p.map(r => ({type: "Feature", properties: {}, geometry: {type: "Polygon", coordinates: r}}))});
-const arbresGeo = d => ({type: "FeatureCollection", features: d.a.map(([x, y, k]) => ({type: "Feature", properties: {k}, geometry: {type: "Point", coordinates: [x, y]}}))});
-async function vertApply() {
-  const gl = planLayer && typeof planLayer.getMaplibreMap === "function" ? planLayer.getMaplibreMap() : null;
-  if (!vertOn) {
-    if (vertLeaf) { map.removeLayer(vertLeaf); vertLeaf = null; }
-    if (gl) ["heden-arbres", "heden-verts-bord", "heden-verts-fond"].forEach(id => { try { if (gl.getLayer(id)) gl.removeLayer(id); } catch (e) {} });
-    return;
-  }
-  const d = await vertCharger();
-  if (!d || !vertOn) { if (!d) toast("Les espaces verts ne sont pas encore prêts"); return; }
-  if (!gl) {   // repli sans WebGL : contours seulement
-    if (!vertLeaf) vertLeaf = L.geoJSON(vertGeo(d), {interactive: false, style: {color: VERT.bord, weight: 1, fillColor: VERT.fond, fillOpacity: .85}}).addTo(map);
-    return;
-  }
-  const go = () => {
-    if (!vertOn) return;
-    const st = gl.getStyle(); if (!st || !st.layers) return;
-    try {
-      if (!gl.getSource("heden-verts")) gl.addSource("heden-verts", {type: "geojson", data: vertGeo(d), tolerance: .5});
-      if (!gl.getSource("heden-arbres")) gl.addSource("heden-arbres", {type: "geojson", data: arbresGeo(d)});
-      [0, 1, 2].forEach(k => { if (!gl.hasImage("heden-arbre-" + k)) gl.addImage("heden-arbre-" + k, vertArbre(k), {pixelRatio: 2}); });
-      const avant = (st.layers.find(l => l.type === "symbol") || {}).id;   // sous les noms de rues et de lieux
-      if (!gl.getLayer("heden-verts-fond")) gl.addLayer({id: "heden-verts-fond", type: "fill", source: "heden-verts", paint: {"fill-color": VERT.fond, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 11, .75, 15, .92]}}, avant);
-      if (!gl.getLayer("heden-verts-bord")) gl.addLayer({id: "heden-verts-bord", type: "line", source: "heden-verts", paint: {"line-color": VERT.bord, "line-width": ["interpolate", ["linear"], ["zoom"], 12, .5, 16, 1.3]}}, avant);
-      if (!gl.getLayer("heden-arbres")) gl.addLayer({id: "heden-arbres", type: "symbol", source: "heden-arbres", minzoom: 13.5,
-        layout: {"icon-image": ["concat", "heden-arbre-", ["to-string", ["get", "k"]]], "icon-anchor": "bottom", "icon-allow-overlap": true, "icon-ignore-placement": true, "symbol-z-order": "viewport-y",
-          "icon-size": ["interpolate", ["linear"], ["zoom"], 13.5, .4, 15, .7, 17, 1.1]},
-        paint: {"icon-opacity": ["interpolate", ["linear"], ["zoom"], 13.5, 0, 14.2, 1]}}, avant);
-    } catch (e) { console.warn("Heden : espaces verts", e); }
-  };
-  if (!gl.__hedenVert) { gl.__hedenVert = true; gl.on("style.load", () => vertOn && go()); }
-  if (gl.isStyleLoaded && gl.isStyleLoaded()) go(); else gl.once("load", go);
-}
 applyBase();
 
 /* Les contrôles posés sur la carte (recherche, filtres, position, consigne) ne doivent jamais poser de point */

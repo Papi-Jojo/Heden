@@ -6,7 +6,7 @@ var TIPS_KEY = "heden.tips", tipsSt = null, tipCur = null, tipRaf = 0, tourI = -
 const TOUR = [
   {tab: "map", sel: ["#newZone"], titre: "Vos zones", txt: "Tracez le coin que vous visitez, point par point, ou partez d’une zone prédéfinie. Puis notez-le, critère par critère."},
   {tab: "map", sel: ["#walkBtn"], titre: "En balade", txt: "Lancez le suivi en marchant : Heden propose la zone d’après votre parcours."},
-  {tab: "map", sel: ["#mapfBtn"], titre: "Ce que montre la carte", txt: "Vos zones et vos annonces favorites, à masquer pour y voir plus clair. Et les espaces verts : parcs, jardins, squares."},
+  {tab: "map", sel: ["#mapfBtn"], titre: "Ce que montre la carte", txt: "Vos zones et vos annonces favorites. Masquez l’un ou l’autre pour y voir plus clair."},
   {tab: "annonces", sel: [".feeds"], titre: "Deux flux d’annonces", txt: "Explorer : les annonces des sites immobiliers, notées pour vous. Mes ajouts : celles que vous ajoutez vous-même."},
   {tab: "annonces", sel: ["#addListing"], titre: "Ajouter une annonce", txt: "Collez son texte, ou installez le bouton + Heden : sur la page d’une annonce, un clic suffit, photos comprises."},
   {tab: "favoris", sel: [".tabbar [data-tab=favoris]", ".tabs [data-tab=favoris]"], titre: "Vos favoris", txt: "Touchez le cœur d’une annonce : elle se range ici et apparaît sur la carte, avec sa note."},

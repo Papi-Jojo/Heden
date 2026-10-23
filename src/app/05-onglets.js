@@ -22,7 +22,7 @@ function setTab(t) { setTimeout(() => tipsKick(), 0);
   const ann = t === "annonces" || t === "favoris";
   $("#view-annonces").hidden = !ann;
   if (ann && (prev === "annonces" || prev === "favoris") && prev !== t) { lui.openId = null; lui.lastView = null; }   // Annonces et Favoris partagent la vue : chacun revient à sa liste
-  if (t === "map") { setTimeout(() => map.invalidateSize(), 0); renderZones(); renderPanel(); renderListingPins(); }
+  if (t === "map") { if (prev !== "map" && ui.mode === "list") ui.sheet = "mini"; setTimeout(() => map.invalidateSize(), 0); renderZones(); renderPanel(); renderListingPins(); }
   else if (ann) renderListings();
   else renderProfile();
   const vw = $(ann ? "#view-annonces" : t === "profile" ? "#view-profile" : "#view-map");

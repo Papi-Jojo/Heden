@@ -11,7 +11,7 @@ function renderPanel() { setTimeout(() => tipsKick(), 0);
   panel.dataset.mode = ui.mode;
   document.body.dataset.mode = ui.mode;
   /* chaque nouveau mode ouvre la feuille ; la liste démarre repliée sur mobile */
-  if (ui.mode !== lastMode) { ui.sheet = ui.mode === "list" ? "peek" : "open"; lastMode = ui.mode; }
+  if (ui.mode !== lastMode) { ui.sheet = ui.mode === "list" ? "mini" : "open"; lastMode = ui.mode; }
   if (ui.mode === "list") renderList();
   else if (ui.mode === "placing") renderPlacing();
   else if (ui.mode === "rating") renderRating();

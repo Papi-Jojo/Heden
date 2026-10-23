@@ -7,7 +7,7 @@ const maskMail = m => { const [u, d] = String(m || "").split("@"); return d ? (u
 function accountHTML() {
   if (!cloudReady) return "";
   return cloud.user
-    ? `<div class="acctrow on"><i></i><span><b>${esc(cloud.user.email || "Connecté")}</b><small id="syncState">${esc(syncLabel())}</small></span><button class="link" type="button" data-auth>Gérer</button></div>`
+    ? `<div class="acctrow on"><i></i><span><b>${esc(cloud.user.email || "Connecté")}</b><small id="syncState">${esc(syncLabel())}</small></span><button class="btn btn--sm btn--clair" type="button" data-auth>Gérer</button></div>`
     : `<div class="acctrow"><i></i><span><b>Sur cet appareil uniquement</b><small>Connectez-vous pour retrouver vos zones partout</small></span><button class="btn btn--sm btn--primary" type="button" data-auth>Se connecter</button></div>`;
 }
 function bindAccount(root = document) {
