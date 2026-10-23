@@ -3,3 +3,4 @@ node_modules/
 dist/
 graphify-out/
 __pycache__/
+.carte-cache/

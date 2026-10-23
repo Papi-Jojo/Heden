@@ -464,3 +464,11 @@ input,textarea{caret-color:var(--email)}
 /* barre du haut : détachée de la page par une ombre très douce */
 .topbar{box-shadow:inset 0 -1px 0 var(--trait),0 8px 22px -20px rgba(59,42,30,.5)}
 @media (prefers-reduced-transparency: reduce){.auth__veil,.ask__veil{backdrop-filter:none}}
+/* crédits de la carte : un « i » discret ; touché, il découvre la ligne des sources */
+.has-credits .leaflet-control-attribution{display:none}
+.has-credits.credits-open .leaflet-control-attribution{display:block;margin:0 0 6px 8px!important;padding:3px 10px!important;border-radius:12px;font:500 11px/1.5 var(--sans);color:#664530}
+.credits__i{width:24px;height:24px;margin:0 0 8px 8px!important;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,#F8F2EC 82%,transparent);color:#8A6A50;font:italic 700 12px/1 Georgia,serif;cursor:pointer;box-shadow:0 1px 3px rgba(59,42,30,.18);clear:both}
+.credits-open .credits__i{background:#664530;color:#F8F2EC}
+.has-credits.credits-open .leaflet-control-attribution{background:#F8F2EC!important;color:#664530!important;box-shadow:0 2px 8px -4px rgba(59,42,30,.35)}
+.has-credits.credits-open .leaflet-control-attribution a{color:#3B2A1E!important}
+@media (max-width:899px){#map .leaflet-top.leaflet-left{top:66px}#map .leaflet-top.leaflet-left .credits__i,#map .leaflet-top.leaflet-left .leaflet-control-attribution{margin:0 0 6px 14px!important}}

@@ -658,10 +658,10 @@ function miniStart(f, s) {
   const [r] = precisionOf(f), c = [f.lat, f.lng];
   // on s'y déplace et on zoome (doigts, double-clic, boutons) ; la molette reste au défilement de la fiche
   lmini = L.map(el, {zoomControl: false, attributionControl: true, scrollWheelZoom: false, minZoom: 11, maxZoom: 18});
-  lmini.attributionControl.setPrefix(false);
+  lmini.attributionControl.setPrefix(false); creditsDiscrets(lmini);
   L.control.zoom({position: "bottomright", zoomInTitle: "Zoomer", zoomOutTitle: "Dézoomer"}).addTo(lmini);
   let fond = null;
-  try { if (L.maplibreGL && window.maplibregl && supportsGL()) { fond = L.maplibreGL({style: STYLE_PLAN, attribution: OFM, interactive: false}); fond.addTo(lmini); tintPlan(fond); } } catch (e) { fond = null; }
+  try { if (L.maplibreGL && window.maplibregl && supportsGL()) { fond = L.maplibreGL({style: STYLE_PLAN, attribution: planAttrib(), interactive: false}); fond.addTo(lmini); lmini.attributionControl.addAttribution(planAttrib()); tintPlan(fond); } } catch (e) { fond = null; }
   if (!fond) L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: OSM}).addTo(lmini);
   // vos zones à proximité, en filigrane, colorées par leur note
   for (const z of state.zones) {

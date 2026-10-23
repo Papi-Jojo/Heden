@@ -9,10 +9,35 @@ const map = L.map("map", {
 }).setView([48.8575, 2.3450], isDesktop() ? 13 : 12);
 L.control.zoom({position: "bottomright"}).addTo(map);
 map.attributionControl.setPrefix(false);
+/* Crédits de la carte : un petit « i » dans le coin ; on le touche pour lire la source (exigée par la licence d'OpenStreetMap) */
+function creditsDiscrets(m, pos = "bottomleft") {
+  const box = m.getContainer(); if (box.__credits) return; box.__credits = true;
+  box.classList.add("has-credits");
+  if (m.attributionControl) m.attributionControl.setPosition(pos);   // à gauche : la droite porte déjà les boutons de la carte
+  const Btn = L.Control.extend({options: {position: pos}, onAdd() {
+    const b = L.DomUtil.create("button", "credits__i"); b.type = "button"; b.textContent = "i";
+    b.setAttribute("aria-label", "Sources de la carte"); b.title = "Sources de la carte"; b.setAttribute("aria-expanded", "false");
+    L.DomEvent.disableClickPropagation(b);
+    b.onclick = () => { const o = box.classList.toggle("credits-open"); b.setAttribute("aria-expanded", String(o)); };
+    return b; }});
+  new Btn().addTo(m);
+}
+creditsDiscrets(map, isDesktop() ? "bottomleft" : "topleft");   // téléphone : sous la recherche, la feuille des zones couvre le bas
 
 const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
 const OFM = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> ' + OSM;
-const STYLE_PLAN = "https://tiles.openfreemap.org/styles/positron";
+/* Fond de carte Heden : tuiles et polices servies avec le site (carte/, scripts/build/carte.mjs et carte-donnees.sh), aucun service tiers ;
+   repli sur OpenFreeMap seulement si les tuiles manquent (site local sans les données de carte) */
+const STYLE_HEDEN = "carte/style.json", STYLE_OFM = "https://tiles.openfreemap.org/styles/positron";
+let STYLE_PLAN = STYLE_OFM, planHeden = false;
+try { if (window.pmtiles && window.maplibregl) { maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile); STYLE_PLAN = STYLE_HEDEN; planHeden = true; } } catch (e) {}
+const planAttrib = () => planHeden ? OSM + ' · <a href="https://protomaps.com" target="_blank">Protomaps</a>' : OFM;
+const planPret = planHeden ? fetch("carte/paris.pmtiles", {method: "HEAD"}).then(r => r.ok).catch(() => false) : Promise.resolve(false);
+planPret.then(ok => { if (ok || !planHeden) return;
+  if (map.attributionControl) map.attributionControl.removeAttribution(planAttrib());
+  planHeden = false; STYLE_PLAN = STYLE_OFM;   // pas de tuiles ici : le fond public
+  if (map.attributionControl && planLayer && planLayer !== tiles.osm) map.attributionControl.addAttribution(planAttrib());
+  if (planLayer && typeof planLayer.getMaplibreMap === "function") { const m = planLayer.getMaplibreMap(); if (m) { m.setStyle(STYLE_OFM); tintPlan(); } } });
 function supportsGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) { return false; }
 }
@@ -23,7 +48,7 @@ function getPlan() {
   if (planLayer) return planLayer;
   try {
     if (L.maplibreGL && window.maplibregl && supportsGL()) {
-      planLayer = L.maplibreGL({style: STYLE_PLAN, attribution: OFM, maxZoom: 19});
+      planLayer = L.maplibreGL({style: STYLE_PLAN, attribution: planAttrib(), maxZoom: 19});
       return planLayer;
     }
   } catch (e) {}
@@ -33,7 +58,7 @@ function getPlan() {
 /* La carte reste en beige clair dans les deux thèmes : c'est elle qu'on regarde. */
 const MAPTONES = {fond: "#EEE4D9", rue: "#FAF5EF", bord: "#DCCBB9", bati: "#E5D7C8", eau: "#C9D2D8", vert: "#DDD6C1", libelle: "#664530", halo: "#F5EEE6", limite: "#BFA58C"};
 function tintPlan(layer = planLayer) {
-  if (!layer || typeof layer.getMaplibreMap !== "function") return;
+  if (planHeden || !layer || typeof layer.getMaplibreMap !== "function") return;   // le fond Heden a déjà ses teintes
   const m = layer.getMaplibreMap(); if (!m) return;
   const apply = () => {
     const t = MAPTONES, st = m.getStyle(); if (!st || !st.layers) return;
@@ -62,7 +87,7 @@ function tintPlan(layer = planLayer) {
   if (!m.__hedenTint) { m.__hedenTint = apply; m.on("style.load", apply); }
   if (m.isStyleLoaded && m.isStyleLoaded()) apply(); else m.once("load", apply);
 }
-function applyBase() { getPlan().addTo(map); tintPlan(); vertApply(); }
+function applyBase() { const p = getPlan(); p.addTo(map); if (p !== tiles.osm && map.attributionControl) map.attributionControl.addAttribution(planAttrib()); tintPlan(); vertApply(); }
 dark.addEventListener?.("change", () => { renderZones(); if (draft) drawDraft(); });
 
 /* ---------- Espaces verts : les parcs, jardins, squares, bois et cimetières d'OpenStreetMap (data/verts.json, scripts/donnees/verts.py) ----------

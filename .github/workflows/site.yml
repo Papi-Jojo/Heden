@@ -30,6 +30,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # fond de carte servi avec le site (tuiles Protomaps de Paris et de la petite couronne, polices) : renouvelé chaque mois
+      - id: mois
+        run: echo "m=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: .carte-cache
+          key: carte-${{ steps.mois.outputs.m }}-v1
+      - name: Fond de carte
+        run: bash scripts/build/carte-donnees.sh
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -38,6 +47,17 @@ jobs:
           pip install -q playwright==1.56.0
           python -m playwright install --with-deps chromium
           python tests/essais.py
+      - name: Aperçu du fond de carte
+        if: always()
+        continue-on-error: true
+        run: python tests/apercu_carte.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: apercu-carte
+          path: apercu-carte
+          if-no-files-found: ignore
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -50,3 +70,9 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Le fond de carte se lit par morceaux (requêtes partielles)
+        continue-on-error: true
+        run: |
+          sleep 20
+          code=$(curl -s -o /dev/null -w "%{http_code}" -r 0-511 "${{ steps.deployment.outputs.page_url }}carte/paris.pmtiles")
+          echo "::notice title=Carte::requête partielle → HTTP $code (206 attendu)"
