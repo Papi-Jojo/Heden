@@ -329,7 +329,7 @@ async function loadVivier() {
    Listes de résultats et fiches vont dans Explorer (vivier commun) ; une annonce déjà dans Mes annonces ou les Favoris
    est mise à jour (prix, photos, disponibilité). L'extension ne lit que les pages que l'utilisateur ouvre. */
 const EXT_VERSION = "1.1.0", ext = {v: null};
-const EXT_STORE = "";   // lien de la fiche Chrome Web Store, une fois publiée : installation et mises à jour sans dossier à charger
+const EXT_STORE = "https://chromewebstore.google.com/detail/acdbnkkljnflmgiljafgdffldmkabmog";   // fiche Chrome Web Store (non répertoriée) : installation et mises à jour sans dossier à charger
 const attendre = async (ok, ms) => { for (let t = 0; !ok() && t < ms; t += 200) await new Promise(r => setTimeout(r, 200)); return ok(); };
 async function recevoirPage(raw) {
   const {safe, items} = cleanPage(raw), d = Object.assign({}, safe, {items, liste: !!raw.liste});
@@ -838,16 +838,16 @@ function sourcesHTML(empty) {
   return `<section class="srcs" id="srcs">
     <h2>${empty ? "Quatre façons de remplir Heden" : "Alimenter Heden"}</h2>
     <div class="src${open === "extension" ? " is-open" : ""}" data-src="extension">
-      <button class="src__head" type="button" data-srct="extension"><span class="src__ic">${ICON_EXT}</span><span class="src__t"><b>L’extension Heden</b><span>${extOld ? `Mise à jour disponible : version ${EXT_VERSION}` : extOn ? "Installée · chaque page d’annonces que vous ouvrez part dans Explorer" : "Sur ordinateur : vos recherches remplissent Explorer en naviguant"}</span></span><span class="src__chev"></span></button>
+      <button class="src__head" type="button" data-srct="extension"><span class="src__ic">${ICON_EXT}</span><span class="src__t"><b>L’extension Heden</b><span>${extOld ? (EXT_STORE ? `Installée · Chrome passe à la version ${EXT_VERSION} tout seul` : `Mise à jour disponible : version ${EXT_VERSION}`) : extOn ? "Installée · chaque page d’annonces que vous ouvrez part dans Explorer" : "Sur ordinateur : vos recherches remplissent Explorer en naviguant"}</span></span><span class="src__chev"></span></button>
       <div class="src__body">
         <p class="hint2">Sur SeLoger, PAP, Leboncoin, Bien’ici, Jinka et les autres sites, l’extension lit chaque liste de résultats et chaque annonce que vous ouvrez, et les envoie dans Explorer pour tout le groupe : nouvelles annonces, prix qui baissent, annonces retirées. Elle ne lit que les pages que vous ouvrez.</p>
-        ${extOn && !extOld ? `<ol class="steps">
+        ${extOn && (!extOld || EXT_STORE) ? `<ol class="steps">
             <li><b>Ouvrez vos recherches, triées par date</b><div>Une bulle en bas de page dit combien d’annonces sont nouvelles. Quand une page n’apporte rien de neuf, inutile d’aller plus loin.</div></li>
             <li><b>Ouvrez les annonces qui vous intéressent</b><div>Leur fiche complète, toutes les photos comprises, arrive dans Explorer. Celles de vos favoris se mettent à jour.</div></li>
             <li><b>Gardez Heden ouvert et connecté</b><div>L’extension se sert de cet onglet pour envoyer les annonces ; elle l’ouvre si besoin.</div></li>
           </ol>
-          ${EXT_STORE ? "" : `<p class="hint2"><a class="link" href="heden-extension.zip" download>Télécharger de nouveau l’extension</a></p>`}` : EXT_STORE ? `<ol class="steps">
-            <li><b>Installez l’extension</b><div><a class="btn btn--primary btn--sm steps__btn" href="${EXT_STORE}" target="_blank" rel="noopener">Ouvrir le Chrome Web Store ↗</a><p class="steps__p hint2">Puis « Ajouter à Chrome ». Elle se met à jour toute seule.</p></div></li>
+          ${EXT_STORE ? `<p class="hint2"><span>Installée à la main depuis un dossier ? Retirez-la et</span> <a class="link" href="${EXT_STORE}" target="_blank" rel="noopener">reprenez-la sur le Chrome Web Store</a><span> : elle se mettra à jour toute seule.</span></p>` : `<p class="hint2"><a class="link" href="heden-extension.zip" download>Télécharger de nouveau l’extension</a></p>`}` : EXT_STORE ? `<ol class="steps">
+            <li><b>Installez l’extension</b><div><a class="btn btn--primary btn--sm steps__btn" href="${EXT_STORE}" target="_blank" rel="noopener">Ouvrir le Chrome Web Store ↗</a><p class="steps__p hint2">Puis « Ajouter à Chrome ». Elle se met à jour toute seule.</p><p class="steps__p hint2">Edge, Brave et Arc l’installent aussi depuis cette page (Edge : acceptez les extensions d’autres boutiques).</p></div></li>
             <li><b>Épinglez Heden</b><div>Icône de pièce de puzzle à droite de la barre d’adresse, puis l’épingle à côté de Heden.</div></li>
           </ol>` : `<ol class="steps">
             <li><b>Téléchargez l’extension</b><div><a class="btn btn--primary btn--sm steps__btn" href="heden-extension.zip" download>Télécharger l’extension</a><p class="steps__p hint2">Puis décompressez le fichier : un dossier « heden-extension » apparaît.</p></div></li>
