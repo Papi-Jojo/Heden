@@ -520,3 +520,18 @@ input,textarea{caret-color:var(--email)}
 .home__grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 12px;align-items:end}
 .home__grid>.field:last-child:nth-child(odd){grid-column:1 / -1}
 .home__grid .field{margin:0}
+
+/* Annonce suspecte : triangle rouge sur la photo, en tête de la fiche et sur l'épingle */
+.hero__scam{position:absolute;top:14px;right:calc(14px + var(--n,1) * 52px);z-index:3;width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:var(--alerte);color:#FFF6F0;box-shadow:0 4px 12px -4px color-mix(in srgb,var(--alerte) 70%,transparent)}
+.hero--risk .hero__k,.hero--risk.hero--ex .hero__k{color:var(--alerte)}
+.hero__ki{display:inline-flex;margin-right:-2px}
+.hero--scam{outline:2px solid color-mix(in srgb,var(--alerte) 55%,transparent);outline-offset:-2px}
+.trust__t{display:flex;gap:10px;align-items:flex-start}
+.trust__ic{flex:none;display:inline-flex;color:var(--alerte);margin-top:1px}
+.trust--fort{border-width:1.5px;border-color:var(--alerte);background:color-mix(in srgb,var(--alerte) 11%,var(--calcaire))}
+.lpin--scam{box-shadow:0 0 0 2px var(--alerte),var(--ombre-flottant)}
+.lpin__scam{display:grid;place-items:center;width:22px;height:22px;margin-right:-3px;border-radius:50%;background:var(--alerte);color:#FFF6F0}
+.hero--risk .hero__k::before{content:none}
+.hero--risk:not(.hero--ex) .hero__k{color:#F2967A}
+@media (prefers-color-scheme: dark){.hero--risk:not(.hero--ex) .hero__k{color:var(--alerte)}}
+@media (prefers-color-scheme: dark){.hero__scam,.lpin__scam{color:#2A1D14}}

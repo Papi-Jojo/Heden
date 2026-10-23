@@ -1151,7 +1151,7 @@ function renderListingPins() {
     } else {
       const f = g[0], s = scoreListing(f);
       const mk = L.marker([f.lat, f.lng], {zIndexOffset: 500, keyboard: true, title: f.title || listingTitle(f), icon: L.divIcon({className: "", iconSize: null,
-        html: `<span class="lpin${f.precise ? "" : " lpin--approx"}" style="--c:${noteCol(s)}" data-pin="${f.id}"><b class="lpin__s num">${noteTxt(s)}</b><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : f.price >= 1e6 ? String(Math.round(f.price / 1e5) / 10).replace(".", ",") + "&#8239;M€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`})});
+        html: `<span class="lpin${f.precise ? "" : " lpin--approx"}${trustSignals(f, s).level === "fort" ? " lpin--scam" : ""}" style="--c:${noteCol(s)}" data-pin="${f.id}">${trustSignals(f, s).level === "fort" ? `<i class="lpin__scam" aria-label="Annonce suspecte">${svgI(PIC.alerte, 14)}</i>` : ""}<b class="lpin__s num">${noteTxt(s)}</b><em class="num">${f.price ? (kindOf(f) === "location" ? fmtInt(f.price) + "&#8239;€" : f.price >= 1e6 ? String(Math.round(f.price / 1e5) / 10).replace(".", ",") + "&#8239;M€" : Math.round(f.price / 1000) + "&#8239;k€") : ""}</em></span>`})});
       mk.on("click", () => openPinPopup([f.lat, f.lng], [f], mk));
       mk.addTo(listingLayer);
     }

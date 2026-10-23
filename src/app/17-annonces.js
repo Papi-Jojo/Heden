@@ -233,7 +233,9 @@ function scoreListing(f, raw = false) {
   if (total != null && logLo != null && cover < 1) {
     const qUnc = partial ? (1 - (partial.cover ?? .5)) * (coarse ? 16 : 8) : 0;
     const lo = Math.round(Math.max(0, (mkTotal(logLo) ?? total) + bonus - malus - qUnc)), hi = Math.round(Math.min(100, (mkTotal(logHi) ?? total) + bonus - malus + qUnc));
-    if (hi - lo >= 12) range = [Math.min(lo, total), fails.length ? Math.min(hi, 35) : Math.max(hi, total)];
+    const cap = (f.scam || []).length ? 25 : fails.length ? 35 : null;   // la fourchette respecte les mêmes plafonds que la note
+    if (hi - lo >= 12) range = [Math.min(lo, total), cap != null ? Math.min(hi, cap) : Math.max(hi, total)];
+    if (range && range[1] - range[0] < 12) range = null;
   }
   const hasFix = !!(fx && ((fx.crit && Object.keys(fx.crit).length) || fx.quartier != null || fx.total != null));
   const heden = hasFix ? scoreListing(f, true).total : total;
@@ -303,6 +305,7 @@ const PIC = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   tri: '<path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/>',
   cible: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+  alerte: '<path d="M10.3 4.6 2.9 17.4a2 2 0 0 0 1.7 3h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.5"/><circle cx="12" cy="17.2" r=".8" fill="currentColor"/>',
   langue: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.3 2.4 3.5 5.2 3.5 8.5s-1.2 6.1-3.5 8.5c-2.3-2.4-3.5-5.2-3.5-8.5s1.2-6.1 3.5-8.5Z"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".7" fill="currentColor"/>',
   carte: '<path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2-6-2Z"/><path d="M9 4.5v13M15 6.5v13"/>',
@@ -574,7 +577,7 @@ function heroKicker(f, s, k) {
 function trustHTML(t) {
   if (!t.level && !t.photo.length) return "";
   return `<div class="trust${t.level ? " trust--" + t.level : ""}">
-    ${t.level ? `<p><b>${t.level === "fort" ? "Annonce suspecte" : "Annonce à vérifier"}</b> : ${esc(t.risk.join(", "))}.</p><p class="hint2">Ne versez rien avant d’avoir visité et signé, vérifiez l’agence (carte professionnelle) ou l’identité du propriétaire.</p>` : ""}
+    ${t.level ? `<p class="trust__t"><span class="trust__ic" aria-hidden="true">${svgI(PIC.alerte, 20)}</span><span><b>${t.level === "fort" ? "Annonce suspecte" : "Annonce à vérifier"}</b> : ${esc(t.risk.join(", "))}.</span></p><p class="hint2">Ne versez rien avant d’avoir visité et signé, vérifiez l’agence (carte professionnelle) ou l’identité du propriétaire.</p>` : ""}
     ${t.photo.length ? `<p><b>Photos à prendre avec recul</b> : ${esc(t.photo.join(", "))}. Les pièces réelles peuvent être différentes : demandez des photos actuelles ou une visite vidéo.</p>` : ""}
   </div>`;
 }
@@ -624,13 +627,14 @@ function heroHTML(f, s, k = 0, neu = false) {
     : f.status === "ecartee"
     ? `<button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.back}Afficher de nouveau</button>`
     : "";
+  const tr = trustSignals(f, s), sus = tr.level === "fort";
   const hide = currentTab !== "favoris" && f.status !== "ecartee" ? `<button class="hero__hide" type="button" data-hst="ecartee" aria-label="Masquer l’annonce" title="Masquer l’annonce">${ICO.drop}</button>` : "";
-  return `<article class="hero${ex ? " hero--ex" : ""}${ph ? "" : " hero--nophoto"}${f.gone || f.status === "ecartee" ? " hero--off" : ""}${s.fails.length ? " hero--fail" : ""}" data-id="${f.id}" style="--c:${noteCol(s)}">
+  return `<article class="hero${ex ? " hero--ex" : ""}${ph ? "" : " hero--nophoto"}${f.gone || f.status === "ecartee" ? " hero--off" : ""}${s.fails.length ? " hero--fail" : ""}${tr.level ? " hero--risk" : ""}${sus ? " hero--scam" : ""}" data-id="${f.id}" style="--c:${noteCol(s)}">
     <div class="hero__ph">${ph ? `<div class="hero__car">${(f.photos || []).slice(0, 15).map((u, i) => `<img src="${esc(u)}" alt="" loading="${k < 2 && i === 0 ? "eager" : "lazy"}" referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : GALETS}${(f.photos || []).length > 1 ? `<span class="hero__nph num"><span class="hero__i">1</span>/${Math.min(15, f.photos.length)}</span><button class="hero__nav hero__nav--p" type="button" aria-label="Photo précédente" tabindex="-1">${svgI('<path d="M15 5 8 12l7 7"/>', 18)}</button><button class="hero__nav hero__nav--n" type="button" aria-label="Photo suivante" tabindex="-1">${svgI('<path d="m9 5 7 7-7 7"/>', 18)}</button>` : ""}</div>
-    <button class="hero__fav" type="button" data-hst="fav" aria-pressed="${fav}" aria-label="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}">${ICO.keep}</button>${hide}
+    <button class="hero__fav" type="button" data-hst="fav" aria-pressed="${fav}" aria-label="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}">${ICO.keep}</button>${hide}${sus ? `<span class="hero__scam" style="--n:${hide ? 2 : 1}" role="img" aria-label="Annonce suspecte" title="Annonce suspecte : ${esc(tr.risk.join(", "))}">${svgI(PIC.alerte, 22)}</span>` : ""}
     <b class="hero__s num${s.reliable ? "" : " hero__s--q"}"${k === 0 && s.reliable ? ` data-count="${s.total}"` : ""}${s.reliable ? "" : ` title="${s.total != null ? "Note provisoire : il manque des infos" : "Pas assez d’infos pour noter"}"`}>${noteTxt(s)}</b>
     <div class="hero__b">
-      <span class="hero__k${s.maybe ? " hero__k--maybe" : ""}">${esc(s.maybe ? "Peut vous plaire" : neu ? "Nouvelle" : heroKicker(f, s, k))}${ex && f.source ? `<span class="hero__src">${esc(siteName(f.source))}</span>` : ""}</span>
+      <span class="hero__k${s.maybe && !tr.level ? " hero__k--maybe" : ""}">${tr.level ? `<span class="hero__ki" aria-hidden="true">${svgI(PIC.alerte, 15)}</span>` : ""}${esc(tr.level ? heroKicker(f, s, k) : s.maybe ? "Peut vous plaire" : neu ? "Nouvelle" : heroKicker(f, s, k))}${ex && f.source ? `<span class="hero__src">${esc(siteName(f.source))}</span>` : ""}</span>
       <h2 class="hero__lieu"><span class="hero__lic" aria-hidden="true">${svgI(PIC.lieu, 18)}</span><span>${placeHTML(f, s)}</span></h2>
       <p class="hero__p num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer ?" : "Prix ?"}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
       ${factsHTML(f)}
@@ -697,6 +701,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0); miniStop();
       <button class="lst lst--keep" type="button" data-st="gardee" aria-pressed="${isKept(f)}">${ICO.keep}<span>${isKept(f) ? "En favori" : "Ajouter aux favoris"}</span></button>
       <button class="lst lst--drop" type="button" data-st="ecartee" aria-pressed="${f.status === "ecartee"}">${ICO.drop}<span>${f.status === "ecartee" ? "Masquée" : "Masquer"}</span></button>
     </div>
+    ${trustSignals(f, s).level === "fort" ? trustHTML(trustSignals(f, s)) : ""}
     <div class="lact">
       ${isKept(f) ? `<button class="chip chip--sm" type="button" data-st="visite" aria-pressed="${f.status === "visite"}">${ICO.visit}Visite prévue</button>` : ""}
       ${cleanWeb(f.url) ? `<a class="chip chip--sm" href="${esc(cleanWeb(f.url))}" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a>` : ""}
@@ -705,7 +710,7 @@ function renderListingDetail(id) { setTimeout(() => tipsKick(), 0); miniStop();
     ${askHTML(f, s)}
     ${s.reliable && !f.fullPage && cleanWeb(f.url) && (f.photos || []).length < 6 ? `<p class="hint2 lact__hint">Toutes les photos et la fiche complète : ouvrez l’annonce, puis touchez + Heden sur sa page.</p>` : ""}
     ${s.fails.length ? `<div class="banner banner--alerte">Hors de vos critères : ${esc(s.fails.join(", "))}.</div>` : ""}
-    ${trustHTML(trustSignals(f, s))}
+    ${trustSignals(f, s).level === "fort" ? "" : trustHTML(trustSignals(f, s))}
     ${checkHTML(f)}
     ${ademeHTML(f)}
     ${s.reliable ? `<div class="feel" role="group" aria-label="Votre avis sur la note"><span>Cette note vous semble</span>${[["juste", "Juste"], ["haut", "Trop haute"], ["bas", "Trop basse"]].map(([k, l]) => `<button class="chip chip--sm" type="button" data-feel="${k}" aria-pressed="${!!(f.feel && f.feel.v === k)}">${l}</button>`).join("")}
