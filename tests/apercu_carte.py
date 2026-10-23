@@ -35,7 +35,7 @@ JOURNAL = os.path.join(OUT, "journal.txt"); open(JOURNAL, "w").close()
 def note(t):
     with open(JOURNAL, "a") as j: j.write(t + "\n")
 with sync_playwright() as pw:
-    b = pw.chromium.launch(args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+    b = pw.chromium.launch()
     for w, h in [(390, 844), (1280, 860)]:
         ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=2, service_workers="block")
         ctx.add_init_script("localStorage.setItem('heden.quiz.later', String(Date.now())); sessionStorage.setItem('heden.intro','1'); localStorage.setItem('heden.tips.off','1')")
@@ -48,10 +48,10 @@ with sync_playwright() as pw:
         ctx.route("**/*", route)
         pg = ctx.new_page(); errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
-        pg.on("console", lambda m: errs.append(f"{m.type}: {m.text[:200]}") if m.type in ("error", "warning") and len(errs) < 40 else None)
-        pg.on("requestfailed", lambda r: errs.append(f"échec {r.url[:120]}") if "127.0.0.1" in r.url and len(errs) < 40 else None)
+        pg.on("console", lambda m: errs.append(f"{m.type}: {m.text[:200]} {m.location.get('url', '')[:100]}") if m.type in ("error", "warning") and len(errs) < 40 and "ERR_FAILED" not in m.text else None)
+        pg.on("requestfailed", lambda r: errs.append(f"échec {r.method} {r.url[:120]} {r.failure}") if "127.0.0.1" in r.url and len(errs) < 40 else None)
         pg.goto(f"http://127.0.0.1:{PORT}/index.html"); pg.wait_for_timeout(2500)
-        note(f"{w} px, au chargement : " + str(pg.evaluate("(() => { try { const p = __heden.plan(), m = p && p.getMaplibreMap ? p.getMaplibreMap() : null; return m ? [m.getStyle() && m.getStyle().name, m.isStyleLoaded(), Object.keys(m.getStyle().sources)] : 'repli'; } catch (e) { return String(e); } })()")))
+        note(f"{w} px, au chargement : " + str(pg.evaluate("(() => { try { const p = __heden.plan(), m = p && p.getMaplibreMap ? p.getMaplibreMap() : null; const gl = !!document.createElement('canvas').getContext('webgl'); return m ? [m.getStyle() && m.getStyle().name, m.isStyleLoaded(), Object.keys(m.getStyle().sources)] : ['repli', typeof maplibregl, typeof L.maplibreGL, typeof pmtiles, gl]; } catch (e) { return String(e); } })()")))
         for nom, lat, lng, z in VUES:
             if nom == "verts": pg.evaluate("localStorage.setItem('heden.vert','1')"); pg.reload(); pg.wait_for_timeout(2500)
             pg.evaluate(f"__heden.map.setView([{lat}, {lng}], {z}, {{animate: false}})"); pg.wait_for_timeout(3500)
