@@ -129,19 +129,28 @@ async function syncNow() {
       if (v.zone !== old.zone) zUp.push(JSON.parse(v.zone));
       if (v.rating !== old.rating) rUp.push(Object.assign(JSON.parse(v.rating), {updated_at: new Date().toISOString()}));
     }
-    const dels = Object.keys(prev.zones).filter(id => !cur.zones[id]);
+    const dels = Object.keys(prev.zones).filter(id => !cur.zones[id]), gone = new Set();
+    const dropGone = () => { if (!gone.size) return; state.zones = state.zones.filter(z => !gone.has(z.id)); gone.forEach(id => delete cur.zones[id]); rerenderAll(); renderPanel(); };
+    // zone supprimée sur un autre appareil alors qu'on la notait ici : elle disparaît aussi, au lieu de bloquer la synchronisation
+    const chk = [...new Set(rUp.map(r => r.zone_id))].filter(id => prev.zones[id] && !zUp.some(z => z.id === id));
+    if (chk.length) {
+      const {data, error} = await c.from("zones").select("id").in("id", chk); if (error) throw error;
+      const have = new Set((data || []).map(x => x.id)); chk.forEach(id => { if (!have.has(id)) gone.add(id); });
+    }
     if (zUp.length) {
       const mz = await mergeWithServer("zones", zUp, id => prev.zones[id] && JSON.parse(prev.zones[id].zone));
+      mz.gone.forEach(id => gone.add(id));
       mz.gone.forEach(id => { state.zones = state.zones.filter(z => z.id !== id); delete cur.zones[id]; });
       const now = new Date().toISOString();
       const {error} = mz.rows.length ? await c.from("zones").upsert(mz.rows.map(r => Object.assign(r, {updated_at: now}))) : {}; if (error) throw error;
       mz.rows.forEach(r => { const z = state.zones.find(x => x.id === r.id); if (!z) return;
         Object.assign(z, {name: r.name, place: r.place, points: r.points, est: r.estimates || null, cover: r.cover_photo || null}); finishZoneGeometry(z);
         cur.zones[r.id].zone = JSON.stringify(zoneRow(z)); });
-      if (mz.gone.length) { rerenderAll(); renderPanel(); }
     }
-    if (rUp.length) { const {error} = await c.from("ratings").upsert(rUp); if (error) throw error; }
-    await syncTwins(rUp);
+    dropGone();
+    const rOk = rUp.filter(r => !gone.has(r.zone_id));
+    if (rOk.length) { const {error} = await c.from("ratings").upsert(rOk); if (error) throw error; }
+    await syncTwins(rOk);
     if (dels.length) { const {error} = await c.from("zones").delete().in("id", dels); if (error) throw error; }
     const pl = prev.listings || {}, lDel = Object.keys(pl).filter(id => !cur.listings[id]);
     let lUp = Object.entries(cur.listings).filter(([id, v]) => pl[id] !== v).map(([, v]) => JSON.parse(v));
@@ -570,6 +579,15 @@ async function linkToTwin(z, id) {
   if (mine.length) { const r = await c.from("zone_photos").update({zone_id: id}).in("id", mine.map(p => p.id)); if (!r.error) mine.forEach(p => p.zoneId = id); }
   z.link = id; cloud.twins[id] = z.id; save();
   return true;
+}
+/* Supprimer une zone supprime aussi sa jumelle sur l'autre carte : laissée seule, elle referait apparaître la zone
+   (partage automatique depuis la carte perso, ou copie sur la carte perso d'une zone notée sur la carte commune). */
+async function deleteTwin(z) {
+  if (!cloud.user) return;
+  const t = twinOf(z); if (!t) return;
+  for (const [k, v] of Object.entries(cloud.twins || {})) if (k === z.id || k === t || v === z.id || v === t) delete cloud.twins[k];
+  const {error} = await cloud.client.from("zones").delete().eq("id", t);
+  if (error) console.warn("Heden : suppression de la zone jumelle", error);
 }
 let autoShareP = null;
 function autoShare() {

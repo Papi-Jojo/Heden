@@ -190,6 +190,35 @@ def synchro(pw):
 
 
 @essai
+def synchro_zones(pw):
+    """Zones entre deux appareils : une zone supprimée ici ne revient pas, même si l'autre appareil la notait ; sa jumelle de la carte commune part avec elle."""
+    e = Essai(pw); A = e.page(); e.connexion(A, "johan@x.fr", "Johan"); e.onglet(A, "map")
+    e.zone(A, "Abbesses"); e.zone(A, "Pigalle", 48.8815, 2.3375); A.wait_for_timeout(2000)
+    P = e.page(); e.connexion(P, "johan@x.fr", "Johan"); e.onglet(P, "map"); P.wait_for_timeout(1500)
+    assert P.locator(".zrow").count() == 2, "le second appareil ne voit pas les zones"
+    # A supprime Abbesses pendant que P la note
+    A.evaluate("() => { const s = __heden.state(); s.zones = s.zones.filter(z => z.name !== 'Abbesses'); __heden.save(); }"); A.wait_for_timeout(2500)
+    P.evaluate("() => { const z = __heden.state().zones.find(z => z.name === 'Abbesses'); z.ratings = Object.assign({}, z.ratings, {transports: 2}); z.updatedAt = Date.now(); __heden.save(); }"); P.wait_for_timeout(3000)
+    db = A.evaluate(DBQ)
+    assert [z["name"] for z in db["zones"]] == ["Pigalle"], [z["name"] for z in db["zones"]]
+    assert P.evaluate("__heden.cloud().status") != "error", "synchronisation bloquée"
+    assert [z["name"] for z in P.evaluate("__heden.state().zones")] == ["Pigalle"], "la zone supprimée reste sur l'autre appareil"
+    # carte commune : Pigalle y est recopiée ; la supprimer sur la carte perso la retire des deux cartes, et rien ne la recrée
+    e.onglet(A, "profile"); A.fill("#newMapName", "Notre recherche"); A.click("#newMapForm button"); A.wait_for_timeout(1500)
+    e.onglet(A, "map"); perso = A.evaluate("__heden.cloud().personalMapId")
+    A.click(f".mapsw [data-map='{perso}']"); A.wait_for_timeout(3000)
+    db = A.evaluate(DBQ); shared = next(m["id"] for m in db["maps"] if m["kind"] == "partagee")
+    assert any(z["map_id"] == shared and z["name"] == "Pigalle" for z in db["zones"]), "Pigalle n'est pas sur la carte commune"
+    A.evaluate("document.querySelector('.zrow').click()"); A.wait_for_timeout(400)
+    A.evaluate("document.querySelector('#del').click()"); A.wait_for_timeout(300); A.locator(".ask [data-yes]").click(); A.wait_for_timeout(3000)
+    A.reload(); A.wait_for_timeout(3000); e.onglet(A, "map"); A.click(f".mapsw [data-map='{shared}']"); A.wait_for_timeout(2500)
+    A.click(f".mapsw [data-map='{perso}']"); A.wait_for_timeout(3000)
+    names = [(z["map_id"] == shared, z["name"]) for z in A.evaluate(DBQ)["zones"]]
+    assert not names, names
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
 def import_reserve_au_bouton(pw):
     e = Essai(pw); pg = e.page()
     pg.evaluate("() => window.postMessage({type: 'heden-import', data: {url: 'https://ex.fr/a.htm', text: 'Vente 3 pièces 60 m² Paris 11e 590 000 €'}}, '*')"); pg.wait_for_timeout(1500)

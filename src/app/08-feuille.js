@@ -266,31 +266,12 @@ function renderRating() {
         <label class="label" for="zname">Nom de la zone</label>
         <input type="text" id="zname" value="${esc(draft.name)}" placeholder="Ex. Haut de la rue des Martyrs" maxlength="80">
       </div>
-      <div class="row2">
-        <div class="field">
-          <label class="label" for="zdate">Visite</label>
-          <label class="datebox">
-            <span id="zdateTxt" class="num">${draft.date ? esc(fmtDate(draft.date)) : "Choisir"}</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
-            <input type="date" id="zdate" value="${esc(draft.date || "")}" aria-label="Date de visite">
-          </label>
-        </div>
-        ${isRent() ? "" : `<div class="field">
-          <label class="label" for="zprice">Prix observé €/m²</label>
-          <input type="number" id="zprice" inputmode="numeric" min="0" step="100" value="${draft.price ?? ""}" placeholder="Facultatif">
-        </div>`}
-      </div>
-      <div class="field">
-        <span class="label">Moment de la visite</span>
-        <div class="chips" id="zmoment">${MOMENTS.map(m => `<button class="chip" type="button" data-m="${m}" aria-pressed="${draft.moment === m}">${m}</button>`).join("")}</div>
-      </div>
       <div class="field">
         <span class="label">Photos</span>
         <div class="photos__strip" id="draftPhotos"></div>
       </div>
       <div class="field" style="gap:14px">
-        <span class="label">Critères, de 0 (rédhibitoire) à 5 (excellent)</span>
-        <p class="est-src" id="estSrc" hidden></p>
+        <span class="label">Critères</span>
         ${cs.map(c => `<div class="crit" data-c="${esc(c.id)}">
             <div class="crit__top"><span class="crit__name">${esc(c.name)}${c.group ? `<small class="cgrp">commun</small>` : ""}</span><span class="crit__w num">poids ${Math.round(c.weight / wsum * 100)} %</span></div>
             ${c.desc ? `<div class="crit__desc">${esc(c.desc)}</div>` : ""}
@@ -313,9 +294,6 @@ function renderRating() {
     </div>`;
   updateScoreBox();
   $("#zname").oninput = e => { draft.name = e.target.value; draft.nameTouched = true; };
-  const zd = $("#zdate");
-  zd.oninput = zd.onchange = e => { draft.date = e.target.value; $("#zdateTxt").textContent = draft.date ? fmtDate(draft.date) : "Choisir"; };
-  zd.onclick = () => { try { zd.showPicker && zd.showPicker(); } catch (err) {} };
   if ($("#zprice")) $("#zprice").oninput = e => { const v = parseFloat(e.target.value); draft.price = isFinite(v) && v > 0 ? v : null; updateScoreBox(); };
   $("#zcom").oninput = e => draft.comment = e.target.value;
   $$("#zmoment .chip").forEach(b => b.onclick = () => {
@@ -387,19 +365,15 @@ function paintCrits() {
       hb.disabled = base === undefined || base >= 5;
       hb.setAttribute("aria-pressed", String(u !== undefined && !Number.isInteger(u)));
     }
+    // l'estimation se lit sur l'échelle (pointillés) ; on propose seulement d'y revenir quand on s'en écarte
     const box = row.querySelector(".crit__est");
-    if (e === undefined && !why) { box.hidden = true; return; }
     any = any || e !== undefined;
+    if (e === undefined || u === undefined || u === e) { box.hidden = true; return; }
     box.hidden = false;
-    box.innerHTML = e === undefined ? esc(why)
-      : u === undefined ? `<b>Estimé à ${e}</b> : ${esc(why)}.`
-      : u === e ? `Comme l’estimation : ${esc(why)}.`
-      : `Estimation ${e} : ${esc(why)}. <button type="button" class="linkbtn" data-reset>Revenir à l’estimation</button>`;
+    box.innerHTML = `<button type="button" class="linkbtn" data-reset title="${esc(why || "")}">Revenir à l’estimation (${fmtNote(e)})</button>`;
   });
   const zp = $("#zprice");
   if (zp && draft.est && draft.est.prix) zp.placeholder = "Médiane " + fmtInt(draft.est.prix.med);
-  const src = $("#estSrc");
-  if (src) { src.hidden = !any; src.textContent = "Les notes en pointillés sont estimées d’après les ventes DVF et OpenStreetMap, en comparant ce coin aux autres quartiers de Paris et de la petite couronne. Elles comptent dans la note tant que vous ne les changez pas : touchez une autre note pour la remplacer."; }
 }
 function updateScoreBox() {
   const box = $("#sbox"); if (!box) return;
@@ -485,10 +459,8 @@ function renderDetail() {
         ${members.map(m => `<div class="duo__row${m.est ? " duo__row--est" : ""}"><span>${esc(m.name)}</span>${m.s.score == null ? `<em>Pas encore noté</em>` : `<b class="num" style="--c:${colorFor(m.s.score)}"><i></i>${m.s.score}</b>${m.est ? `<em>estimée</em>` : ""}`}${m.veto.length ? `<em class="duo__x">rédhibitoire</em>` : ""}${(m.me ? exclMine(z) : (((z.others || []).find(o => o.userId === m.userId) || {}).ratings || {})._x) ? `<em class="duo__x">exclue</em>` : ""}${m.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
           ${!m.me && m.comment ? `<p class="duo__c">${esc(m.name)} : ${esc(m.comment)}</p>` : ""}`).join("")}
         ${members.length > 1 ? `<button type="button" class="link duo__more" id="duoMore" aria-expanded="false">Voir les notes de chacun, critère par critère</button><div class="duo__tbl" id="duoTbl" hidden>${duoTable(z, members)}</div>` : ""}
-        <p class="duo__h">${twinOf(z) ? "Vos notes, commentaires et photos sont aussi sur votre carte perso. " : ""}Chacun note avec ses critères, plus ceux du groupe.</p>
       </div>` : ""}
       ${priceHTML(z)}
-      ${!s.complete && s.total ? `<div class="banner">Note partielle : ${s.total - s.rated} critère${s.total - s.rated > 1 ? "s" : ""} de votre profil n’${s.total - s.rated > 1 ? "ont" : "a"} pas encore été noté${s.total - s.rated > 1 ? "s" : ""}.</div>` : ""}
       <div class="breakdown">
         ${cs.map(c => {
           const {v, est} = critVal(z, c.id);
@@ -498,11 +470,8 @@ function renderDetail() {
             <span class="v num">${typeof v === "number" ? fmtNote(v) : "–"}</span></div>`;
         }).join("")}
       </div>
-      ${s.estimated ? `<p class="bd-leg"><i></i>Valeurs estimées d’après les données du quartier, à confirmer en notant la zone</p>` : ""}
       ${cs.some(c => c.group) ? `<p class="bd-leg bd-leg--grp"><i></i>Critère commun à la carte</p>` : ""}
       <dl class="meta">
-        ${z.date ? `<dt>Visite</dt><dd>${esc(fmtDate(z.date))}${z.moment ? ", " + esc(z.moment.toLowerCase()) : ""}</dd>` : ""}
-        ${!isRent() && z.price && !(z.est && z.est.prix) ? `<dt>Prix observé</dt><dd class="num">${fmtInt(z.price)} €/m²</dd>` : ""}
         <dt>Surface</dt><dd class="num">${fmtArea(z.area || polyArea(z.points))}, environ ${walkAround(z.perimeter || polyPerimeter(z.points))} min pour en faire le tour à pied</dd>
         ${z.author ? `<dt>Notée par</dt><dd>${esc(z.author)}</dd>` : ""}
       </dl>
@@ -525,7 +494,9 @@ function renderDetail() {
   paintPhotos(); bindAccount(panel);
   const del = $("#del");
   del.onclick = async () => {
-    if (!(await askConfirm({title: `Supprimer « ${z.name || "cette zone"} » ?`, text: duo ? "La zone disparaît pour tout le groupe, avec les notes et les photos de chacun." : "La zone, ses notes et ses photos seront effacées.", ok: "Supprimer", danger: true}))) return;
+    const tw = cloud.user && twinOf(z);
+    if (!(await askConfirm({title: `Supprimer « ${z.name || "cette zone"} » ?`, text: duo ? `La zone disparaît pour tout le groupe, avec les notes et les photos de chacun${tw ? ", et de votre carte perso" : ""}.` : tw ? "La zone, ses notes et ses photos seront effacées, ici et sur la carte commune." : "La zone, ses notes et ses photos seront effacées.", ok: "Supprimer", danger: true}))) return;
+    if (tw) deleteTwin(z);
     const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id && (p.zoneId || z.id) === z.id) : [];
     if (mine.length) cloud.client.storage.from("photos").remove(mine.flatMap(p => [p.path, p.thumb])).catch(() => {});
     state.zones = state.zones.filter(x => x.id !== z.id); save();
