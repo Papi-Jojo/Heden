@@ -44,9 +44,10 @@ jobs:
           python-version: "3.12"
       - name: Essais (un échec bloque la mise en ligne)
         run: |
-          pip install -q playwright==1.56.0
-          python -m playwright install --with-deps chromium
-          python tests/essais.py
+          set -o pipefail
+          # en cas d'échec, la fin de la sortie remonte en annotation (les journaux bruts ne sont pas lisibles partout)
+          { pip install -q playwright==1.56.0 && python -m playwright install --with-deps chromium && python tests/essais.py; } 2>&1 | tee essais.log \
+            || { echo "::error title=Essais (fin de la sortie)::$(tail -c 1800 essais.log | tr '\n' ' ' | sed 's/%/%25/g')"; exit 1; }
       - name: Aperçu du fond de carte
         if: always()
         continue-on-error: true
