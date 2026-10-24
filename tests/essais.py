@@ -138,6 +138,7 @@ def exclusion_partagee(pw):
     assert any(r["zone_id"] == bz and (r.get("ratings") or {}).get("_x") == 1 for r in db["ratings"]), "exclusion non enregistrée sur la carte commune"
     J.reload(); J.wait_for_timeout(2500)
     e.onglet(J, "map"); J.click(f".mapsw [data-map='{shared}']"); J.wait_for_timeout(2500)
+    J.evaluate("document.querySelector(\"[data-zl='excl']\").click()"); J.wait_for_timeout(300)
     assert J.locator(".zrow .score-chip--excl").count() == 1, "Johan ne voit pas la zone exclue par Max"
     J.evaluate("document.querySelector('.zrow').click()"); J.wait_for_timeout(500)
     assert "Exclue par Max" in J.inner_text(".zexcl"), J.inner_text(".zexcl")
@@ -266,7 +267,9 @@ def zones_exclues(pw):
     assert pg.get_attribute("#zexcl", "aria-pressed") == "true", "interrupteur non activé"
     assert pg.evaluate("__heden.state().zones[0].ratings._x") == 1, "zone exclue non enregistrée"
     pg.evaluate("document.querySelector('#close').click()"); pg.wait_for_timeout(300)
-    assert pg.locator(".score-chip--excl").count() == 1, "pictogramme absent de la liste des zones"
+    assert pg.locator(".zrow").count() == 0 and pg.locator("[data-zl='excl']").count() == 1, "la zone exclue reste dans la liste principale"
+    pg.evaluate("document.querySelector(\"[data-zl='excl']\").click()"); pg.wait_for_timeout(300)
+    assert pg.locator(".zrow .score-chip--excl").count() == 1, "zone absente de l'onglet des exclues"
     e.onglet(pg, "annonces"); pg.click("[data-feed='mes']"); pg.wait_for_timeout(500)
     ids = pg.eval_on_selector_all(".ann__feed .hero", "els => els.map(x => x.dataset.id)")
     assert ids == ["dehors"], ids

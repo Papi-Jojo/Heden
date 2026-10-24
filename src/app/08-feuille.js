@@ -91,18 +91,21 @@ function sortedZones() {
 }
 
 function renderList() {
-  const items = sortedZones();
-  const n = items.length;
+  const all = sortedZones(), exN = all.filter(x => isExcl(x.z)).length;
+  if (!exN || ui.zlist !== "excl") ui.zlist = "main";
+  const items = all.filter(x => isExcl(x.z) === (ui.zlist === "excl"));
+  const n = all.length, nIn = all.length - exN;
   panel.innerHTML = `
     <div class="grip"></div>
     <div class="panel__head" id="phead">
-      ${mapSwitchHTML() ? `<div class="grow">${mapSwitchHTML()}</div>` : ""}
+      ${mapSwitchHTML() ? `<div class="grow phead__sw">${mapSwitchHTML()}</div>` : ""}
       <div class="phead__acts"><button class="btn btn--sm btn--clair phead__lieu" id="pickZone" type="button" title="Zones prédéfinies"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.4-6.5-11a6.5 6.5 0 0 1 13 0c0 5.6-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg><span>Choisir un lieu</span></button><button class="btn btn--primary btn--sm" id="newZone" type="button">+ Zone</button></div>
     </div>
     <div class="panel__body">
       ${!storageOk ? `<div class="banner">Ce navigateur bloque le stockage local : vos zones seront perdues à la fermeture. Exportez-les depuis l’onglet Profil.</div>` : ""}
       ${n ? `
-        ${n > 1 ? `<div class="sortrow" role="group" aria-label="Trier les zones"><span>Trier par</span>${SORTS.map(([k, l]) => `<button type="button" class="chip chip--sm" data-sort="${k}" aria-pressed="${(ui.sort || "note") === k}">${l}</button>`).join("")}</div>` : ""}
+        ${exN ? `<div class="seg seg--sm zseg" role="tablist" aria-label="Zones">${[["main", "Zones", nIn, ""], ["excl", "Exclues", exN, EXCL_ICO]].map(([k, l, c, ic]) => `<button type="button" role="tab" data-zl="${k}" aria-selected="${ui.zlist === k}">${ic}<span>${l}</span><span class="num">${c}</span></button>`).join("")}</div>` : ""}
+        ${ui.zlist === "main" && items.length > 1 ? `<div class="sortrow" role="group" aria-label="Trier les zones"><span>Trier par</span>${SORTS.map(([k, l]) => `<button type="button" class="chip chip--sm" data-sort="${k}" aria-pressed="${(ui.sort || "note") === k}">${l}</button>`).join("")}</div>` : ""}
         <div class="zlist">
           ${items.map(({z, s, pr}) => `
             <button class="zrow" type="button" data-id="${z.id}">
@@ -143,6 +146,7 @@ function renderList() {
   const gl = $("#goLogin"); if (gl) gl.onclick = e => { e.stopPropagation(); openAuth(); };
   bindAccount(panel);
   $$(".zrow", panel).forEach(r => r.onclick = () => openDetail(r.dataset.id, true));
+  $$("[data-zl]", panel).forEach(b => b.onclick = e => { e.stopPropagation(); ui.zlist = b.dataset.zl; renderList(); applySheet(); });
   $$("[data-sort]", panel).forEach(b => b.onclick = () => { ui.sort = b.dataset.sort; try { localStorage.setItem("heden.sort", ui.sort); } catch (e) {} renderList(); applySheet(); });
   const ex = $("#loadEx"); if (ex) ex.onclick = loadExamples;
   const dx = $("#dropEx"); if (dx) dx.onclick = () => { state.zones = state.zones.filter(z => !z.example); save(); renderZones(); renderPanel(); };

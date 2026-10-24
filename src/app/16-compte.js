@@ -505,7 +505,7 @@ function duoLine(z) {
 function mapSwitchHTML() {
   if (!cloud.user || cloud.maps.length < 2) return "";
   return `<div class="mapsw" role="group" aria-label="Carte affichée">${cloud.maps.map(m =>
-    `<button type="button" data-map="${m.id}" aria-pressed="${m.id === cloud.mapId}">${esc(mapLabel(m))}${cloud.unseen[m.id] && cloud.unseen[m.id].size ? `<b class="mapsw__n num" aria-label="${cloud.unseen[m.id].size} nouvelle${cloud.unseen[m.id].size > 1 ? "s" : ""} zone${cloud.unseen[m.id].size > 1 ? "s" : ""}">${cloud.unseen[m.id].size}</b>` : ""}</button>`).join("")}</div>`;
+    `<button type="button" data-map="${m.id}" aria-pressed="${m.id === cloud.mapId}" aria-label="${esc(mapLabel(m))}" title="${esc(mapLabel(m))}">${svgI(m.kind === "partagee" ? PIC.groupe : PIC.profil, 18)}<span class="mapsw__l">${esc(mapLabel(m))}</span>${cloud.unseen[m.id] && cloud.unseen[m.id].size ? `<b class="mapsw__n num" aria-label="${cloud.unseen[m.id].size} nouvelle${cloud.unseen[m.id].size > 1 ? "s" : ""} zone${cloud.unseen[m.id].size > 1 ? "s" : ""}">${cloud.unseen[m.id].size}</b>` : ""}</button>`).join("")}</div>`;
 }
 let stashedExamples = [];
 function resetForMap(id) {
