@@ -303,6 +303,7 @@ const PIC = {
   hors: '<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>',
   aide: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 0 1 4.8.8c0 1.7-2.4 2.1-2.4 3.6"/><circle cx="12" cy="16.9" r=".7" fill="currentColor"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  filtre: '<path d="M4 7h16M7 12h10M10 17h4"/>',
   tri: '<path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/>',
   cible: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
   alerte: '<path d="M10.3 4.6 2.9 17.4a2 2 0 0 0 1.7 3h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.5"/><circle cx="12" cy="17.2" r=".8" fill="currentColor"/>',
@@ -401,7 +402,7 @@ function explorerItems() {
   return (cloud.vivierRows || []).filter(r => kindOf(r.f) === curMode()).map(r => {
     const ex = listings().find(x => x.vivierId === r.id) || listings().find(x => sameListing(x, r.f));
     return {r, ex, f: ex || r.f};
-  }).filter(x => !(x.ex && (x.ex.status === "ecartee" || isKept(x.ex))) && !inExcluded(x.f));   // zones exclues : hors du flux   // masquées et favoris : hors du flux, pour cet utilisateur seulement
+  }).filter(x => !(x.ex && (x.ex.status === "ecartee" || isKept(x.ex))) && !inExcluded(x.f) && !secteurFail(x.f, homeRaw()));   // secteurs non choisis : hors du flux   // zones exclues : hors du flux   // masquées et favoris : hors du flux, pour cet utilisateur seulement
 }
 function renderExplorer(box) {
   if (!["pour", "tout"].includes(lui.exf)) lui.exf = "pour";
@@ -415,18 +416,22 @@ function renderExplorer(box) {
   }
   const h = homeProfile(), seen = lui.exSeen ?? (lui.exSeen = h.vivierVu || 0);
   const items = explorerItems().map(x => Object.assign(x, {s: scoreListing(x.f), neu: x.r.item.first > seen}));
-  const pour = items.filter(x => !x.s.fails.length), list = (lui.exf === "pour" ? pour : items).sort((a, b) => (b.neu - a.neu) || listSort(a, b));
+  const fr = applyFlt(items, "explorer"), byOrder = (a, b) => (b.neu - a.neu) || listSort(a, b);
+  const pick = arr => lui.exf === "pour" ? arr.filter(x => !x.s.fails.length) : arr;
+  const okL = pick(fr.ok).sort(byOrder), mayL = pick(fr.maybe).sort(byOrder), list = okL.concat(mayL);
+  const pour = items.filter(x => !x.s.fails.length);
   const max = 30 + (lui.exMore || 0), shown = list.slice(0, max);
+  const cards = shown.map(({f, s, neu}, k) => (k === okL.length && mayL.length ? fltSepHTML(mayL.length) : "") + heroHTML(f, s, k, neu)).join("");
   box.innerHTML = `${head}${lead}
-    ${items.length ? `<div class="ann__bar">${segHTML("exf", [["pour", "Pour vous", pour.length], ["tout", "Toutes", items.length]])}${sortHTML()}</div>` : ""}
+    ${items.length ? `<div class="ann__bar">${segHTML("exf", [["pour", "Pour vous", pour.length], ["tout", "Toutes", items.length]])}<div class="ann__tools">${fltBtnHTML("explorer")}${sortHTML()}</div></div>${fltChipsHTML("explorer")}` : ""}
     ${otherKindHTML()}
     ${items.length ? nudgeHTML(items) : ""}
-    ${items.length ? `<div class="ann__feed">${shown.map(({f, s, neu}, k) => heroHTML(f, s, k, neu)).join("") || `<p class="hint2 ann__none">Aucune annonce ne correspond à vos critères.</p>`}</div>
+    ${items.length ? `<div class="ann__feed">${cards || `<p class="hint2 ann__none">Aucune annonce ne correspond à vos critères.</p>`}</div>
       ${list.length > max ? `<button class="btn btn--block feed__more" type="button" id="exMore">Afficher ${Math.min(30, list.length - max)} annonces de plus</button>` : ""}`
       : `<div class="ann__empty ann__empty--ex">${GALETS}<p>Rien de neuf pour l’instant.</p></div>`}`;
   $$("[data-exf]", box).forEach(b => b.onclick = () => { lui.exf = b.dataset.exf; lui.exMore = 0; renderListings(); });
   const mo = $("#exMore", box); if (mo) mo.onclick = () => { lui.exMore = (lui.exMore || 0) + 30; renderListings(); };
-  bindNudge(box);
+  bindNudge(box); bindFlt(box, () => items);
   if (!h.vivierVu || h.vivierVu < Date.now() - 60000) { h.vivierVu = Date.now(); save(); }
   estimerExplorer([...shown, ...items].map(x => x.f).filter(f => String(f.id).startsWith("v:")));
 }
@@ -441,13 +446,15 @@ function adoptVivier(id) {
 function renderFavoris(box) {
   if (!["tous", "visite"].includes(lui.favf)) lui.favf = "tous";
   const all = modeListings().filter(isKept).map(f => ({f, s: scoreListing(f)})), vis = all.filter(x => x.f.status === "visite");
-  const shown = (lui.favf === "visite" ? vis : all).sort(listSort);
+  const fr = applyFlt(lui.favf === "visite" ? vis : all, "favoris"), okL = fr.ok.slice().sort(listSort), mayL = fr.maybe.slice().sort(listSort);
+  const cards = okL.concat(mayL).map(({f, s}, k) => (k === okL.length && mayL.length ? fltSepHTML(mayL.length) : "") + heroHTML(f, s, k)).join("");
   box.innerHTML = `${projet() === "deux" ? `<div class="ann__head ann__head--mode">${modeSelHTML("ann__mode")}</div>` : ""}
-    ${all.length ? `<div class="ann__bar">${segHTML("favf", [["tous", "Tous", all.length], ["visite", "Visite prévue", vis.length]])}${sortHTML()}</div>` : ""}
-    ${all.length ? `<div class="ann__feed">${shown.map(({f, s}, k) => heroHTML(f, s, k)).join("") || `<p class="hint2 ann__none">Aucune visite prévue.</p>`}</div>`
+    ${all.length ? `<div class="ann__bar">${segHTML("favf", [["tous", "Tous", all.length], ["visite", "Visite prévue", vis.length]])}<div class="ann__tools">${fltBtnHTML("favoris")}${sortHTML()}</div></div>${fltChipsHTML("favoris")}` : ""}
+    ${all.length ? `<div class="ann__feed">${cards || `<p class="hint2 ann__none">${fr.n ? "Aucune annonce ne correspond à vos filtres." : "Aucune visite prévue."}</p>`}</div>`
       : `<div class="ann__empty ann__empty--fav"><span class="fav__ic" aria-hidden="true">${ICO.keep}</span><p>Aucun favori pour l’instant.</p><button class="btn" type="button" id="favGo">Voir les annonces</button></div>`}`;
   $$("[data-favf]", box).forEach(b => b.onclick = () => { lui.favf = b.dataset.favf; renderListings(); });
   const go = $("#favGo", box); if (go) go.onclick = () => setTab("annonces");
+  bindFlt(box, () => lui.favf === "visite" ? vis : all);
 }
 function bindHeroes(box) {
   const get = id => id.startsWith("v:") ? adoptVivier(id) : listings().find(x => x.id === id);
@@ -563,6 +570,7 @@ function morph(from, update, to) {
 function heroKicker(f, s, k) {
   if (f.gone) return "Plus en ligne";
   const ez = !isKept(f) && inExcluded(f); if (ez) return `Zone exclue : ${ez.name || "sans nom"}`;
+  if (s.fltMiss && s.fltMiss.length) return `À vérifier : ${s.fltMiss.join(", ")}`;
   if (f.status === "visite") return "Visite prévue";
   if (s.fails.length) return "Hors critères";
   const tr = trustSignals(f, s); if (tr.level) return tr.level === "fort" ? "Annonce suspecte" : "Annonce à vérifier";
@@ -637,7 +645,7 @@ function heroHTML(f, s, k = 0, neu = false) {
     <button class="hero__fav" type="button" data-hst="fav" aria-pressed="${fav}" aria-label="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}">${ICO.keep}</button>${hide}${sus ? `<span class="hero__scam" style="--n:${hide ? 2 : 1}" role="img" aria-label="Annonce suspecte" title="Annonce suspecte : ${esc(tr.risk.join(", "))}">${svgI(PIC.alerte, 22)}</span>` : ""}
     <b class="hero__s num${s.reliable ? "" : " hero__s--q"}"${k === 0 && s.reliable ? ` data-count="${s.total}"` : ""}${s.reliable ? "" : ` title="${s.total != null ? "Note provisoire : il manque des infos" : "Pas assez d’infos pour noter"}"`}>${noteTxt(s)}</b>
     <div class="hero__b">
-      <span class="hero__k${s.maybe && !tr.level && !ez ? " hero__k--maybe" : ""}${ez ? " hero__k--excl" : ""}">${tr.level ? `<span class="hero__ki" aria-hidden="true">${svgI(PIC.alerte, 15)}</span>` : ez ? `<span class="hero__ki" aria-hidden="true">${EXCL_ICO}</span>` : ""}${esc(tr.level || ez ? heroKicker(f, s, k) : s.maybe ? "Peut vous plaire" : neu ? "Nouvelle" : heroKicker(f, s, k))}${ex && f.source ? `<span class="hero__src">${esc(siteName(f.source))}</span>` : ""}</span>
+      <span class="hero__k${s.maybe && !tr.level && !ez && !s.fltMiss ? " hero__k--maybe" : ""}${ez ? " hero__k--excl" : ""}${s.fltMiss && !tr.level && !ez ? " hero__k--miss" : ""}">${tr.level ? `<span class="hero__ki" aria-hidden="true">${svgI(PIC.alerte, 15)}</span>` : ez ? `<span class="hero__ki" aria-hidden="true">${EXCL_ICO}</span>` : s.fltMiss ? `<span class="hero__ki" aria-hidden="true">${svgI(PIC.aide, 15)}</span>` : ""}${esc(tr.level || ez || s.fltMiss ? heroKicker(f, s, k) : s.maybe ? "Peut vous plaire" : neu ? "Nouvelle" : heroKicker(f, s, k))}${ex && f.source ? `<span class="hero__src">${esc(siteName(f.source))}</span>` : ""}</span>
       <h2 class="hero__lieu"><span class="hero__lic" aria-hidden="true">${svgI(PIC.lieu, 18)}</span><span>${placeHTML(f, s)}</span></h2>
       <p class="hero__p num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer ?" : "Prix ?"}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
       ${factsHTML(f)}

@@ -253,6 +253,28 @@ def zones_exclues(pw):
 
 
 @essai
+def filtres(pw):
+    """Filtres des Favoris : ce qui répond d'abord, ce dont l'info manque ensuite (« À vérifier »), le reste écarté ; « Seulement les infos connues » retire les incomplètes."""
+    e = Essai(pw); pg = e.page()
+    pg.evaluate("""() => { const s = __heden.state(), m = (id, o) => Object.assign({id, surface: 50, rooms: 2, postcode: '75011', lat: 48.86, lng: 2.38, placeLevel: 'adresse', status: 'gardee', photos: [], addedAt: Date.now()}, o);
+      s.listings = [m('ok', {price: 400000, floor: 3}), m('cher', {price: 900000, floor: 3}), m('sansprix', {floor: 3}), m('rdc', {price: 300000, floor: 0})]; __heden.save(); }""")
+    e.onglet(pg, "favoris"); pg.wait_for_timeout(400)
+    pg.click("#fltOpen"); pg.wait_for_timeout(300)
+    pg.fill("#flt-prixMax", "500000"); pg.click("[data-f1='etage'][data-v='1']")
+    assert "1 annonce" in pg.inner_text("#fltGo") and "1 à vérifier" in pg.inner_text("#fltGo"), pg.inner_text("#fltGo")
+    pg.click("#fltGo"); pg.wait_for_timeout(500)
+    ids = pg.eval_on_selector_all(".ann__feed .hero", "els => els.map(x => x.dataset.id)")
+    assert ids == ["ok", "sansprix"], ids
+    assert pg.locator(".feed__sep").count() == 1 and "prix" in pg.inner_text(".hero[data-id='sansprix'] .hero__k"), "annonce à vérifier mal signalée"
+    assert pg.locator(".ann__fltn").inner_text() == "2" and pg.locator(".fltc").count() == 2
+    pg.click("#fltOpen"); pg.click("[data-ft='strict']"); pg.click("#fltGo"); pg.wait_for_timeout(400)
+    assert pg.eval_on_selector_all(".ann__feed .hero", "els => els.map(x => x.dataset.id)") == ["ok"]
+    pg.locator(".fltc").first.click(); pg.wait_for_timeout(300)
+    assert pg.locator(".fltc").count() == 1, "pastille non retirée"
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
 def epingles(pw):
     """Carte : seuls les favoris ; regroupés au loin, séparés de près ; plusieurs au même point → liste ; clic → popup photos + note."""
     e = Essai(pw, 1280, 860); pg = e.page()
@@ -429,8 +451,10 @@ def questionnaire(pw):
     pg.click("[data-pj=achat]"); pg.click("[data-who=deux]"); pg.click("[data-bud='650000']"); pg.click("#qzNext")
     pg.click("[data-rooms='3']"); pg.click("#qzNext"); pg.wait_for_timeout(900)
     assert pg.locator("#quiz .qarr").count() == 20, "carte des arrondissements absente"
-    pg.click("#quiz [data-arr='11']"); pg.click("#quiz [data-arr='18']")
-    assert "11e, 18e" in pg.locator(".qmap__sel").inner_text()
+    assert pg.locator("#quiz .qarr[aria-pressed='true']").count() == 20, "tout Paris n'est pas choisi d'emblée"
+    for n in range(1, 21):   # toucher un arrondissement l'exclut : on garde le 11e et le 18e
+        if n not in (11, 18): pg.locator(f"#quiz [data-arr='{n}']").dispatch_event("click")
+    assert "18 exclus" in pg.locator(".qmap__sel").inner_text(), pg.locator(".qmap__sel").inner_text()
     pg.click("#qzNext"); pg.click("#qzSkip")
     pg.click("[data-prio=anime]"); pg.click("[data-prio=lumiere]"); pg.click("#qzNext")
     pg.click("[data-arb=lq][data-v=quartier]"); pg.click("#qzNext"); pg.click("#qzNext"); pg.wait_for_timeout(400)

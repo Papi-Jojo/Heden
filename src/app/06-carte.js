@@ -117,7 +117,28 @@ map.on("zoomend", updateFar); updateFar();
 const zoneLayer = L.layerGroup().addTo(map);
 const mapFilter = (() => { try { return Object.assign({zones: true, annonces: true}, JSON.parse(localStorage.getItem("heden.mapf") || "{}")); } catch (e) { return {zones: true, annonces: true}; } })();
 let justSaved = null;
+/* Secteurs non choisis dans le profil : un voile discret sous les zones, qui laisse les arrondissements choisis en clair */
+let voileLayer = null, voileKey = "", voileBusy = null;
+function renderVoile() {
+  const h = homeRaw(), arrs = (h.arrs || []).filter(n => n >= 1 && n <= 20), dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const key = arrs.join(",") + "|" + !!h.banlieue + "|" + dark;
+  if (key === voileKey || key === voileBusy) return;
+  if (!arrs.length) { voileKey = key; if (voileLayer) { voileLayer.remove(); voileLayer = null; } return; }
+  voileBusy = key;
+  loadLieux().then(d => {
+    voileBusy = null; if (!d || !d.c) return;
+    voileKey = key; if (voileLayer) { voileLayer.remove(); voileLayer = null; }
+    if (!map.getPane("voile")) { const p = map.createPane("voile"); p.style.zIndex = 390; p.style.pointerEvents = "none"; }
+    const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+    const st = {pane: "voile", interactive: false, color: css("--trait-fort") || "#B08968", weight: 1, opacity: .5, fillColor: css("--pierre") || "#EDE0D4", fillOpacity: dark ? .58 : .62, smoothFactor: .5};
+    voileLayer = h.banlieue
+      ? L.polygon(Object.keys(d.c).filter(n => !arrs.includes(+n)).map(n => [d.c[n]]), st)   // banlieue gardée : on ne voile que les arrondissements écartés
+      : L.polygon([[[49.6, 1.2], [49.6, 3.6], [48.1, 3.6], [48.1, 1.2]], ...arrs.map(n => d.c[n]).filter(Boolean)], st);   // sinon tout, sauf les arrondissements choisis
+    voileLayer.addTo(map);
+  });
+}
 function renderZones() {
+  renderVoile();
   // une zone notée ou modifiée change la note des favoris autour : leurs pastilles suivent
   clearTimeout(renderZones.pins); renderZones.pins = setTimeout(() => { if (typeof renderListingPins === "function") renderListingPins(); }, 150);
   zoneLayer.clearLayers();
@@ -128,9 +149,9 @@ function renderZones() {
     const col = colorFor(score);
     const out = overBudget(z), ex = isExcl(z), red = ex ? (getComputedStyle(document.documentElement).getPropertyValue("--alerte").trim() || "#A9442A") : null;
     const circle = L.polygon(z.points, {
-      color: ex ? red : traitMap(score), weight: selectedId === z.id ? 3 : 2, opacity: 1, className: (justSaved === z.id ? "zone-new " : "") + (ex ? "zone-excl" : ""),
-      fillColor: ex ? red : col, fillOpacity: ex ? (selectedId === z.id ? .18 : .1) : out ? .12 : (selectedId === z.id ? .45 : .3),
-      dashArray: ex ? "2 7" : out ? "5 6" : null, bubblingMouseEvents: false
+      color: ex ? red : traitMap(score), weight: selectedId === z.id ? 3 : ex ? 2.5 : 2, opacity: 1, className: (justSaved === z.id ? "zone-new " : "") + (ex ? "zone-excl" : ""),
+      fillColor: ex ? red : col, fillOpacity: ex ? (selectedId === z.id ? .34 : .24) : out ? .12 : (selectedId === z.id ? .45 : .3),
+      dashArray: ex ? "7 5" : out ? "5 6" : null, bubblingMouseEvents: false
     });
     const badge = L.marker([z.lat, z.lng], {
       icon: L.divIcon({className: "", iconSize: null,

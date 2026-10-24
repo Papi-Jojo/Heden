@@ -555,9 +555,23 @@ function arrMapHTML(d, sel) {
     arrMapHTML.m = {W, H, arrs: polys.sort((a, b) => a[0] - b[0]).map(([n, ps]) => { const [lx, ly] = P(ARR_CENTRE[n - 1]).split(","); return [n, ps.map(p => "M" + p.map(P).join("L") + "Z").join(""), lx, ly]; })};
   }
   const {W, H, arrs} = arrMapHTML.m;
-  return `<svg class="qmap__svg" viewBox="0 0 ${W} ${H}" role="group" aria-label="Arrondissements de Paris">${arrs.map(([n, dd, lx, ly]) => `<g class="qarr" data-arr="${n}" role="button" tabindex="0" aria-pressed="${sel.includes(n)}" aria-label="Paris ${arrNom(n)}"><path d="${dd}"/><text x="${lx}" y="${ly}" dy=".35em">${n}</text></g>`).join("")}</svg>`;
+  return `<svg class="qmap__svg" viewBox="0 0 ${W} ${H}" role="group" aria-label="Arrondissements de Paris"><defs><pattern id="qhach" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" class="qhach__bg"/><line x1="0" y1="0" x2="0" y2="7" class="qhach__l"/></pattern></defs>${arrs.map(([n, dd, lx, ly]) => `<g class="qarr" data-arr="${n}" role="button" tabindex="0" aria-pressed="${sel.includes(n)}" aria-label="Paris ${arrNom(n)}"><path d="${dd}"/><text x="${lx}" y="${ly}" dy=".35em">${n}</text></g>`).join("")}</svg>`;
 }
-const secteursTxt = s => (s.arrs || []).length ? (s.arrs || []).slice().sort((a, b) => a - b).map(arrNom).concat(s.banlieue ? ["proche banlieue"] : []).join(", ") : "Tout Paris";
+const ARR_ALL = Array.from({length: 20}, (_, i) => i + 1);
+const secteursTxt = s => {
+  const a = (s.arrs || []).filter(n => n >= 1 && n <= 20).sort((x, y) => x - y), ban = s.banlieue ? ["proche banlieue"] : [];
+  if (!a.length) return "Tout Paris";
+  if (a.length === 20) return ["Tout Paris", ...ban].join(", ");
+  if (a.length >= 14) return [`Tout Paris sauf ${ARR_ALL.filter(n => !a.includes(n)).map(arrNom).join(", ")}`, ...ban].join(" · ");
+  return a.map(arrNom).concat(ban).join(", ");
+};
+/* pastilles du profil : les arrondissements exclus apparaissent barrés quand on cherche presque partout */
+function secteursTags(s) {
+  const a = (s.arrs || []).filter(n => n >= 1 && n <= 20), tag = (t, off) => `<span class="tag${off ? " tag--off" : ""}">${esc(t)}</span>`;
+  if (!a.length || a.length === 20) return tag("Tout Paris") + (a.length === 20 && s.banlieue ? tag("Proche banlieue") : "");
+  if (a.length >= 14) return tag("Tout Paris") + ARR_ALL.filter(n => !a.includes(n)).map(n => tag(arrNom(n), true)).join("") + (s.banlieue ? tag("Proche banlieue") : "");
+  return a.sort((x, y) => x - y).map(n => tag(arrNom(n))).join("") + (s.banlieue ? tag("Proche banlieue") : "");
+}
 function normWeights(obj, keep) {
   let e = Object.entries(obj).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]); if (keep) e = e.slice(0, keep);
   const s = e.reduce((a, [, w]) => a + w, 0) || 1;
@@ -607,7 +621,8 @@ function applySetup(s) {
   h.noGround = no.has("rdc"); h.elevatorFrom = no.has("ascenseur") ? 3 : 0; h.dpeMax = no.has("passoire") ? "E" : "G"; h.outdoorReq = no.has("sansext"); h.noWorks = no.has("travaux");
   h.fin = Object.assign({}, h.fin || {}, {apport: s.apport ?? (h.fin && h.fin.apport) ?? null});
   h.projet = s.projet || "achat";
-  h.arrs = (s.arrs || []).filter(n => n >= 1 && n <= 20).sort((a, b) => a - b); h.banlieue = !!(s.banlieue && h.arrs.length);
+  const arrs = (s.arrs || []).filter(n => n >= 1 && n <= 20).sort((a, b) => a - b);
+  h.arrs = arrs.length === 20 && s.banlieue ? [] : arrs; h.banlieue = !!(s.banlieue && h.arrs.length);
   h.loc = {loyerMax: s.loyer ? s.loyer * n : null, revenus: s.revenus ? s.revenus * n : null, meuble: s.meuble || "indiff", colocs: n};
   if (h.projet === "location" && s.who === "invest") s.who = "seul";
   if (s.budget) { const surf = s.surface || ROOM_SURF[Math.min(5, s.rooms || 3)]; p.budget = Math.round(s.budget / surf / 100) * 100; }
@@ -662,13 +677,15 @@ function paintQuiz() {
       <div class="qgrid qgrid--5">${chips([[1, "Studio"], [2, "2 p."], [3, "3 p."], [4, "4 p."], [5, "5 p. +"]], s.rooms, false, "rooms")}</div>
       <div class="field"><label class="label" for="qzSurf">Surface minimum <span class="opt">facultatif</span></label><input type="number" id="qzSurf" inputmode="numeric" min="0" value="${s.surface ?? ""}" placeholder="m²"></div>` + foot(!!s.rooms, "Continuer", true);
   else if (key === "secteurs") {
-    const n = (s.arrs || []).length, map = lieuxCache ? arrMapHTML(lieuxCache, s.arrs || [])
-      : lieuxCache === null ? `<div class="qmap__grid">${Array.from({length: 20}, (_, i) => `<button type="button" class="qopt qopt--sm" data-arr="${i + 1}" aria-pressed="${(s.arrs || []).includes(i + 1)}"><b>${arrNom(i + 1)}</b></button>`).join("")}</div>`
+    if (!Array.isArray(s.arrs) || !s.arrs.length) { s.arrs = ARR_ALL.slice(); s.banlieue = true; }   // tout Paris d'emblée, banlieue comprise
+    else if (s.banlieue === undefined) s.banlieue = false;
+    const n = s.arrs.length, off = 20 - n, map = lieuxCache ? arrMapHTML(lieuxCache, s.arrs)
+      : lieuxCache === null ? `<div class="qmap__grid">${ARR_ALL.map(i => `<button type="button" class="qopt qopt--sm" data-arr="${i}" aria-pressed="${s.arrs.includes(i)}"><b>${arrNom(i)}</b></button>`).join("")}</div>`
       : `<div class="qmap__wait" aria-hidden="true"></div>`;
-    body = head("Où cherchez-vous ?", "Touchez les arrondissements qui vous intéressent. Sans choix, Heden cherche dans tout Paris.") + `
-      <div class="qmap">${map}</div>
-      <div class="qmap__foot"><p class="qmap__sel"><b>${n ? plural(n, "arrondissement", "arrondissements") : "Tout Paris"}</b>${n ? ` · <span>${esc(secteursTxt(s))}</span>` : ""}</p>${n ? `<button class="link" type="button" id="qzArrClr">Tout Paris</button>` : ""}</div>
-      ${n ? `<div class="chips qchips"><button type="button" class="chip" id="qzBan" aria-pressed="${!!s.banlieue}">Aussi en proche banlieue</button></div>` : ""}` + foot(true, n ? "Continuer" : "Tout Paris me va");
+    body = head("Où cherchez-vous ?", "Touchez un arrondissement pour l’exclure.") + `
+      <div class="qmap${off ? " qmap--off" : ""}">${map}</div>
+      <div class="qmap__foot"><p class="qmap__sel">${!n ? `<b>Aucun arrondissement</b>` : !off ? `<b>Tout Paris</b>` : `<b>${plural(n, "arrondissement", "arrondissements")}</b> · <span>${plural(off, "exclu", "exclus")}</span>`}</p>${off ? `<button class="link" type="button" id="qzArrClr">Tout resélectionner</button>` : ""}</div>
+      <div class="chips qchips"><button type="button" class="chip" id="qzBan" aria-pressed="${!!s.banlieue}">Proche banlieue</button></div>` + foot(n > 0, "Continuer");
     if (lieuxCache === undefined) loadLieux().then(d => { lieuxCache = d || null; const el = $("#quiz"); if (qz && QORDER[qz.step] === "secteurs" && el && !el.hidden) paintQuiz(); });
   }
   else if (key === "trajets") body = head("Vos trajets", "Travail, études : Heden calcule le temps depuis chaque annonce.") + `
@@ -691,7 +708,7 @@ function paintQuiz() {
   const sk = $("#qzSkip"); if (sk) sk.onclick = () => { if (key === "taille") { s.rooms = null; s.surface = null; } if (key === "trajets") s.places = [{label: "", q: "", mode: "tc"}]; if (key === "arb") { s.arb = {}; s.arbVu = true; } next(); };
   const togArr = n => { const a = s.arrs = (s.arrs || []).slice(), i = a.indexOf(n); if (i >= 0) a.splice(i, 1); else a.push(n); paintQuiz(); const g = $(`#quiz [data-arr="${n}"]`); if (g) g.focus({preventScroll: true}); };
   $$("[data-arr]", card).forEach(g => { g.onclick = () => togArr(+g.dataset.arr); g.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togArr(+g.dataset.arr); } }; });
-  const ac = $("#qzArrClr"); if (ac) ac.onclick = () => { s.arrs = []; s.banlieue = false; paintQuiz(); };
+  const ac = $("#qzArrClr"); if (ac) ac.onclick = () => { s.arrs = ARR_ALL.slice(); s.banlieue = true; paintQuiz(); };
   const bn = $("#qzBan"); if (bn) bn.onclick = () => { s.banlieue = !s.banlieue; paintQuiz(); };
   $$("[data-arb]", card).forEach(b => b.onclick = () => { s.arb = Object.assign({}, s.arb); s.arb[b.dataset.arb] = s.arb[b.dataset.arb] === b.dataset.v ? null : b.dataset.v; paintQuiz(); });
   $$("[data-pj]", card).forEach(b => b.onclick = () => { s.projet = b.dataset.pj; if ((s.projet === "location" && s.who === "invest") || (s.projet !== "location" && s.who === "coloc")) s.who = null; next(); });
@@ -783,7 +800,7 @@ function profileSummaryHTML() {
   return `<section class="sec psum">
       <div class="psum__head"><div><h2>Votre recherche</h2><p class="psum__line">${esc(profileLine(s))}</p></div><button class="btn btn--sm" type="button" id="quizGo">Refaire le questionnaire</button></div>
       ${prios.length ? `<div class="chips">${prios.map(n => `<span class="tag">${esc(n)}</span>`).join("")}</div>` : ""}
-      <dl class="meta">${Array.isArray(s.arrs) ? `<dt>Secteurs</dt><dd class="psum__secs">${secteursTxt(s).split(/,\s*/).filter(Boolean).map(x => `<span class="tag">${esc(x)}</span>`).join("")}</dd>` : ""}${nos.length ? `<dt>Refus</dt><dd>${esc(nos.join(", "))}</dd>` : ""}${pl.length ? `<dt>Trajets</dt><dd>${esc(pl.map(p => `${p.label || p.q} (${MODES[p.mode || "tc"][0].toLowerCase()})`).join(", "))}</dd>` : ""}</dl>
+      <dl class="meta">${Array.isArray(s.arrs) ? `<dt>Secteurs</dt><dd class="psum__secs">${secteursTags(s)}</dd>` : ""}${nos.length ? `<dt>Refus</dt><dd>${esc(nos.join(", "))}</dd>` : ""}${pl.length ? `<dt>Trajets</dt><dd>${esc(pl.map(p => `${p.label || p.q} (${MODES[p.mode || "tc"][0].toLowerCase()})`).join(", "))}</dd>` : ""}</dl>
       ${(() => { const miss = readiness().filter(x => !x.ok); return miss.length ? `<div class="pready"><b>Pour des notes plus fiables</b><ul>${miss.map(x => `<li><span><b>${esc(x.t)}</b></span><button class="btn btn--sm btn--clair" type="button" data-ready="${x.k}">${x.k === "zones" ? "Noter un quartier" : "Répondre"}</button></li>`).join("")}</ul></div>` : ""; })()}
       ${L.n < 4 ? "" : `<div class="plearn">${L.notes.length ? `<b>Appris de vos ${L.n} choix</b><ul>${L.notes.map(n => `<li class="${n.up ? "up" : "down"}">${esc(n.txt)}</li>`).join("")}</ul>` : `<p class="hint2">Vos ${L.n} choix confirment vos priorités : rien à ajuster pour l’instant.</p>`}
         <button class="chip" type="button" id="learnTg" aria-pressed="${h.learn !== false}">Apprendre de mes choix</button></div>`}

@@ -160,3 +160,13 @@
 .qready__n span{display:flex;flex-direction:column;gap:2px;font-size:12.5px;line-height:16px;color:var(--ardoise-2)}
 .qready__n b{font-family:var(--display);font-variation-settings:"wdth" 100;font-size:24px;line-height:28px;color:var(--ardoise)}
 .qmap__foot .link{flex:none;white-space:nowrap}
+
+/* Secteurs : tout est choisi d'emblée ; un arrondissement exclu se vide, hachuré, son numéro barré */
+.qhach__bg{fill:var(--calcaire)}
+.qhach__l{stroke:color-mix(in srgb,var(--trait-fort) 55%,transparent);stroke-width:1.4}
+.qarr[aria-pressed="false"] path{fill:url(#qhach);stroke:var(--trait-fort);stroke-dasharray:4 3}
+.qarr[aria-pressed="false"] text{fill:var(--zinc);opacity:.7;text-decoration:line-through}
+.qarr path,.qarr text{transition:fill .18s,opacity .18s}
+@media (hover:hover){.qarr[aria-pressed="true"]:hover path{fill:color-mix(in srgb,var(--email) 82%,var(--calcaire))}.qarr[aria-pressed="false"]:hover path{stroke:var(--ardoise-2)}}
+.tag--off{text-decoration:line-through;opacity:.6}
+.qarr:focus-visible{outline:none}
