@@ -383,8 +383,9 @@ function exploreLabel() {
 function renderMine(box) {
   if (!["toutes", "masquees"].includes(lui.filter)) lui.filter = "toutes";
   const kept = mineListings().filter(isKept).length;
-  const all = mineListings().filter(f => !isKept(f)).map(f => ({f, s: scoreListing(f)})), hid = all.filter(x => x.f.status === "ecartee");
-  const shown = (lui.filter === "masquees" ? hid : all.filter(x => x.f.status !== "ecartee")).sort(listSort);
+  const off = f => f.status === "ecartee" || !!inExcluded(f);   // masquée à la main, ou dans une zone exclue
+  const all = mineListings().filter(f => !isKept(f)).map(f => ({f, s: scoreListing(f)})), hid = all.filter(x => off(x.f));
+  const shown = (lui.filter === "masquees" ? hid : all.filter(x => !off(x.f))).sort(listSort);
   box.innerHTML = `${feedsHTML(fmtInt(all.length - hid.length), exploreLabel())}
     ${all.length ? `<div class="ann__bar">${segHTML("filter", [["toutes", "Affichées", all.length - hid.length], ["masquees", "Masquées", hid.length]])}${sortHTML()}</div>` : ""}
     ${otherKindHTML()}
@@ -400,11 +401,11 @@ function explorerItems() {
   return (cloud.vivierRows || []).filter(r => kindOf(r.f) === curMode()).map(r => {
     const ex = listings().find(x => x.vivierId === r.id) || listings().find(x => sameListing(x, r.f));
     return {r, ex, f: ex || r.f};
-  }).filter(x => !(x.ex && (x.ex.status === "ecartee" || isKept(x.ex))));   // masquées et favoris : hors du flux, pour cet utilisateur seulement
+  }).filter(x => !(x.ex && (x.ex.status === "ecartee" || isKept(x.ex))) && !inExcluded(x.f));   // zones exclues : hors du flux   // masquées et favoris : hors du flux, pour cet utilisateur seulement
 }
 function renderExplorer(box) {
   if (!["pour", "tout"].includes(lui.exf)) lui.exf = "pour";
-  const head = feedsHTML(fmtInt(mineListings().filter(f => f.status !== "ecartee" && !isKept(f)).length), exploreLabel());
+  const head = feedsHTML(fmtInt(mineListings().filter(f => f.status !== "ecartee" && !isKept(f) && !inExcluded(f)).length), exploreLabel());
   const lead = "";
   if (!cloud.user) { box.innerHTML = `${head}${lead}<div class="ann__empty ann__empty--ex">${GALETS}<p>Connectez-vous pour explorer les annonces reçues par Heden.</p><button class="btn btn--primary" type="button" id="exLogin">Se connecter</button></div>`; const b = $("#exLogin", box); if (b) b.onclick = () => openAuth(); return; }
   if (!cloud.vivierRows) {
@@ -561,6 +562,7 @@ function morph(from, update, to) {
 }
 function heroKicker(f, s, k) {
   if (f.gone) return "Plus en ligne";
+  const ez = !isKept(f) && inExcluded(f); if (ez) return `Zone exclue : ${ez.name || "sans nom"}`;
   if (f.status === "visite") return "Visite prévue";
   if (s.fails.length) return "Hors critères";
   const tr = trustSignals(f, s); if (tr.level) return tr.level === "fort" ? "Annonce suspecte" : "Annonce à vérifier";
@@ -628,13 +630,14 @@ function heroHTML(f, s, k = 0, neu = false) {
     ? `<button class="chip hero__drop" type="button" data-hst="ecartee">${ICO.back}Afficher de nouveau</button>`
     : "";
   const tr = trustSignals(f, s), sus = tr.level === "fort";
+  const ez = !isKept(f) && inExcluded(f);
   const hide = currentTab !== "favoris" && f.status !== "ecartee" ? `<button class="hero__hide" type="button" data-hst="ecartee" aria-label="Masquer l’annonce" title="Masquer l’annonce">${ICO.drop}</button>` : "";
   return `<article class="hero${ex ? " hero--ex" : ""}${ph ? "" : " hero--nophoto"}${f.gone || f.status === "ecartee" ? " hero--off" : ""}${s.fails.length ? " hero--fail" : ""}${tr.level ? " hero--risk" : ""}${sus ? " hero--scam" : ""}" data-id="${f.id}" style="--c:${noteCol(s)}">
     <div class="hero__ph">${ph ? `<div class="hero__car">${(f.photos || []).slice(0, 15).map((u, i) => `<img src="${esc(u)}" alt="" loading="${k < 2 && i === 0 ? "eager" : "lazy"}" referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>` : GALETS}${(f.photos || []).length > 1 ? `<span class="hero__nph num"><span class="hero__i">1</span>/${Math.min(15, f.photos.length)}</span><button class="hero__nav hero__nav--p" type="button" aria-label="Photo précédente" tabindex="-1">${svgI('<path d="M15 5 8 12l7 7"/>', 18)}</button><button class="hero__nav hero__nav--n" type="button" aria-label="Photo suivante" tabindex="-1">${svgI('<path d="m9 5 7 7-7 7"/>', 18)}</button>` : ""}</div>
     <button class="hero__fav" type="button" data-hst="fav" aria-pressed="${fav}" aria-label="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}">${ICO.keep}</button>${hide}${sus ? `<span class="hero__scam" style="--n:${hide ? 2 : 1}" role="img" aria-label="Annonce suspecte" title="Annonce suspecte : ${esc(tr.risk.join(", "))}">${svgI(PIC.alerte, 22)}</span>` : ""}
     <b class="hero__s num${s.reliable ? "" : " hero__s--q"}"${k === 0 && s.reliable ? ` data-count="${s.total}"` : ""}${s.reliable ? "" : ` title="${s.total != null ? "Note provisoire : il manque des infos" : "Pas assez d’infos pour noter"}"`}>${noteTxt(s)}</b>
     <div class="hero__b">
-      <span class="hero__k${s.maybe && !tr.level ? " hero__k--maybe" : ""}">${tr.level ? `<span class="hero__ki" aria-hidden="true">${svgI(PIC.alerte, 15)}</span>` : ""}${esc(tr.level ? heroKicker(f, s, k) : s.maybe ? "Peut vous plaire" : neu ? "Nouvelle" : heroKicker(f, s, k))}${ex && f.source ? `<span class="hero__src">${esc(siteName(f.source))}</span>` : ""}</span>
+      <span class="hero__k${s.maybe && !tr.level && !ez ? " hero__k--maybe" : ""}${ez ? " hero__k--excl" : ""}">${tr.level ? `<span class="hero__ki" aria-hidden="true">${svgI(PIC.alerte, 15)}</span>` : ez ? `<span class="hero__ki" aria-hidden="true">${EXCL_ICO}</span>` : ""}${esc(tr.level || ez ? heroKicker(f, s, k) : s.maybe ? "Peut vous plaire" : neu ? "Nouvelle" : heroKicker(f, s, k))}${ex && f.source ? `<span class="hero__src">${esc(siteName(f.source))}</span>` : ""}</span>
       <h2 class="hero__lieu"><span class="hero__lic" aria-hidden="true">${svgI(PIC.lieu, 18)}</span><span>${placeHTML(f, s)}</span></h2>
       <p class="hero__p num">${f.price ? priceTxt(f) : kindOf(f) === "location" ? "Loyer ?" : "Prix ?"}${s.ppm ? `<small>${ppmTxt(f)}</small>` : ""}</p>
       ${factsHTML(f)}

@@ -535,3 +535,14 @@ input,textarea{caret-color:var(--email)}
 .hero--risk:not(.hero--ex) .hero__k{color:#F2967A}
 @media (prefers-color-scheme: dark){.hero--risk:not(.hero--ex) .hero__k{color:var(--alerte)}}
 @media (prefers-color-scheme: dark){.hero__scam,.lpin__scam{color:#2A1D14}}
+
+/* Zones exclues : pointillés rouges sur la carte, pastille barrée, interrupteur dans la fiche */
+.zone-badge--excl{width:30px;height:30px;justify-content:center;padding:0;background:var(--calcaire);color:var(--alerte);box-shadow:0 0 0 1.5px var(--alerte),var(--ombre-flottant)}
+.zone-badge--excl svg{color:var(--alerte)}
+.zrow__excl{display:inline-flex;color:var(--alerte)}
+.chip--excl{display:inline-flex;align-items:center}
+.chip--excl svg{flex:none}
+.chip--excl[aria-pressed="true"]{background:var(--alerte);border-color:var(--alerte);color:#FFF6F0}
+@media (prefers-color-scheme: dark){.chip--excl[aria-pressed="true"]{color:#2A1D14}}
+.zexcl{margin-top:-4px}
+.hero__k--excl::before{content:none}

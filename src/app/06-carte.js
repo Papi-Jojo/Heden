@@ -126,15 +126,15 @@ function renderZones() {
     if (mapFilter.zones === false && z.id !== selectedId) continue;
     const {score} = zoneScore(z);
     const col = colorFor(score);
-    const out = overBudget(z);
+    const out = overBudget(z), ex = isExcl(z), red = ex ? (getComputedStyle(document.documentElement).getPropertyValue("--alerte").trim() || "#A9442A") : null;
     const circle = L.polygon(z.points, {
-      color: traitMap(score), weight: selectedId === z.id ? 3 : 2, opacity: 1, className: justSaved === z.id ? "zone-new" : "",
-      fillColor: col, fillOpacity: out ? .12 : (selectedId === z.id ? .45 : .3),
-      dashArray: out ? "5 6" : null, bubblingMouseEvents: false
+      color: ex ? red : traitMap(score), weight: selectedId === z.id ? 3 : 2, opacity: 1, className: (justSaved === z.id ? "zone-new " : "") + (ex ? "zone-excl" : ""),
+      fillColor: ex ? red : col, fillOpacity: ex ? (selectedId === z.id ? .18 : .1) : out ? .12 : (selectedId === z.id ? .45 : .3),
+      dashArray: ex ? "2 7" : out ? "5 6" : null, bubblingMouseEvents: false
     });
     const badge = L.marker([z.lat, z.lng], {
       icon: L.divIcon({className: "", iconSize: null,
-        html: `<span class="zone-badge" style="--c:${col}">${coverOf(z) && photoUrl(coverOf(z).thumb) ? `<img class="zb-img" src="${esc(photoUrl(coverOf(z).thumb))}" alt="">` : ""}<i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}${zonePrice(z) ? `<em class="zb-p">${fmtInt(zonePrice(z))}&#8239;€/m²</em>` : ""}</span>`}),
+        html: ex ? `<span class="zone-badge zone-badge--excl" title="Annonces masquées ici">${EXCL_ICO}</span>` : `<span class="zone-badge" style="--c:${col}">${coverOf(z) && photoUrl(coverOf(z).thumb) ? `<img class="zb-img" src="${esc(photoUrl(coverOf(z).thumb))}" alt="">` : ""}<i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}${zonePrice(z) ? `<em class="zb-p">${fmtInt(zonePrice(z))}&#8239;€/m²</em>` : ""}</span>`}),
       keyboard: false
     });
     const onClick = e => { if (ui.mode === "placing") { addPoint(e.latlng); return; } openDetail(z.id); };

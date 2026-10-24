@@ -5,7 +5,7 @@ Lu au début de chaque session. Le README décrit l'app ; ici, ce qu'il faut sav
 ## Où est quoi (`src/app/`, assemblés dans l'ordre de `ORDRE`)
 - `00-reference` critères de quartier (`LIB`), profils types (`PRESETS`) · `01-utilitaires` `esc`, `colorFor`, formats · `02-etat` état et `save()`
 - `01b-lecture` lecture des annonces, sans DOM de l'app (chargé aussi par Node) : `parseListing`, `extractCards`, `vivierLire`, rue (BAN), DPE officiel (ADEME)
-- `03-projet` achat / location, note des zones (`scoreOf`) · `04-estimations` données par quartier (`estimate`)
+- `03-projet` achat / location, note des zones (`scoreOf`), zones exclues (`inExcluded`, liste `home.exclus` du profil, propre à chacun) · `04-estimations` données par quartier (`estimate`)
 - `05-onglets` `setTab` · `06-carte` zones sur la carte · `07-panneau`, `08-feuille` fiche de zone · `09-geocodage` recherche, zones prédéfinies (`data/lieux.json`) · `10-position` filtres de carte · `11-balade` · `13-connexion` profil · `15-astuces` guide pas à pas
 - `16-compte` Supabase : synchro par différence (`syncNow`, `cloudRefresh`), cartes de groupe, zones jumelles, partage automatique des zones perso (`autoShare`)
 - `17-annonces` note d'une annonce (`scoreListing`, fiabilité `reliable` / `need`, note provisoire « ≈ »), zones superposées (`stackZones` : la plus petite prime critère par critère), flux Explorer / Mes ajouts / Favoris (un favori quitte les flux : `flyToFav`), pictogrammes (`PIC`, `svgI`), fiche

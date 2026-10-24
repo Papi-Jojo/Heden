@@ -115,6 +115,7 @@ function renderList() {
                 ${coverOf(z) && photoUrl(coverOf(z).thumb) ? `<img class="zrow__ph" src="${esc(photoUrl(coverOf(z).thumb))}" alt="">` : ""}
                 ${isNew(z) ? `<span class="tag tag--new">Nouveau</span>` : ""}
                 ${anyFav(z) ? `<span class="heart" title="Coup de cœur">${HEART}</span>` : ""}
+                ${isExcl(z) ? `<span class="zrow__excl" title="Annonces masquées ici">${EXCL_ICO}</span>` : ""}
                 ${overBudget(z) ? `<span class="tag tag--alerte">Hors budget</span>` : ""}
                 
               </span>
@@ -295,8 +296,8 @@ function renderRating() {
           </div>`).join("")}
       </div>
       <div class="field">
-        <span class="label">Coup de cœur</span>
-        <div class="chips"><button class="chip" id="zfav" type="button" aria-pressed="${!!draft.fav}"><span class="heart">${HEART}</span>&nbsp;On adore ce coin</button></div>
+        <span class="label">Ce coin</span>
+        <div class="chips"><button class="chip" id="zfav" type="button" aria-pressed="${!!draft.fav}"><span class="heart">${HEART}</span>&nbsp;On adore ce coin</button><button class="chip chip--excl" id="zexclD" type="button" aria-pressed="${!!draft.excl}">${EXCL_ICO}&nbsp;Masquer les annonces ici</button></div>
       </div>
       <div class="field">
         <label class="label" for="zcom">Commentaires</label>
@@ -318,7 +319,10 @@ function renderRating() {
     draft.moment = draft.moment === b.dataset.m ? "" : b.dataset.m;
     $$("#zmoment .chip").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.m === draft.moment)));
   });
-  $("#zfav").onclick = e => { draft.fav = !draft.fav; e.currentTarget.setAttribute("aria-pressed", String(draft.fav)); };
+  // coup de cœur et zone exclue s'excluent l'un l'autre
+  const favB = $("#zfav"), exB = $("#zexclD");
+  favB.onclick = () => { draft.fav = !draft.fav; if (draft.fav) draft.excl = false; favB.setAttribute("aria-pressed", String(draft.fav)); exB.setAttribute("aria-pressed", String(!!draft.excl)); };
+  exB.onclick = () => { draft.excl = !draft.excl; if (draft.excl) draft.fav = false; favB.setAttribute("aria-pressed", String(!!draft.fav)); exB.setAttribute("aria-pressed", String(draft.excl)); };
   $$(".crit", panel).forEach(row => {
     const id = row.dataset.c;
     $$(".scale button[data-v]", row).forEach(b => b.onclick = () => {
@@ -410,7 +414,7 @@ function updateScoreBox() {
 
 function commitDraft() {
   const pendRaw = draft.pendingPhotos || []; delete draft.pendingPhotos; delete draft.preparing;
-  const z = finishZoneGeometry(clone(draft)); delete z.nameTouched; delete z.closed; delete z.walk;
+  const z = finishZoneGeometry(clone(draft)), excl = !!z.excl; delete z.nameTouched; delete z.closed; delete z.walk; delete z.excl;
   z.name = (z.name || "").trim() || z.place || "Zone sans nom";
   z.updatedAt = Date.now();
   if (z.id) {
@@ -421,6 +425,7 @@ function commitDraft() {
     if (cloud.user) { z.mapId = cloud.mapId; z.createdBy = cloud.user.id; }
     state.zones.push(z);
   }
+  setExcl(z.id, excl);
   save();
   draft = null; clearDraftLayers(); clearWalkTrace();
   selectedId = z.id; ui.mode = "detail";
@@ -469,6 +474,7 @@ function renderDetail() {
         <div><strong>${big.score == null ? "Pas encore de note" : verdict(big.score)}</strong>
         <p class="num">${duo ? groupLine(zs) : `${s.rated} sur ${s.total} critères notés${s.estimated ? `, dont ${s.estimated} estimé${s.estimated > 1 ? "s" : ""}` : ""}`}</p>${z.fav ? `<p style="color:var(--laiton);font-weight:600;margin-top:2px"><span class="heart">${HEART}</span> Coup de cœur</p>` : ""}</div>
       </div>
+      <div class="chips zexcl"><button class="chip chip--excl" id="zexcl" type="button" aria-pressed="${isExcl(z)}">${EXCL_ICO}&nbsp;Masquer les annonces ici</button></div>
       ${photosHTML(z)}
       ${overBudget(z) ? `<div class="banner banner--alerte">${isRent() ? `Loyers autour de ${fmt1(zonePrice(z))} €/m², au-dessus de votre loyer maximum de ${fmt1(zoneBudget())} €/m².` : `${z.price > 0 ? "Prix observé" : "Prix estimé"} de ${fmtInt(zonePrice(z))} €/m², au-dessus de votre budget de ${fmtInt(state.profile.budget)} €/m².`}</div>` : ""}
       ${duo ? `<div class="duo">
@@ -506,7 +512,8 @@ function renderDetail() {
       <button class="btn btn--primary btn--block" id="edit" type="button">${duo && !hasRated(z) ? "Ajouter ma note" : "Modifier les notes"}</button>
     </div>`;
   $("#close").onclick = () => { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); };
-  $("#edit").onclick = () => { draft = Object.assign(clone(z), {closed: true}); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
+  $("#zexcl").onclick = e => { const on = !isExcl(z); setExcl(z.id, on); e.currentTarget.setAttribute("aria-pressed", String(on)); save(); renderZones(); };
+  $("#edit").onclick = () => { draft = Object.assign(clone(z), {closed: true, excl: isExcl(z)}); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
   $("#adj").onclick = () => { draft = Object.assign(clone(z), {closed: true}); selVertex = null; ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); renderZones(); drawDraft(); renderPanel(); };
   $$("[data-copy]", panel).forEach(b => b.onclick = () => copyToMap(z, b.dataset.copy, b));
   const ot = $("#openTwin"); if (ot) ot.onclick = () => openTwin(z);
@@ -518,7 +525,7 @@ function renderDetail() {
     if (!(await askConfirm({title: `Supprimer « ${z.name || "cette zone"} » ?`, text: duo ? "La zone disparaît pour tout le groupe, avec les notes et les photos de chacun." : "La zone, ses notes et ses photos seront effacées.", ok: "Supprimer", danger: true}))) return;
     const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id && (p.zoneId || z.id) === z.id) : [];
     if (mine.length) cloud.client.storage.from("photos").remove(mine.flatMap(p => [p.path, p.thumb])).catch(() => {});
-    state.zones = state.zones.filter(x => x.id !== z.id); save();
+    state.zones = state.zones.filter(x => x.id !== z.id); setExcl(z.id, false); save();
     selectedId = null; ui.mode = "list"; renderZones(); renderPanel();
   };
 }

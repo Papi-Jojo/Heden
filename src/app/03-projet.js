@@ -174,6 +174,21 @@ function zoneScore(z) {
   return Object.assign({}, mine, {score: vetoes.length ? Math.min(avg, VETO_CAP) : avg, avg, joint: ms.length > 1, members: ms.length,
     estMembers: ms.filter(x => x.est).length, vetoes, group: true});
 }
+/* Zones exclues : les coins où l'on ne vivra pas ; leurs annonces sortent des flux. Propre à chacun (dans le profil), pas à la zone partagée. */
+const EXCL_ICO = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/></svg>';
+const exclIds = () => { const h = homeRaw(); return Array.isArray(h.exclus) ? h.exclus : []; };
+const isExcl = z => !!z && exclIds().includes(z.id);
+function setExcl(id, on) {
+  if (!state.profile.home) state.profile.home = {};
+  const h = state.profile.home, s = new Set(Array.isArray(h.exclus) ? h.exclus : []);
+  if (on) s.add(id); else s.delete(id);
+  h.exclus = [...s];
+}
+/* l'annonce tombe-t-elle dans une zone exclue ? (placée à l'arrondissement près : on ne sait pas, elle reste) */
+function inExcluded(f) {
+  const ids = exclIds(); if (!ids.length || !(f && f.lat && f.lng) || f.placeLevel === "cp" || f.placeLevel === "ville") return null;
+  return state.zones.find(z => ids.includes(z.id) && Array.isArray(z.points) && z.points.length >= 3 && inPoly(f.lat, f.lng, z.points)) || null;
+}
 const anyFav = z => !!z.fav || (isShared() && (z.others || []).some(o => o.fav));
 const zonePrice = z => { if (isRent()) { const r = zoneRent(z); return r ? Math.round(r.cc * 10) / 10 : null; } return z.price > 0 ? z.price : (z.est && z.est.prix ? z.est.prix.med : null); };
 const overBudget = z => zoneBudget() > 0 && zonePrice(z) > zoneBudget();

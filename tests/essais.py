@@ -231,6 +231,28 @@ def zones_superposees(pw):
 
 
 @essai
+def zones_exclues(pw):
+    """Une zone exclue : ses annonces sortent de Mes ajouts (rangées dans Masquées), le reste du flux ne bouge pas."""
+    e = Essai(pw); pg = e.page()
+    e.zone(pg, "Pigalle")
+    pg.evaluate("""() => { const s = __heden.state(), m = (id, lat, lng) => ({id, price: 500000, surface: 50, rooms: 2, postcode: '75018', lat, lng, precise: true, placeLevel: 'adresse', status: 'nouvelle', photos: [], addedAt: Date.now()});
+      s.listings = [m('dedans', 48.8846, 2.3384), m('dehors', 48.8905, 2.3500)]; __heden.save(); }""")
+    pg.evaluate("document.querySelector('.zrow').click()"); pg.wait_for_timeout(500)   # feuille réduite : la liste est sous la barre d'onglets
+    pg.evaluate("document.querySelector('#zexcl').click()"); pg.wait_for_timeout(300)
+    assert pg.get_attribute("#zexcl", "aria-pressed") == "true", "interrupteur non activé"
+    assert pg.evaluate("__heden.state().profile.home.exclus.length") == 1, "zone exclue non enregistrée"
+    pg.evaluate("document.querySelector('#close').click()"); pg.wait_for_timeout(300)
+    assert pg.locator(".zrow__excl").count() == 1, "pictogramme absent de la liste des zones"
+    e.onglet(pg, "annonces"); pg.click("[data-feed='mes']"); pg.wait_for_timeout(500)
+    ids = pg.eval_on_selector_all(".ann__feed .hero", "els => els.map(x => x.dataset.id)")
+    assert ids == ["dehors"], ids
+    pg.click("[data-filter='masquees']"); pg.wait_for_timeout(400)
+    assert pg.eval_on_selector_all(".ann__feed .hero", "els => els.map(x => x.dataset.id)") == ["dedans"], "annonce de la zone exclue absente de Masquées"
+    assert "Pigalle" in pg.inner_text(".ann__feed .hero .hero__k"), pg.inner_text(".ann__feed .hero .hero__k")
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
+@essai
 def epingles(pw):
     """Carte : seuls les favoris ; regroupés au loin, séparés de près ; plusieurs au même point → liste ; clic → popup photos + note."""
     e = Essai(pw, 1280, 860); pg = e.page()
