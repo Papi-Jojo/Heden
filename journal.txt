@@ -1,0 +1,34 @@
+390 px, au chargement : ['Heden', True, ['protomaps']]
+warning: Service Worker registration blocked by Playwright 
+warning: [.WebGL-0x36e40013b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels http://127.0.0.1:8791/index.html#carte
+échec HEAD http://127.0.0.1:8791/carte/paris.pmtiles net::ERR_ABORTED
+warning: [.WebGL-0x36e40013b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels http://127.0.0.1:8791/index.html#carte
+warning: [.WebGL-0x36e40013b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels http://127.0.0.1:8791/index.html#carte
+warning: [.WebGL-0x36e40013b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat) http://127.0.0.1:8791/index.html#carte
+warning: Service Worker registration blocked by Playwright 
+échec HEAD http://127.0.0.1:8791/carte/paris.pmtiles net::ERR_ABORTED
+390 px : fond ['Heden', True, 2408, 15]
+warning: Service Worker registration blocked by Playwright 
+warning: [.WebGL-0x36e40013b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels http://127.0.0.1:8791/index.html#carte
+échec HEAD http://127.0.0.1:8791/carte/paris.pmtiles net::ERR_ABORTED
+warning: [.WebGL-0x36e40013b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels http://127.0.0.1:8791/index.html#carte
+warning: [.WebGL-0x36e40013b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels http://127.0.0.1:8791/index.html#carte
+warning: [.WebGL-0x36e40013b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat) http://127.0.0.1:8791/index.html#carte
+warning: Service Worker registration blocked by Playwright 
+échec HEAD http://127.0.0.1:8791/carte/paris.pmtiles net::ERR_ABORTED
+
+1280 px, au chargement : ['Heden', True, ['protomaps']]
+warning: Service Worker registration blocked by Playwright 
+échec HEAD http://127.0.0.1:8791/carte/paris.pmtiles net::ERR_ABORTED
+error: Failed to load resource: the server responded with a status of 404 (File not found) http://127.0.0.1:8791/carte/fonts/Noto%20Sans%20Regular/7424-7679.pbf
+warning: Unable to load glyph range 29, 7424-7679. Rendering codepoint U+1D49 locally instead. Error: AJAXError: File not found (404): http://127.0.0.1:8791/carte/fonts/Noto%20Sans%20Regular/7424-7679.pbf https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js
+warning: Service Worker registration blocked by Playwright 
+échec HEAD http://127.0.0.1:8791/carte/paris.pmtiles net::ERR_ABORTED
+1280 px : fond ['Heden', True, 5881, 15]
+warning: Service Worker registration blocked by Playwright 
+échec HEAD http://127.0.0.1:8791/carte/paris.pmtiles net::ERR_ABORTED
+error: Failed to load resource: the server responded with a status of 404 (File not found) http://127.0.0.1:8791/carte/fonts/Noto%20Sans%20Regular/7424-7679.pbf
+warning: Unable to load glyph range 29, 7424-7679. Rendering codepoint U+1D49 locally instead. Error: AJAXError: File not found (404): http://127.0.0.1:8791/carte/fonts/Noto%20Sans%20Regular/7424-7679.pbf https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js
+warning: Service Worker registration blocked by Playwright 
+échec HEAD http://127.0.0.1:8791/carte/paris.pmtiles net::ERR_ABORTED
+
