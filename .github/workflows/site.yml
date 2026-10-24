@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # Ubuntu 26 (ubuntu-latest depuis octobre 2026) : Playwright n’y installe pas Chromium
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,7 +64,7 @@ jobs:
           path: dist
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # Ubuntu 26 (ubuntu-latest depuis octobre 2026) : Playwright n’y installe pas Chromium
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -81,7 +81,7 @@ jobs:
     # les captures du fond de carte, sur la branche apercu-carte (lisibles sans télécharger d'artefact)
     needs: build
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # Ubuntu 26 (ubuntu-latest depuis octobre 2026) : Playwright n’y installe pas Chromium
     permissions:
       contents: write
     continue-on-error: true
