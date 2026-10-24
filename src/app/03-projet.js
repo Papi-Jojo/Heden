@@ -174,20 +174,23 @@ function zoneScore(z) {
   return Object.assign({}, mine, {score: vetoes.length ? Math.min(avg, VETO_CAP) : avg, avg, joint: ms.length > 1, members: ms.length,
     estMembers: ms.filter(x => x.est).length, vetoes, group: true});
 }
-/* Zones exclues : les coins où l'on ne vivra pas ; leurs annonces sortent des flux. Propre à chacun (dans le profil), pas à la zone partagée. */
+/* Zones exclues : les coins où l'on ne vivra pas ; leurs annonces sortent des flux.
+   Rangée dans les notes de chacun (clé « _x ») : visible des autres membres, recopiée sur la zone jumelle.
+   Sur une carte de groupe, un seul membre qui exclut suffit : la zone est exclue pour tous. */
 const EXCL_ICO = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/></svg>';
-const exclIds = () => { const h = homeRaw(); return Array.isArray(h.exclus) ? h.exclus : []; };
-const isExcl = z => !!z && exclIds().includes(z.id);
-function setExcl(id, on) {
-  if (!state.profile.home) state.profile.home = {};
-  const h = state.profile.home, s = new Set(Array.isArray(h.exclus) ? h.exclus : []);
-  if (on) s.add(id); else s.delete(id);
-  h.exclus = [...s];
+const exclIds = () => { const h = homeRaw(); return Array.isArray(h.exclus) ? h.exclus : []; };   // ancienne liste du profil, reprise telle quelle
+const exclMine = z => !!z && (!!(z.ratings && z.ratings._x) || exclIds().includes(z.id));
+const exclOthers = z => !z || !isShared() ? [] : (z.others || []).filter(o => o.ratings && o.ratings._x).map(o => o.name || personName(o.userId));
+const isExcl = z => exclMine(z) || exclOthers(z).length > 0;
+function setExcl(z, on) {
+  z.ratings = Object.assign({}, z.ratings); if (on) z.ratings._x = 1; else delete z.ratings._x;
+  const h = homeRaw(); if (Array.isArray(h.exclus)) h.exclus = h.exclus.filter(x => x !== z.id);
+  z.updatedAt = Date.now();
 }
 /* l'annonce tombe-t-elle dans une zone exclue ? (placée à l'arrondissement près : on ne sait pas, elle reste) */
 function inExcluded(f) {
-  const ids = exclIds(); if (!ids.length || !(f && f.lat && f.lng) || f.placeLevel === "cp" || f.placeLevel === "ville") return null;
-  return state.zones.find(z => ids.includes(z.id) && Array.isArray(z.points) && z.points.length >= 3 && inPoly(f.lat, f.lng, z.points)) || null;
+  if (!(f && f.lat && f.lng) || f.placeLevel === "cp" || f.placeLevel === "ville") return null;
+  return state.zones.find(z => isExcl(z) && Array.isArray(z.points) && z.points.length >= 3 && inPoly(f.lat, f.lng, z.points)) || null;
 }
 const anyFav = z => !!z.fav || (isShared() && (z.others || []).some(o => o.fav));
 const zonePrice = z => { if (isRent()) { const r = zoneRent(z); return r ? Math.round(r.cc * 10) / 10 : null; } return z.price > 0 ? z.price : (z.est && z.est.prix ? z.est.prix.med : null); };

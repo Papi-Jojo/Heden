@@ -106,7 +106,7 @@ function renderList() {
         <div class="zlist">
           ${items.map(({z, s, pr}) => `
             <button class="zrow" type="button" data-id="${z.id}">
-              <span class="score-chip ${s.score == null ? "none" : ""}" style="--c:${colorFor(s.score)}">${s.score == null ? "–" : s.score}</span>
+              ${isExcl(z) ? `<span class="score-chip score-chip--excl" title="Annonces masquées ici">${EXCL_ICO}</span>` : `<span class="score-chip ${s.score == null ? "none" : ""}" style="--c:${colorFor(s.score)}">${s.score == null ? "–" : s.score}</span>`}
               <div>
                 <div class="t">${esc(z.name || "Sans nom")}</div>
                 <div class="m">${pr ? `<span class="zprice num">${fmtInt(pr)}&#8239;€/m²</span>${placeLabel(z) ? ", " : ""}` : ""}${esc(placeLabel(z))}${z.author ? `, par ${esc(z.author)}` : ""}${isShared() ? esc(duoLine(z)) : ""}</div>
@@ -115,7 +115,6 @@ function renderList() {
                 ${coverOf(z) && photoUrl(coverOf(z).thumb) ? `<img class="zrow__ph" src="${esc(photoUrl(coverOf(z).thumb))}" alt="">` : ""}
                 ${isNew(z) ? `<span class="tag tag--new">Nouveau</span>` : ""}
                 ${anyFav(z) ? `<span class="heart" title="Coup de cœur">${HEART}</span>` : ""}
-                ${isExcl(z) ? `<span class="zrow__excl" title="Annonces masquées ici">${EXCL_ICO}</span>` : ""}
                 ${overBudget(z) ? `<span class="tag tag--alerte">Hors budget</span>` : ""}
                 
               </span>
@@ -415,6 +414,7 @@ function updateScoreBox() {
 function commitDraft() {
   const pendRaw = draft.pendingPhotos || []; delete draft.pendingPhotos; delete draft.preparing;
   const z = finishZoneGeometry(clone(draft)), excl = !!z.excl; delete z.nameTouched; delete z.closed; delete z.walk; delete z.excl;
+  setExcl(z, excl);
   z.name = (z.name || "").trim() || z.place || "Zone sans nom";
   z.updatedAt = Date.now();
   if (z.id) {
@@ -425,7 +425,6 @@ function commitDraft() {
     if (cloud.user) { z.mapId = cloud.mapId; z.createdBy = cloud.user.id; }
     state.zones.push(z);
   }
-  setExcl(z.id, excl);
   save();
   draft = null; clearDraftLayers(); clearWalkTrace();
   selectedId = z.id; ui.mode = "detail";
@@ -470,16 +469,16 @@ function renderDetail() {
     </div>
     <div class="panel__body">
       <div class="scorebox">
-        <div class="big ${big.score == null ? "none" : ""}" style="--c:${colorFor(big.score)}" ${big.score != null ? `data-count="${big.score}"` : ""}>${big.score == null ? "–" : big.score}</div>
-        <div><strong>${big.score == null ? "Pas encore de note" : verdict(big.score)}</strong>
+        <div class="big ${big.score == null ? "none" : ""}${isExcl(z) ? " big--excl" : ""}" style="--c:${colorFor(big.score)}" ${big.score != null ? `data-count="${big.score}"` : ""}>${big.score == null ? "–" : big.score}</div>
+        <div><strong>${isExcl(z) ? "Zone exclue" : big.score == null ? "Pas encore de note" : verdict(big.score)}</strong>
         <p class="num">${duo ? groupLine(zs) : `${s.rated} sur ${s.total} critères notés${s.estimated ? `, dont ${s.estimated} estimé${s.estimated > 1 ? "s" : ""}` : ""}`}</p>${z.fav ? `<p style="color:var(--laiton);font-weight:600;margin-top:2px"><span class="heart">${HEART}</span> Coup de cœur</p>` : ""}</div>
       </div>
-      <div class="chips zexcl"><button class="chip chip--excl" id="zexcl" type="button" aria-pressed="${isExcl(z)}">${EXCL_ICO}&nbsp;Masquer les annonces ici</button></div>
+      <div class="chips zexcl"><button class="chip chip--excl" id="zexcl" type="button" aria-pressed="${exclMine(z)}">${EXCL_ICO}&nbsp;Masquer les annonces ici</button>${exclOthers(z).length ? `<span class="zexcl__by">${EXCL_ICO}<span>Exclue par ${esc(exclOthers(z).join(", "))}</span></span>` : ""}</div>
       ${photosHTML(z)}
       ${overBudget(z) ? `<div class="banner banner--alerte">${isRent() ? `Loyers autour de ${fmt1(zonePrice(z))} €/m², au-dessus de votre loyer maximum de ${fmt1(zoneBudget())} €/m².` : `${z.price > 0 ? "Prix observé" : "Prix estimé"} de ${fmtInt(zonePrice(z))} €/m², au-dessus de votre budget de ${fmtInt(state.profile.budget)} €/m².`}</div>` : ""}
       ${duo ? `<div class="duo">
         ${zs.vetoes && zs.vetoes.length ? `<p class="duo__veto">${zs.vetoes.map(v => `${v.me ? "Rédhibitoire pour vous" : `Rédhibitoire pour ${esc(v.name)}`} : ${esc(v.crit.join(", "))}`).join(". ")}. La note du groupe est plafonnée à ${VETO_CAP}.</p>` : ""}
-        ${members.map(m => `<div class="duo__row${m.est ? " duo__row--est" : ""}"><span>${esc(m.name)}</span>${m.s.score == null ? `<em>Pas encore noté</em>` : `<b class="num" style="--c:${colorFor(m.s.score)}"><i></i>${m.s.score}</b>${m.est ? `<em>estimée</em>` : ""}`}${m.veto.length ? `<em class="duo__x">rédhibitoire</em>` : ""}${m.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
+        ${members.map(m => `<div class="duo__row${m.est ? " duo__row--est" : ""}"><span>${esc(m.name)}</span>${m.s.score == null ? `<em>Pas encore noté</em>` : `<b class="num" style="--c:${colorFor(m.s.score)}"><i></i>${m.s.score}</b>${m.est ? `<em>estimée</em>` : ""}`}${m.veto.length ? `<em class="duo__x">rédhibitoire</em>` : ""}${(m.me ? exclMine(z) : (((z.others || []).find(o => o.userId === m.userId) || {}).ratings || {})._x) ? `<em class="duo__x">exclue</em>` : ""}${m.fav ? `<span class="heart">${HEART}</span>` : ""}</div>
           ${!m.me && m.comment ? `<p class="duo__c">${esc(m.name)} : ${esc(m.comment)}</p>` : ""}`).join("")}
         ${members.length > 1 ? `<button type="button" class="link duo__more" id="duoMore" aria-expanded="false">Voir les notes de chacun, critère par critère</button><div class="duo__tbl" id="duoTbl" hidden>${duoTable(z, members)}</div>` : ""}
         <p class="duo__h">${twinOf(z) ? "Vos notes, commentaires et photos sont aussi sur votre carte perso. " : ""}Chacun note avec ses critères, plus ceux du groupe.</p>
@@ -512,8 +511,8 @@ function renderDetail() {
       <button class="btn btn--primary btn--block" id="edit" type="button">${duo && !hasRated(z) ? "Ajouter ma note" : "Modifier les notes"}</button>
     </div>`;
   $("#close").onclick = () => { selectedId = null; ui.mode = "list"; renderZones(); renderPanel(); };
-  $("#zexcl").onclick = e => { const on = !isExcl(z); setExcl(z.id, on); e.currentTarget.setAttribute("aria-pressed", String(on)); save(); renderZones(); };
-  $("#edit").onclick = () => { draft = Object.assign(clone(z), {closed: true, excl: isExcl(z)}); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
+  $("#zexcl").onclick = e => { const on = !exclMine(z); setExcl(z, on); save(); renderZones(); renderPanel(); };
+  $("#edit").onclick = () => { draft = Object.assign(clone(z), {closed: true, excl: exclMine(z)}); ui.mode = "rating"; renderZones(); drawDraft(); renderPanel(); updateScoreBox(); };
   $("#adj").onclick = () => { draft = Object.assign(clone(z), {closed: true}); selVertex = null; ui.mode = "placing"; setHint("Glissez un point pour modeler la zone, tirez un point bleu pour en ajouter un"); renderZones(); drawDraft(); renderPanel(); };
   $$("[data-copy]", panel).forEach(b => b.onclick = () => copyToMap(z, b.dataset.copy, b));
   const ot = $("#openTwin"); if (ot) ot.onclick = () => openTwin(z);
@@ -525,7 +524,7 @@ function renderDetail() {
     if (!(await askConfirm({title: `Supprimer « ${z.name || "cette zone"} » ?`, text: duo ? "La zone disparaît pour tout le groupe, avec les notes et les photos de chacun." : "La zone, ses notes et ses photos seront effacées.", ok: "Supprimer", danger: true}))) return;
     const mine = cloud.user ? (z.photos || []).filter(p => p.userId === cloud.user.id && (p.zoneId || z.id) === z.id) : [];
     if (mine.length) cloud.client.storage.from("photos").remove(mine.flatMap(p => [p.path, p.thumb])).catch(() => {});
-    state.zones = state.zones.filter(x => x.id !== z.id); setExcl(z.id, false); save();
+    state.zones = state.zones.filter(x => x.id !== z.id); save();
     selectedId = null; ui.mode = "list"; renderZones(); renderPanel();
   };
 }

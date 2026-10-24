@@ -137,8 +137,16 @@ function renderVoile() {
     voileLayer.addTo(map);
   });
 }
+/* motif quadrillé des zones exclues, posé une fois dans le dessin de la carte (en pixels d'écran : le même à tous les zooms) */
+function zoneHatch(layer) {
+  const svg = layer._path && layer._path.ownerSVGElement; if (!svg || svg.querySelector("#zhach")) return;
+  const NS = "http://www.w3.org/2000/svg", defs = svg.querySelector("defs") || svg.insertBefore(document.createElementNS(NS, "defs"), svg.firstChild);
+  defs.insertAdjacentHTML("beforeend", '<pattern id="zhach" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="zhach__bg"/><path d="M0 0V6M0 0H6" class="zhach__l"/></pattern>');
+}
 function renderZones() {
   renderVoile();
+  // anciennes exclusions rangées dans le profil : reportées dans les notes de la zone, pour être partagées
+  if (exclIds().length) { let n = 0; for (const z of state.zones) if (exclIds().includes(z.id)) { setExcl(z, true); n++; } if (n) save(); }
   // une zone notée ou modifiée change la note des favoris autour : leurs pastilles suivent
   clearTimeout(renderZones.pins); renderZones.pins = setTimeout(() => { if (typeof renderListingPins === "function") renderListingPins(); }, 150);
   zoneLayer.clearLayers();
@@ -149,18 +157,19 @@ function renderZones() {
     const col = colorFor(score);
     const out = overBudget(z), ex = isExcl(z), red = ex ? (getComputedStyle(document.documentElement).getPropertyValue("--alerte").trim() || "#A9442A") : null;
     const circle = L.polygon(z.points, {
-      color: ex ? red : traitMap(score), weight: selectedId === z.id ? 3 : ex ? 2.5 : 2, opacity: 1, className: (justSaved === z.id ? "zone-new " : "") + (ex ? "zone-excl" : ""),
-      fillColor: ex ? red : col, fillOpacity: ex ? (selectedId === z.id ? .34 : .24) : out ? .12 : (selectedId === z.id ? .45 : .3),
-      dashArray: ex ? "7 5" : out ? "5 6" : null, bubblingMouseEvents: false
+      color: ex ? red : traitMap(score), weight: selectedId === z.id ? (ex ? 2 : 3) : ex ? 1.2 : 2, opacity: ex ? .75 : 1, className: (justSaved === z.id ? "zone-new " : "") + (ex ? "zone-excl" : ""),
+      fillColor: ex ? red : col, fillOpacity: ex ? 1 : out ? .12 : (selectedId === z.id ? .45 : .3),
+      dashArray: out && !ex ? "5 6" : null, bubblingMouseEvents: false
     });
-    const badge = L.marker([z.lat, z.lng], {
+    const badge = ex ? null : L.marker([z.lat, z.lng], {
       icon: L.divIcon({className: "", iconSize: null,
-        html: ex ? `<span class="zone-badge zone-badge--excl" title="Annonces masquées ici">${EXCL_ICO}</span>` : `<span class="zone-badge" style="--c:${col}">${coverOf(z) && photoUrl(coverOf(z).thumb) ? `<img class="zb-img" src="${esc(photoUrl(coverOf(z).thumb))}" alt="">` : ""}<i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}${zonePrice(z) ? `<em class="zb-p">${fmtInt(zonePrice(z))}&#8239;€/m²</em>` : ""}</span>`}),
+        html: `<span class="zone-badge" style="--c:${col}">${coverOf(z) && photoUrl(coverOf(z).thumb) ? `<img class="zb-img" src="${esc(photoUrl(coverOf(z).thumb))}" alt="">` : ""}<i></i>${score == null ? "–" : score}${anyFav(z) ? HEART : ""}${zonePrice(z) ? `<em class="zb-p">${fmtInt(zonePrice(z))}&#8239;€/m²</em>` : ""}</span>`}),
       keyboard: false
     });
     const onClick = e => { if (ui.mode === "placing") { addPoint(e.latlng); return; } openDetail(z.id); };
-    circle.on("click", onClick); badge.on("click", onClick);
-    circle.addTo(zoneLayer); badge.addTo(zoneLayer);
+    circle.on("click", onClick); if (badge) badge.on("click", onClick);
+    circle.addTo(zoneLayer); if (badge) badge.addTo(zoneLayer);
+    if (ex) zoneHatch(circle);
     if (justSaved === z.id && circle._path && circle._path.getTotalLength) circle._path.style.setProperty("--len", Math.ceil(circle._path.getTotalLength()));
   }
 }

@@ -285,7 +285,7 @@ $("#importFile").addEventListener("change", async e => {
       else if ((z.updatedAt || 0) > (state.zones[i].updatedAt || 0)) { state.zones[i] = Object.assign({}, state.zones[i], z, {mapId: state.zones[i].mapId, createdBy: state.zones[i].createdBy}); updated++; }
     }
     const unknown = new Set();
-    j.zones.forEach(z => Object.keys(z.ratings || {}).forEach(k => { if (!crit().some(c => c.id === k)) unknown.add(k); }));
+    j.zones.forEach(z => Object.keys(z.ratings || {}).forEach(k => { if (k[0] !== "_" && !crit().some(c => c.id === k)) unknown.add(k); }));
     save(); renderProfile();
     toast(`${added} zone${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}${updated ? `, ${updated} mise${updated > 1 ? "s" : ""} à jour` : ""}`);
   } catch (err) { toast("Fichier illisible : choisissez un export Heden (.json)"); }

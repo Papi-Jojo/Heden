@@ -536,15 +536,17 @@ input,textarea{caret-color:var(--email)}
 @media (prefers-color-scheme: dark){.hero--risk:not(.hero--ex) .hero__k{color:var(--alerte)}}
 @media (prefers-color-scheme: dark){.hero__scam,.lpin__scam{color:#2A1D14}}
 
-/* Zones exclues : pointillés rouges sur la carte, pastille barrée, interrupteur dans la fiche */
-.zone-badge--excl{width:30px;height:30px;justify-content:center;padding:0;background:var(--calcaire);color:var(--alerte);box-shadow:0 0 0 1.5px var(--alerte),var(--ombre-flottant)}
-.zone-badge--excl svg{color:var(--alerte)}
-.zrow__excl{display:inline-flex;color:var(--alerte)}
+/* Zones exclues : un léger quadrillage rouge, un trait fin ; dans la liste, la pastille barrée remplace la note */
+path.zone-excl{fill:url(#zhach)}
+.zhach__bg{fill:color-mix(in srgb,var(--alerte) 7%,transparent)}
+.zhach__l{stroke:var(--alerte);stroke-width:.8;stroke-opacity:.42;fill:none}
+.score-chip--excl{display:grid;place-items:center;background:color-mix(in srgb,var(--alerte) 12%,var(--calcaire));color:var(--alerte)}
 .chip--excl{display:inline-flex;align-items:center}
 .chip--excl svg{flex:none}
 .chip--excl[aria-pressed="true"]{background:var(--alerte);border-color:var(--alerte);color:#FFF6F0}
 @media (prefers-color-scheme: dark){.chip--excl[aria-pressed="true"]{color:#2A1D14}}
-.zexcl{margin-top:-4px}
+.zexcl{margin-top:-4px;align-items:center}
+.zexcl__by{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--alerte)}
 .hero__k--excl::before{content:none}
 
 /* Filtres d'Explorer et des Favoris */
@@ -577,3 +579,4 @@ input,textarea{caret-color:var(--email)}
 .flt__foot .btn--primary{flex-direction:column;gap:0;line-height:1.2}
 .flt__plus{font-size:12px;font-weight:600;opacity:.8}
 .flt__foot{background:var(--calcaire);padding:12px 0 2px;margin-top:-6px;box-shadow:0 -12px 16px -8px var(--calcaire)}
+.scorebox .big.big--excl{background:color-mix(in srgb,var(--alerte) 16%,var(--calcaire));color:var(--alerte)}

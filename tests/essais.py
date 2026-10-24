@@ -121,6 +121,30 @@ def apporter_ses_zones(pw):
     assert not e.erreurs, e.erreurs; e.fermer()
 
 
+@essai
+def exclusion_partagee(pw):
+    """Sur une carte de groupe, un membre qui exclut une zone l'exclut pour tous : les autres la voient exclue, avec son nom."""
+    e = Essai(pw); J = e.page()
+    e.connexion(J, "johan@x.fr", "Johan"); e.onglet(J, "profile"); J.fill("#newMapName", "Notre recherche"); J.click("#newMapForm button"); J.wait_for_timeout(800)
+    code = J.locator(".invite__code").inner_text().strip()
+    M = e.page(); e.connexion(M, "max@x.fr", "Max"); e.onglet(M, "map"); e.zone(M, "Bastille", 48.855, 2.37)
+    e.onglet(M, "profile"); M.click("[data-ptab='compte']"); M.wait_for_timeout(200)
+    M.fill("#joinCode", code); M.click("#joinForm button"); M.wait_for_timeout(3500)
+    db = M.evaluate(DBQ); shared = next(m["id"] for m in db["maps"] if m["kind"] == "partagee")
+    e.onglet(M, "map"); M.click(f".mapsw [data-map='{shared}']"); M.wait_for_timeout(2500)
+    M.evaluate("document.querySelector('.zrow').click()"); M.wait_for_timeout(500)
+    M.evaluate("document.querySelector('#zexcl').click()"); M.wait_for_timeout(3500)
+    db = M.evaluate(DBQ); bz = next(z["id"] for z in db["zones"] if z["map_id"] == shared and z["name"] == "Bastille")
+    assert any(r["zone_id"] == bz and (r.get("ratings") or {}).get("_x") == 1 for r in db["ratings"]), "exclusion non enregistrée sur la carte commune"
+    J.reload(); J.wait_for_timeout(2500)
+    e.onglet(J, "map"); J.click(f".mapsw [data-map='{shared}']"); J.wait_for_timeout(2500)
+    assert J.locator(".zrow .score-chip--excl").count() == 1, "Johan ne voit pas la zone exclue par Max"
+    J.evaluate("document.querySelector('.zrow').click()"); J.wait_for_timeout(500)
+    assert "Exclue par Max" in J.inner_text(".zexcl"), J.inner_text(".zexcl")
+    assert J.get_attribute("#zexcl", "aria-pressed") == "false"
+    assert not e.erreurs, e.erreurs; e.fermer()
+
+
 def importer(pg, d):
     pg.goto(B + "?importer=1#import=" + urllib.parse.quote(json.dumps(d))); pg.wait_for_timeout(2600)
 
@@ -240,9 +264,9 @@ def zones_exclues(pw):
     pg.evaluate("document.querySelector('.zrow').click()"); pg.wait_for_timeout(500)   # feuille réduite : la liste est sous la barre d'onglets
     pg.evaluate("document.querySelector('#zexcl').click()"); pg.wait_for_timeout(300)
     assert pg.get_attribute("#zexcl", "aria-pressed") == "true", "interrupteur non activé"
-    assert pg.evaluate("__heden.state().profile.home.exclus.length") == 1, "zone exclue non enregistrée"
+    assert pg.evaluate("__heden.state().zones[0].ratings._x") == 1, "zone exclue non enregistrée"
     pg.evaluate("document.querySelector('#close').click()"); pg.wait_for_timeout(300)
-    assert pg.locator(".zrow__excl").count() == 1, "pictogramme absent de la liste des zones"
+    assert pg.locator(".score-chip--excl").count() == 1, "pictogramme absent de la liste des zones"
     e.onglet(pg, "annonces"); pg.click("[data-feed='mes']"); pg.wait_for_timeout(500)
     ids = pg.eval_on_selector_all(".ann__feed .hero", "els => els.map(x => x.dataset.id)")
     assert ids == ["dehors"], ids
